@@ -340,10 +340,7 @@ end
  % there will be one dCA1 tetrode designated for the LFP
  
  for i=1:length(SuperRat)
-     [ncells,besttet]=max(accumarray([SuperRat(i).units.tet]',1));
-    SuperRat(i).LFP.nCells=ncells;
-    SuperRat(i).LFP.tet=besttet;
- end
+     [nbesttet=accumarray([SuperRat(i).units.tet])
 
 
 

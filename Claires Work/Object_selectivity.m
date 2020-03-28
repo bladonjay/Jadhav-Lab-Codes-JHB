@@ -277,3 +277,41 @@ for ses=1:length(SuperRat)
     end
     
 end
+
+%% lets get a list of each cells session and name
+
+SuperUnits=orderfields(SuperRat(1).units);
+SuperUnits=rmfield(SuperUnits,'csi');
+thisdate=repmat({[SuperRat(1).name ' day ' num2str(SuperRat(1).daynum)]},length(SuperUnits),1);
+
+[SuperUnits.sess]=thisdate{:};
+for i=2:length(SuperRat)
+    theseunits=orderfields(SuperRat(i).units);
+    % for some reason csi is in some of these structs
+    if isfield(theseunits,'csi'), theseunits=rmfield(theseunits,'csi'); end
+    thisdate=repmat({[SuperRat(i).name ' day ' num2str(SuperRat(i).daynum)]},length(theseunits),1);
+    [theseunits.sess]=thisdate{:};
+    SuperUnits=[SuperUnits theseunits];
+end
+
+% now the session and name of all the coding units:
+
+AllCoders=cellfun(@(a) a(3), {SuperUnits.OdorSelective});
+
+bigtable=struct2table(SuperUnits(AllCoders==1));
+parentdir=uigetdir;
+writetable(bigtable,fullfile(parentdir,'ObjectCodingCells.xls'));
+
+
+
+
+
+
+
+
+
+
+
+
+
+
