@@ -94,7 +94,7 @@ end
 
 
 
-for i=1:length(SuperRat)
+for i=18 %:length(SuperRat)
     if SuperRat(i).longTrack>0
         tic
         coorddata=SuperRat(i).tracking.data;
@@ -292,7 +292,7 @@ end
 % one rat... i guess i'll have to figure that out later
 verbose=0;
 
-for i=1:length(SuperRat)
+for i=18 %:length(SuperRat)
     % this will asssign each trajectory based on origin and destination
     trajinds=[3 1; 3 2; 1 3; 2 3];
     % this needs to change to accommodate four trajectories *****
@@ -331,10 +331,11 @@ for i=1:length(SuperRat)
             subplot(3,4,tr+8);
             [a,b]=histcounts(temptraj(keepinds,linpull(tr,1)),1:100);
             bar(a);
+            title(sprintf('%s %d', SuperRat(i).name, SuperRat(i).daynum));
+            set(gcf,'Position',[1000,270,560,1060])
         end
     end
-    title(sprintf('%s %d', SuperRat(i).name, SuperRat(i).daynum));
-    set(gcf,'Position',[1000,270,560,1060])
+    
     SuperRat(i).LinCoords=sortrows(allposplot,1);
 end
 %%

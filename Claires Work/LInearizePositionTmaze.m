@@ -38,7 +38,7 @@ well it went to
 % at the bottom of this is where we designate the side well and home well
 % distances
 
-for i=1:length(SuperRat)
+for i=26 %1:length(SuperRat)
     tic
     coorddata=SuperRat(i).tracking.data;
     % these coord data come in as ts, x, y, dir?, smoothed vel (not
@@ -64,7 +64,7 @@ for i=1:length(SuperRat)
             
             % now interpolate the tracks and scale up
             mytracks=cell(length(unique(tracks)),1);
-            for tk=1:length(tracks)
+            for tk=1:length(unique(tracks))
                 trackpos=[round(xpos(tracks==tk)*10) round(ypos(tracks==tk)*10)];
                 % have to expand each within
                 for j=1:size(trackpos,1)-1
@@ -110,7 +110,7 @@ end
 
 % now go until you have a radius small enough to start this is
 % determinisitc
-for i=15:length(SuperRat)
+for i=26 %:length(SuperRat)
     if SuperRat(i).longTrack>0
         tic
         coorddata=SuperRat(i).tracking.data;
@@ -141,8 +141,7 @@ for i=15:length(SuperRat)
             tempLinCoords=[thesecoords(1:firststart-1,1:3) nan(firststart-1,8)];
             goaldists=nan(firststart-1,3); % this will be the distance of this timestamp to each goal
             
-            
-            
+
             % initialize the first datapoint here
             [Ldist,Lind]=min(hypot(abs(mytracks{1}(:,1)-thesecoords(thispos,2)),...
                 abs(mytracks{1}(:,2)-thesecoords(thispos,3))));
@@ -272,7 +271,7 @@ end
 
 %% now to designate the epoch for each video frame
 
-for ses=1:length(SuperRat)
+for ses= 26 %1:length(SuperRat)
     myCoords=SuperRat(ses).LinCoords;
     allTracking=SuperRat(ses).tracking.data;
     % this will be the last datapoint until the next epoch starts
@@ -290,10 +289,15 @@ end
 %% now some sanity checks
 
 
+% first, lets double check that the epochs are right
+ses=26;
+tracking=SuperRat(ses).tracking.data;
+epochs=unique(tracking(:,6));
 figure;
-subplot(6,1,1);
-
-
+for k=1:length(epochs)
+subplot(1,length(epochs),epochs(k))
+plot(tracking(tracking(:,6)==epochs(k),2),tracking(tracking(:,6)==epochs(k),3));
+end
 
 
 

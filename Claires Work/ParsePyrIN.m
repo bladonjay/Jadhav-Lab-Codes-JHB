@@ -8,9 +8,9 @@
 %% this generates the ac and calculates the stats off that
 % this adds the short ISI's for 1 and 2 msec, it adds the numspikes, the
 % mean rate, the burst probability, the burst index, and the theta index
+verbose=0;
 
-
-for ses=1:length(SuperRat)
+for ses= 1:length(SuperRat)
     tic
     tracking=SuperRat(ses).tracking.data(:,1);
     elapsed=diff(tracking);
@@ -70,16 +70,15 @@ for ses=1:length(SuperRat)
         FreqBand=[6 12]; % theta!
         
         [royermx] = fit(x', acgram2, royermodel, ...
-            'StartPoint', [1, .1,   2,   nanmean(FreqBand),  500,  25], ...
-            'Lower',      [0,   0, -10,   FreqBand(1),  50,   0], ...
-            'Upper',     [10,  10,  10,  FreqBand(2),  inf, 50],...
-            'MaxFunEvals',1000000,'TolFun',10^-10); % 'Robust', 'LAR',
+            'StartPoint', [1, .1,   2,   nanmean(FreqBand),     500,  25], ...
+            'Lower',      [0,   0, -10,   FreqBand(1),          75,   0], ...
+            'Upper',     [10,  10,  10,  FreqBand(2),           2000, 75],...
+            'MaxFunEvals',10^10,'TolFun',10^-10, 'Robust', 'LAR');
         royercf=coeffvalues(royermx);
         SuperRat(ses).units(j).ACtheta=royercf(2)/royercf(1); % b/a is the % of slow that is theta
         % the other way is to find the inflections in the power spectrum in the
         % ac, and to also calculate the peak power from 6-12 and divide that by
         % avearge across other freqs (andy did this)
-        verbose=0;
         if verbose
             figure;
             slow=(royercf(1)*(cos(2*.001*pi*royercf(4)*x)+1)+royercf(2)).*exp(-abs(x)/royercf(5));
@@ -87,16 +86,25 @@ for ses=1:length(SuperRat)
             hfig=figure;
             b=bar([-700:10:700]',acgram2,'FaceColor','flat','EdgeColor','flat');
             b.CData=[.7 .7 .7];
-
-            hold on;
-            plot(x,slow)
-            plot(x,fast);
-            plot(x,slow+fast);
+            hold on; plot(x,slow); plot(x,fast); plot(x,slow+fast);
+            drawnow;
+            answer = questdlg('Stop verbose?', 'Verbose Menu', 'Yes, quiet','no, more figs','Yes, quiet');
+            verbose=contains(answer,'no');
         end
-    
     end
     fprintf('Session %d done in %.2f seconds \n',ses,toc);
 end
+%% I think i need to recalculate the mean firing rate of each unit
+% claire mentioned that a signifiant number of clusters arent carrying
+% across epochs... which surprises me
+
+for i=1:length(SuperRat)
+    for j=1:length(SuperRat(i).units)
+        % calc mean rate
+    end
+end
+
+
 %% now plot them to get a good impression of pyr vs IN
 for ses=1:length(SuperRat)
     for i=1:length(SuperRat(ses).units)
@@ -108,8 +116,6 @@ end
 AllCells=[];
 for ses=1:length(SuperRat)
     units=SuperRat(ses).units;
-    
-    
     SesCells=[[units.meanrate]' [units.propbursts]' [units.burstIndex]'...
         cellfun(@(a) contains(a,'CA1'),{units.area})'...
         cellfun(@(a) contains(a,'accepted'),{SuperRat(ses).units.tag})'];
@@ -144,93 +150,74 @@ set(gca,'YLim',[0 10]); title('PFC units');
 
 %% heres where I make the designation between pyrams and ins for each region
 
-for ses=1:length(SuperRat)
+for ses= 1:length(SuperRat)
     for j=1:length(SuperRat(ses).units)
-        %if contains(SuperRat(ses).units(j).tag,'accepted')
-            if contains(SuperRat(ses).units(j).area,'CA1')
-                % I think we need to positively select PYRs and leave ins
-                % to whatever is left
-                if SuperRat(ses).units(j).meanrate<=7 && SuperRat(ses).units(j).burstIndex>=2
-                    SuperRat(ses).units(j).type='pyr';
-                else
-                    SuperRat(ses).units(j).type='in';
-                end
-
-            elseif contains(SuperRat(ses).units(j).area,'PFC')
-                if SuperRat(ses).units(j).meanrate<7
-                    SuperRat(ses).units(j).type='pyr';
-                else
-                    SuperRat(ses).units(j).type='in';
-                end
-                
+        if contains(SuperRat(ses).units(j).area,'CA1')
+            % I think we need to positively select PYRs and leave ins
+            % to whatever is left
+            if SuperRat(ses).units(j).meanrate<=7 && SuperRat(ses).units(j).burstIndex>=1.5
+                SuperRat(ses).units(j).type='pyr';
+            else
+                SuperRat(ses).units(j).type='in';
             end
-            % but if it has more than 5% 1msec ISIs and it fires above
-            % 7 hz, its prob not an IN either
-            if SuperRat(ses).units(j).meanrate>=7 && SuperRat(ses).units(j).shortISI(2)>SuperRat(ses).units(j).numspikes(1)*.01
-                    SuperRat(ses).units(j).type='mua';
+            
+        elseif contains(SuperRat(ses).units(j).area,'PFC')
+            if SuperRat(ses).units(j).meanrate<7
+                SuperRat(ses).units(j).type='pyr';
+            else
+                SuperRat(ses).units(j).type='in';
             end
-       % else
-        %    SuperRat(ses).units(j).type='mua';
-        %end
+            
+        end
+        % but if it has more than 5% 1msec ISIs and it fires above
+        % 7 hz, its prob not an IN either
+        if SuperRat(ses).units(j).meanrate>=7 && SuperRat(ses).units(j).shortISI(2)>SuperRat(ses).units(j).numspikes(1)*.01
+            SuperRat(ses).units(j).type='mua';
+        end
+        
     end
 end
-
-%%
-
-fprintf('You have %d units designated as MUA \n',sum(cellfun(@(a) contains(a,'mua'), {temp.type})));
-fprintf('You have %d units designated as PYR \n',sum(cellfun(@(a) contains(a,'pyr'), {temp.type})));
-fprintf('You have %d units designated as IN \n',sum(cellfun(@(a) contains(a,'in'), {temp.type})));
-
 
 
 %% now the above plot but labeled correctly
 
-figure; 
-AllCells=[SuperRat.units];
+
+keepfields={'meanrate','propbursts','burstIndex','area','tag','type'};
+AllCells=[];
+for ses=1:length(SuperRat)
+    units=SuperRat(ses).units;
+    allnames=fieldnames(units); extranames=~ismember(allnames,keepfields);
+    units=rmfield(units,allnames(extranames==1));
+    AllCells=[AllCells units];
+end
 HPCinds=cellfun(@(a) contains(a,'CA1'), {AllCells.area});
-% make a pretty 4 col matrix: mean rate, burst prob, burst index, and
-% celltype (1=pyr, 2=IN, 3=MUA)
-HPCunits=[[AllCells(HPCinds).meanrate]' [AllCells(HPCinds).propbursts]' [AllCells(HPCinds).burstIndex]'];
-HPCunits(:,4)=ones(length(HPCunits),1) + cellfun(@(a) contains(a,'in'),{AllCells(HPCinds).type})' +...
-    2*cellfun(@(a) contains(a,'mua'),{AllCells(HPCinds).type})';
-    
-subplot(1,2,1); scatter(log2(HPCunits(HPCunits(:,4)==1,1)),...
-    log2(HPCunits(HPCunits(:,4)==1,3)),15,'filled');
+alltypes=cellfun(@(a) contains(a,'pyr'), {AllCells.type});
+alltypes=alltypes+2*cellfun(@(a) contains(a,'in'), {AllCells.type});
+% this plots log2 mean rate against log2 burst index
+figure; sp=subplot(1,2,1); 
+scatter(log2([AllCells(HPCinds & alltypes==1).meanrate]),...
+    log2([AllCells(HPCinds & alltypes==1).burstIndex]),15,'filled');
+hold on; scatter(log2([AllCells(HPCinds & alltypes==2).meanrate]),...
+    log2([AllCells(HPCinds & alltypes==2).burstIndex]),15,'filled');
+hold on; scatter(log2([AllCells(HPCinds & alltypes==0).meanrate]),...
+    log2([AllCells(HPCinds & alltypes==0).burstIndex]),15,'filled');
 xlabel('Log_2 Firing Rate'); ylabel('Log_2 Burst Index');
-hold on;
-scatter(log2(HPCunits(HPCunits(:,4)==2,1)),...
-    log2(HPCunits(HPCunits(:,4)==2,3)),15,'filled');
-scatter(log2(HPCunits(HPCunits(:,4)==3,1)),...
-    log2(HPCunits(HPCunits(:,4)==3,3)),15,'filled');
-ylim([-4 10]);  title('HPC units'); legend('Pyr','IN','mua');
 
-AllCells=[SuperRat.units];
 PFCinds=cellfun(@(a) contains(a,'PFC'), {AllCells.area});
-% make a pretty 4 col matrix: mean rate, burst prob, burst index, and
-% celltype (1=pyr, 2=IN, 3=MUA)
-PFCunits=[[AllCells(PFCinds).meanrate]' [AllCells(PFCinds).propbursts]' [AllCells(PFCinds).burstIndex]'];
-PFCunits(:,4)=ones(length(PFCunits),1) + cellfun(@(a) contains(a,'in'),{AllCells(PFCinds).type})' +...
-    2*cellfun(@(a) contains(a,'mua'),{AllCells(PFCinds).type})';
-    
-subplot(1,2,2); scatter(log2(PFCunits(PFCunits(:,4)==1,1)),...
-    log2(PFCunits(PFCunits(:,4)==1,3)),15,'filled');
+sp(2)=subplot(1,2,2); 
+scatter(log2([AllCells(PFCinds & alltypes==1).meanrate]),...
+    log2([AllCells(PFCinds & alltypes==1).burstIndex]),15,'filled');
+hold on; scatter(log2([AllCells(PFCinds & alltypes==2).meanrate]),...
+    log2([AllCells(PFCinds & alltypes==2).burstIndex]),15,'filled');
+hold on; scatter(log2([AllCells(PFCinds & alltypes==0).meanrate]),...
+    log2([AllCells(PFCinds & alltypes==0).burstIndex]),15,'filled');
 xlabel('Log_2 Firing Rate'); ylabel('Log_2 Burst Index');
-hold on;
-scatter(log2(PFCunits(PFCunits(:,4)==2,1)),...
-    log2(PFCunits(PFCunits(:,4)==2,3)),15,'filled');
-scatter(log2(PFCunits(PFCunits(:,4)==3,1)),...
-    log2(PFCunits(PFCunits(:,4)==3,3)),15,'filled');
-ylim([-4 10]);  title('PFC units'); legend('Pyr','IN','mua');
-
+linkaxes(sp);
 %% now lets look at 'accepted' vs 'mua'
 
 
 % this requires these cells to be fully processed.  This means spatial
 % properties and object response properties
-
-
-
-
 
 % first lets pull out our cells with a lower mean rate
 % 1. mean rate 2. pburst 3. burst index 4. 1ms isi 5. 2ms isi 6. actheta

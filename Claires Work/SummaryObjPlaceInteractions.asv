@@ -82,13 +82,7 @@ end
 fprintf('Number of well isolated units %d \n',...
 sum(cellfun(@(a) ~contains(a,'mua','IgnoreCase',true), {SuperUnits.type})))
 
-hcfilt=cellfun(@(a) contains(a,'CA1'), {SuperUnits.area});
-fprintf('CA1 %d pyrs, %d IN''s \n', sum(cellfun(@(a) contains(a,'pyr'), {SuperUnits(hcfilt).type})),...
-    sum(cellfun(@(a) contains(a,'in'), {SuperUnits(hcfilt).type})));
-
-pfcfilt=cellfun(@(a) contains(a,'PFC'), {SuperUnits.area});
-fprintf('pfc %d pyrs, %d IN''s \n', sum(cellfun(@(a) contains(a,'pyr'), {SuperUnits(pfcfilt).type})),...
-    sum(cellfun(@(a) contains(a,'in'), {SuperUnits(pfcfilt).type})));
+fprintf('CA2 %
 %%
 % 1. do cells that respond to odors respond to place differently
 % First, how many of these cells spike during the outbound run bouts
@@ -140,20 +134,6 @@ ylim([0 100]);
  sgtitle(sprintf('Outbound Run Firing of %s cells from %s, out of a pool of %d', type, region, length(PFtest)));
  xtickangle(340); box off;
  
- 
- 
-chiraw=[sum(sum(PFcounts(objSel==0 & objRes==0,:),2)==0)...
-    sum(sum(PFcounts(objSel==0 & objRes~=0,:),2)==0)...
-    sum(sum(PFcounts(objSel~=0,:),2)==0);...
-    sum(sum(PFcounts(objSel==0 & objRes==0,:),2)==1)...
-    sum(sum(PFcounts(objSel==0 & objRes~=0,:),2)==1)...
-    sum(sum(PFcounts(objSel~=0,:),2)==1);...
-    sum(sum(PFcounts(objSel==0 & objRes==0,:),2)>1)...
-    sum(sum(PFcounts(objSel==0 & objRes~=0,:),2)>1)...
-    sum(sum(PFcounts(objSel~=0,:),2)>1)];
-[a,b]=chi2indep(chiraw)
-fprintf('Chi2 test for different run spike prevalence across object repsonses p(%.2f)=%e\n',...
-    b,a)
  %%
  % now filter out the cells who dont spike during runs
  
@@ -218,29 +198,29 @@ labels2 = {sum(sum(PFcounts(cellclasses==1,:),2)>1) sum(sum(PFcounts(cellclasses
 text(xtips,ytips2,labels2,'HorizontalAlignment','center',...
     'VerticalAlignment','bottom');
 ylim([0 100]);
-sgtitle(sprintf('Place Fields of %s cells from %s, out of a pool of %d active', type, region, length(PFtest)));
-xtickangle(340); box off;
-ratecontrol=0;
-if ratecontrol
-    % this could be the overall firing rate...
-    overallrate=log2(cellfun(@(a)  a, {PFtest.meanrate}));
-    
-    meansy=[nanmean(overallrate(cellclasses==1)) nanmean(overallrate(cellclasses==2))...
-        nanmean(overallrate(cellclasses==3))];
-    SEMsy=[SEM(overallrate(cellclasses==1)) SEM(overallrate(cellclasses==2))...
-        SEM(overallrate(cellclasses==3))];
-    figure; bar(1:3,meansy); hold on; errorbar(1:3, meansy, SEMsy,'k.');
-    set(gca,'XTickLabel',{'Task Responsive','Odor Responsive','Odor Selective'});
-    xtickangle(-10); ylabel('Log_2 Mean Rate');
-    
-    meansy=[nanmean(overallrate(sum(PFcounts,2)==0)) nanmean(overallrate(sum(PFcounts,2)==1))...
-        nanmean(overallrate(sum(PFcounts,2)==2))];
-    SEMsy=[SEM(overallrate(sum(PFcounts,2)==0)) SEM(overallrate(sum(PFcounts,2)==1))...
-        SEM(overallrate(sum(PFcounts,2)==2))];
-    figure; bar(1:3,meansy); hold on; errorbar(1:3, meansy, SEMsy,'k.');
-    set(gca,'XTickLabel',{'No PFs','One PF','2+ PFs'});
-    xtickangle(-10); ylabel('Log_2 Mean Rate');
-end
+ sgtitle(sprintf('Place Fields of %s cells from %s, out of a pool of %d active', type, region, length(PFtest)));
+  xtickangle(340); box off;
+ ratecontrol=0;
+ if ratecontrol
+     % this could be the overall firing rate...
+     overallrate=log2(cellfun(@(a)  a, {PFtest.meanrate}));
+     
+     meansy=[nanmean(overallrate(cellclasses==1)) nanmean(overallrate(cellclasses==2))...
+         nanmean(overallrate(cellclasses==3))];
+     SEMsy=[SEM(overallrate(cellclasses==1)) SEM(overallrate(cellclasses==2))...
+         SEM(overallrate(cellclasses==3))];
+     figure; bar(1:3,meansy); hold on; errorbar(1:3, meansy, SEMsy,'k.');
+     set(gca,'XTickLabel',{'Task Responsive','Odor Responsive','Odor Selective'});
+     xtickangle(-10); ylabel('Log_2 Mean Rate');
+     
+     meansy=[nanmean(overallrate(sum(PFcounts,2)==0)) nanmean(overallrate(sum(PFcounts,2)==1))...
+         nanmean(overallrate(sum(PFcounts,2)==2))];
+     SEMsy=[SEM(overallrate(sum(PFcounts,2)==0)) SEM(overallrate(sum(PFcounts,2)==1))...
+         SEM(overallrate(sum(PFcounts,2)==2))];
+     figure; bar(1:3,meansy); hold on; errorbar(1:3, meansy, SEMsy,'k.');
+     set(gca,'XTickLabel',{'No PFs','One PF','2+ PFs'});
+     xtickangle(-10); ylabel('Log_2 Mean Rate');
+ end
 %% the inverse of this is what proportion of place cells
 % have object responsiveness or object selectivity?
 
@@ -474,11 +454,11 @@ fprintf('PF gain: unresponsive:%.2f +/- %.2f   Resp:%.2f +/- %.2f   Select:%.2f 
     nanmean(PFgains(celltypes==2)),SEM(PFgains(celltypes==2)),...
     nanmean(PFgains(celltypes==3)),SEM(PFgains(celltypes==3)));
 fprintf('anovan f(%d)=%.2f, p=%.4f \n',tbl{2,3},tbl{2,6},tbl{2,7});
-[p,h,stats]=ranksum(PFgains(celltypes==1),PFgains(celltypes==2),'method','approximate');
+[p,h,stats]=ranksum(PFgains(celltypes==1),PFgains(celltypes==2));
 fprintf('Unresponsive vs responsive z= %.2f, p=%.4f \n',stats.zval,p);
-[p,h,stats]=ranksum(PFgains(celltypes==1),PFgains(celltypes==3),'method','approximate');
+[p,h,stats]=ranksum(PFgains(celltypes==1),PFgains(celltypes==3));
 fprintf('Unresponsive vs selective z= %.2f, p=%.4f \n',stats.zval,p);
-[p,h,stats]=ranksum(PFgains(celltypes==2),PFgains(celltypes==3),'method','approximate');
+[p,h,stats]=ranksum(PFgains(celltypes==2),PFgains(celltypes==3));
 fprintf('responsive vs responsive z= %.2f, p=%.4f \n',stats.zval,p);
 fprintf('\n');
 
@@ -499,11 +479,11 @@ ylabel('Log_2 cell firing rate');  xtickangle(340); box off;
 
 [p,tbl,stats]=anovan(cellrates,celltypes2','display','off');
 fprintf('PF rate: anovan f(%d)=%.2f, p=%.4f \n',tbl{2,3},tbl{2,6},tbl{2,7});
-[p,h,stats]=ranksum(cellrates(celltypes2==0),cellrates(celltypes2==1),'method','approximate');
+[p,h,stats]=ranksum(cellrates(celltypes2==0),cellrates(celltypes2==1));
 fprintf('Unresponsive vs responsive z= %.2f, p=%.4f \n',stats.zval,p);
-[p,h,stats]=ranksum(cellrates(celltypes2==0),cellrates(celltypes2==2),'method','approximate');
+[p,h,stats]=ranksum(cellrates(celltypes2==0),cellrates(celltypes2==2));
 fprintf('Unresponsive vs selective z= %.2f, p=%.4f \n',stats.zval,p);
-[p,h,stats]=ranksum(cellrates(celltypes2==1),cellrates(celltypes2==2),'method','approximate');
+[p,h,stats]=ranksum(cellrates(celltypes2==1),cellrates(celltypes2==2));
 fprintf('responsive vs Selective z= %.2f, p=%.4f \n',stats.zval,p);
 fprintf('\n');
 % sgtitle doesnt really make sense here, gotta add numbers in xlabels

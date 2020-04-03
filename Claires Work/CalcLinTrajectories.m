@@ -18,12 +18,15 @@
 % field
 
 savedir=uigetdir;
-runboots=250;
-verbose=1; % start with true, move to false
+runboots=500;
+verbose=0; % start with true, move to false
 runblocks=0;
+calctheta=false; % do you want to calculate theta pref and precession slope?
 
-velthreshold=3;
-velsmooth=8;
+trajinds=[3 1; 3 2; 1 3; 2 3];
+
+speedthreshold=3;
+veltimesmooth=8; % bins
 % gonna add a few fields to the units struct
 FieldPropsNan=struct('PFmax',nan(1,4),'PFmaxpos',nan(1,4),...
     'info',nan(1,4),'sparsity',nan(1,4),...
@@ -38,36 +41,55 @@ for ses=1:length(SuperRat)
     tic
     if SuperRat(ses).longTrack
         % 1 is bottom left, 2 is bottom right, 3 is home
-        trajinds=[3 1; 3 2; 1 3; 2 3];
-        % 45 are the left linearized positions
-        % 67 are the right linearized positions
-        keepinds=[];
-        allposplot=[];
-        cellnotes={SuperRat(ses).units.tag};
-        for cn=1:length(cellnotes)
-            if isempty(cellnotes{cn})
-                cellnotes(cn)={'mua'};
-            end
-        end
+        % 4,5 are the left linearized positions
+        % 6,7 are the right linearized positions
+        keepinds=[]; allposplot=[];
         % grab the run blocks
-        blocks=unique(SuperRat(ses).LinCoords(:,6));
+        blocks=SuperRat(ses).RunEpochs;
         fulltraj=SuperRat(ses).LinCoords;
-        if isfield(SuperRat(ses).units(1),'LinSpikeCts')
-            SuperRat(ses).units=rmfield(SuperRat(ses).units,{'LinSpikeCts',...
-                'LinPlaceFields','FiresDuringRun','PFexist','RunRates'});
+        fulltraj(~ismember(fulltraj(:,6),blocks),:)=[]; % use only run sesses
+        epochbreaks=fulltraj(diff(fulltraj(:,6))~=0,1);
+        if any(epochbreaks)
+            epochtimes=[fulltraj(1) epochbreaks'+1; epochbreaks' fulltraj(length(fulltraj),1)]';
+        else
+            epochtimes=[fulltraj(1) fulltraj(end,1)];
         end
-        % run vs sleep blocks
-        for j=1:length(SuperRat(ses).units)
-            
-            
-            spikes=SuperRat(ses).units(j).ts;
-            try
-                SuperRat(ses).units(j)=rmfields(SuperRat(ses).units(j),...
-                    {'LinPlaceFields','LinSpikeCts','FiresDuringRun','PFexist','RunRates'});
+        
+        if calctheta
+            thetadata=load(fullfile(SuperRat(ses).LFP.filedir,SuperRat(ses).LFP.filename));
+            thetadata=thetadata.eegstruct; eegmat=[];
+            for k=1:length(thetadata)
+                eegmat=[eegmat; double(thetadata(k).starttime:1/thetadata(i).filtersamprate:thetadata(k).endtime)'...
+                    double(thetadata(k).data)];
             end
+            eegmat(:,3)=rescale(eegmat(:,3),-pi,pi); clear thetadata;
+        end
+
+        % run blocks
+        for j=1:length(SuperRat(ses).units)
+            FieldProps=FieldPropsNan; % initialize the field props struct
+            spikes=SuperRat(ses).units(j).ts;
+            [allspikes,epochspk]=event_spikes(spikes,epochtimes(:,1),0,diff(epochtimes,1,2));           
+
+            % remove all runs in epochs with no spikes
+            keepblocks=blocks(epochspk==0);
+            celltraj=fulltraj(ismember(fulltraj(:,6),keepblocks),:);
+            clear thetastats;
             
-            SuperRat(ses).units(j).FieldProps=FieldPropsNan; % initialize the field props struct
+            % preallocate
+            SuperRat(ses).units(j).PFexist=zeros(1,4);
+            SuperRat(ses).units(j).FiresDuringRun=zeros(1,4);
+            SuperRat(ses).units(j).RunRates=repmat({[nan]},1,4);
+            SuperRat(ses).units(j).FieldProps=FieldProps;
+            
+            % if no valid spikes, move on
+            if isempty(allspikes)
+                fprintf('\nSess %d Unit %d (%d tot) has no valid spikes \n', ses,j,length(spikes));
+                continue;
+            end
+            % initialize the field props in case this cell doesnt ever fire
             if runblocks
+                %{
                 for bl=1:length(blocks)
                     % for each trajectory
                     for tr=1:4
@@ -191,145 +213,166 @@ for ses=1:length(SuperRat)
                         end % if we have trajectories
                     end % of trajectories
                 end % blocks
+                %}
                 %  now one for all the blocks
             else % if run whole day as unitary session
-                for tr=1:4
+                for tr=1:4 % for each trajectory
                     % this this trajectory (e.g. start and finish are
                     % correct
                     keepinds=fulltraj(:,4)==trajinds(tr,1) & fulltraj(:,5)==trajinds(tr,2);
                     % did the animal spend enough time in this trajectory?
-                    if sum(keepinds)>30*15 % 15 seconds of data
-                        temptraj=fulltraj(keepinds,:); % pull fav line, and rows
-                        
-                        % and nan out the slow times (dx for linear pos)
-                        % thjis is the velocity threshold
-                        temptraj=sortrows(temptraj,1); % order chronologically
+                    if sum(keepinds)>30*10 % 15 seconds of data
+                        % pull this traj, order epochs chronologically
+                        temptraj=sortrows(fulltraj(keepinds,:),1);
                         % 50 bin span, but a std of only 1/4 second
                         % or like 3/4 of a second
-                        tooslow=SmoothMat2(temptraj(:,7),[0 50],velsmooth)<=velthreshold;
+                        tooslow=SmoothMat2(temptraj(:,7),[0 50],veltimesmooth)<=speedthreshold;
                         temptraj(tooslow,:)=[];
-                        
                         % find the epochs so you can kill bad spikes
-                        breaks=find(diff(temptraj(:,1))>1);
-                        epochs=[[temptraj(1); temptraj(breaks+1,1)] [temptraj(breaks,1); temptraj(end,1)]];
-                        % only use epochs that last more than a seconds
-                        epochs(diff(epochs,1,2)<=1,:)=[];
-                        % get occupancy
+                        breaks=find(diff(temptraj(:,1))>1); % only use epochs that last more than a seconds
+                        runepochs=[[temptraj(1); temptraj(breaks+1,1)] [temptraj(breaks,1); temptraj(end,1)]];
+                        
+                        runepochs(diff(runepochs,1,2)<=.5,:)=[]; 
+                        temptraj=EpochCoords(temptraj,runepochs); % remove the really short runs
+                        
+                        % grab all the spikes WITHIN the run epochs
+                        [Espikes,Erates,~,~,trspikes]=event_spikes(spikes(:,1),runepochs(:,1),0,diff(runepochs,1,2));
+                        SuperRat(ses).units(j).RunRates{1,tr}=Erates; % run the splitter score later
+                        % filter spike and lfp adata below to match coords
+                        
+                        % we ahve the rates at each run, theyre zero, so
+                        % now we cant build place maps
+                        if length(Espikes)<20
+                            %fprintf('no spikes detected ses %d unit %d tr %d (%.2f secs) \n',...
+                            %ses, j, tr, sum(keepinds)/30);
+                            continue;% if not enough spikes, go to next trajectory
+                        end
+                        
+                        spikepos=interp1(temptraj(:,1),temptraj(:,8),Espikes,'nearest'); % now interp to position
+                        % now you can calculate precession and phase
+                        % preference
+                        if calctheta
+                            spikephase=interp1(eegmat(:,1),eegmat(:,3),Espikes,'nearest');
+                            thetastats.spikeprefP(tr)=circ_rtest(spikephase);
+                            thetastats.spikeprefV(tr)=circ_r(spikephase);
+                            thetastats.spikeprefrho(tr)=circ_mean(spikephase);
+                            [thetastats.slope(tr),thetastast.phasestart(tr),~,thetastast.precessionpP]=...
+                                corrC2Lin_Kempter2012(spikepos,spikephase);
+                        end
+                        
+                        % get occupancy map
                         [bincts,bins]=histcounts(temptraj(:,8),1:100); % in bins
-                        occupancy=bincts/30;
-                        smoothoccup=SmoothMat2(occupancy,[5 0],2);
+                        occupancy=bincts/30; % convert to real time (seconds)
+                        smoothoccup=SmoothMat2(occupancy,[5 0],2); % smooth over 2 pixels
                         SuperRat(ses).LinOccup(tr,:)=smoothoccup;
                         fullcurves={}; cellsort=[];
+                        
+                        if verbose, figure; end
                         % now for each unit capture a mean tuning curve for each run
-                        try
-                            Espikes=EpochCoords(spikes(:,1),epochs); % only pull spike ts in the run epochs
-                            [~,Erates]=event_spikes(spikes,epochs(:,1),0,epochs(:,2));
-                            spikepos=interp1(temptraj(:,1),temptraj(:,8),Espikes,'nearest'); % now interp to position
-                            %if contains(cellnotes{j},'accepted')
-                            % need to bootstrap here so i can get a p value on peak
-                            % width and information score (also could do positional
-                            % info for each pass...
-                            if verbose, figure; end
-                            
-                            if runboots>0
-                                %ha=waitbar(0,'Starting');
-                                if~isempty(Espikes)
-                                    Bmax=nan(1,runboots); Binfo=nan(1,runboots); Bsparsity=nan(1,runboots);
-                                    for bt=1:runboots
-                                        EBspikes=[];
-                                        for i=1:length(epochs)
-                                            % circ shift the spikes in this epoch by a min of 1/2 second
-                                            EBspikes=[EBspikes; PermuteSpikeTimes(EpochCoords(spikes(:,1),epochs(i,:)),[epochs(i,1); epochs(i,2)],0.25)];
+                        % skaggs is run on presmoothed spike and occcupancy
+                        if runboots>0
+                            if~isempty(Espikes)
+                                Bmax=nan(1,runboots); Binfo=nan(1,runboots); Bsparsity=nan(1,runboots);
+                                for bt=1:runboots
+                                    EBspikes=trspikes;
+                                    for i=1:length(trspikes)
+                                        % circ shift the spikes in this epoch by a min of 1/2 second
+                                        if ~isempty(trspikes{i})
+                                            EBspikes{i}=PermuteSpikeTimes(trspikes{i},runepochs(i,:)',0.2);
                                         end
-                                        Bspikepos=interp1(temptraj(:,1),temptraj(:,8),EBspikes,'nearest');
-                                        bnspikes=histcounts(Bspikepos,bins); % get number of spikes per position
-                                        smoothspikes=SmoothMat2(bnspikes,[5 0],2); % two pixel kernel
-                                        % calculate null info
-                                        [Binfo(bt),Bsparsity(bt)]=Skaggs_basic(smoothoccup./max(smoothoccup),...
-                                            smoothspikes,nanmean(smoothspikes));
-                                        % calculate null peak rate
-                                        bLinPlaceField=SmoothMat2(bnspikes./occupancy,[5 0],2);
-                                        if verbose, plot(bLinPlaceField); hold on; end
-                                        Bmax(bt)=max(bLinPlaceField);
-                                        %waitbar(bt/runboots,ha,'working on it ...');
                                     end
-                                elseif isempty(Espikes)
-                                    Binfo=nan; Bsparsity=nan; Bmax=nan;
+                                    Bspikepos=interp1(temptraj(:,1),temptraj(:,8),cell2mat(EBspikes'),'nearest');
+                                    bnspikes=histcounts(Bspikepos,bins); % get number of spikes per position
+                                    smoothspikes=SmoothMat2(bnspikes,[5 0],2); % two pixel kernel
+                                    % calculate null info
+                                    [Binfo(bt),Bsparsity(bt)]=Skaggs_basic(smoothoccup./max(smoothoccup),...
+                                        smoothspikes,nanmean(smoothspikes));
+                                    % calculate null peak rate
+                                    bLinPlaceField=SmoothMat2(bnspikes./occupancy,[5 0],2);
+                                    if verbose, plot(bLinPlaceField); hold on; end
+                                    Bmax(bt)=max(bLinPlaceField);
+                                    %waitbar(bt/runboots,ha,'working on it ...');
                                 end
-                                %close(ha);
+                            elseif isempty(Espikes)
+                                Binfo=nan; Bsparsity=nan; Bmax=nan;
                             end
-                            
-                            [nspikes,bins]=histcounts(spikepos,bins); % get number of spikes per position
-                            smoothspikes=SmoothMat2(nspikes,[5 0],2);
-                            % now save this tuning curve
-                            % smooth the rate map AFTER dividing by raw
-                            % occupancy
-                            LinPlaceField=SmoothMat2(nspikes./occupancy,[5 0],2);
-                            if verbose
-                                plot(LinPlaceField,'LineWidth',3);
-                            end
-                            
-                            % now qualify this as a pf or not
-                            [pfmax,pfmaxpos]=max(LinPlaceField); % has to be above ??
-                            Zpfmax=max(nanzscore(LinPlaceField)); % has to be above ??
-                            
-                            % run skaggs on individually smoothed occupancy and
-                            % spikes
-                            [info,sparsity]=Skaggs_basic(smoothoccup./max(smoothoccup),...
-                                smoothspikes,nanmean(smoothspikes));
-                            
-                            % and now pf size e.g. size of top 75%% of max rate
-                            % this will underestimate, because it finds the
-                            % first that drops below the high rate 'flood
-                            % fill' method
-                            pfstart=find(LinPlaceField(1:pfmaxpos) < pfmax*.25,1,'last');
-                            if isempty(pfstart), pfstart=1; end
-                            pfend=pfmaxpos+find(LinPlaceField(pfmaxpos:end) < pfmax*.25,1,'first');
-                            if isempty(pfend), pfend=100; end
-                            
-                            % try to calculate pf size, otherwise it doesnt exist
-                            pfsize=pfend-pfstart;
-                            
-                            % now add to the session struct
-                            SuperRat(ses).units(j).LinPlaceFields{1}(tr,:)=LinPlaceField;
-                            SuperRat(ses).units(j).LinSpikeCts{1}(tr,:)=smoothspikes;
-                            SuperRat(ses).units(j).FiresDuringRun(1,tr)=pfmax>1; % is this cell active? e.g. does it pass 1 hz at anywhere on track
-                            SuperRat(ses).units(j).RunRates{1,tr}=Erates; % run the splitter score later
-                            
-                            SuperRat(ses).units(j).FieldProps.PFmax(1,tr)=pfmax; % peak rate
-                            SuperRat(ses).units(j).FieldProps.PFmaxpos(1,tr)=pfmaxpos; % position on maze
-                            SuperRat(ses).units(j).FieldProps.info(1,tr)=info; % info
-                            SuperRat(ses).units(j).FieldProps.sparsity(1,tr)=sparsity;
-                            SuperRat(ses).units(j).FieldProps.Zpfmax(1,tr)=Zpfmax; % zscored max rate
-                            SuperRat(ses).units(j).FieldProps.PFsize(1,tr)=pfsize; % size in % of trajectory
-                            if runboots>0
-                                SuperRat(ses).units(j).FieldProps.PFmaxP(1,tr)=1-normcdf(pfmax,nanmean(Bmax),nanstd(Bmax)); % peak statistically high?
-                                SuperRat(ses).units(j).FieldProps.infoP(1,tr)=1-normcdf(info,nanmean(Binfo),nanstd(Binfo)); % information statistically high?
-                                SuperRat(ses).units(j).FieldProps.sparsityP(1,tr)=1-normcdf(sparsity,nanmean(Bsparsity),nanstd(Bsparsity)); % Sparsity?
-                                SuperRat(ses).units(j).PFexist(1,tr)=1-normcdf(pfmax,nanmean(Bmax),nanstd(Bmax))<.05 && Zpfmax>2 && pfsize<75; % is it a place cell
-                            else
-                                SuperRat(ses).units(j).PFexist(1,tr)=PFmax>2 && Zpfmax>2 && pfsize<75; % is it a place cell
-                            end
-
-                            if verbose
-                                title(sprintf('Info: %.2f P=%.5f Peak: %.2f, p=%.5f',info,1-normcdf(info,nanmean(Binfo),nanstd(Binfo)),...
-                                    pfmax,1-normcdf(pfmax,nanmean(Bmax),nanstd(Bmax)))); 
-                                answer = questdlg('Stop verbose?', 'Verbose Menu', 'Yes, quiet','no, more figs','Yes, quiet');
-                                verbose=contains(answer,'no');
-                            end
-                        catch
-                            fprintf('Whole Sess %d Trajectory %d cell %d couldnt be analyzed \n',ses, tr, j);
-                        end % end of try
+                        end
+                        
+                        [nspikes,bins]=histcounts(spikepos,bins); % get number of spikes per position
+                        smoothspikes=SmoothMat2(nspikes,[5 0],2);
+                        % now save this tuning curve
+                        % smooth the rate map AFTER dividing by raw
+                        % occupancy
+                        LinPlaceField=SmoothMat2(nspikes./occupancy,[5 0],2);
+                        
+                        if verbose
+                            plot(LinPlaceField,'LineWidth',3);
+                        end
+                        
+                        %%%%%%%%%%
+                        %calculate all the fieldprops
+                        %%%%%%%%%%
+                        % now qualify this as a pf or not
+                        [FieldProps.PFmax(1,tr),FieldProps.PFmaxpos(1,tr)]=max(LinPlaceField); % has to be above ??
+                        FieldProps.Zpfmax(1,tr)=max(nanzscore(LinPlaceField)); % has to be above ??
+                        
+                        % run skaggs on individually smoothed occupancy and
+                        % spikes
+                        [FieldProps.info(1,tr),FieldProps.sparsity(1,tr)]=Skaggs_basic(smoothoccup./max(smoothoccup),...
+                            smoothspikes,nanmean(smoothspikes));
+                        
+                        % and now pf size e.g. size of top 75%% of max rate
+                        % this will underestimate, because it finds the
+                        % first that drops below the high rate 'flood
+                        % fill' method
+                        pfstart=find(LinPlaceField(1:FieldProps.PFmaxpos(1,tr)) < FieldProps.PFmax(1,tr)*.25,1,'last');
+                        if isempty(pfstart), pfstart=1; end
+                        pfend=FieldProps.PFmaxpos(1,tr)+find(LinPlaceField(FieldProps.PFmaxpos(1,tr):end)...
+                            < FieldProps.PFmax(1,tr)*.25,1,'first');
+                        if isempty(pfend), pfend=100; end
+                        
+                        % try to calculate pf size, otherwise it doesnt exist
+                        FieldProps.PFsize(1,tr)=pfend-pfstart;
+                        
+                        % now add to the session struct
+                        SuperRat(ses).units(j).LinPlaceFields{1}(tr,:)=LinPlaceField;
+                        
+                        
+                        if runboots>0
+                            FieldProps.PFmaxP(1,tr)=1-normcdf(FieldProps.PFmax(1,tr),nanmean(Bmax),nanstd(Bmax)); % peak statistically high?
+                            FieldProps.infoP(1,tr)=1-normcdf(FieldProps.info(1,tr),nanmean(Binfo),nanstd(Binfo)); % information statistically high?
+                            FieldProps.sparsityP(1,tr)=1-normcdf(FieldProps.sparsity(1,tr),nanmean(Bsparsity),nanstd(Bsparsity)); % Sparsity?
+                            SuperRat(ses).units(j).PFexist(1,tr)=FieldProps.PFmaxP(1,tr)<.05...
+                                && FieldProps.PFmax(1,tr)>2 && FieldProps.PFsize(1,tr)<75; % is it a place cell
+                        else
+                            SuperRat(ses).units(j).PFexist(1,tr)=FieldProps.PFmax(1,tr)>2 && FieldProps.Zpfmax(1,tr)>2 && FieldProps.PFsize(1,tr)<75; % is it a place cell
+                        end
+                        SuperRat(ses).units(j).FiresDuringRun(1,tr)=FieldProps.PFmax(1,tr)>1; % is this cell active? e.g. does it pass 1 hz at anywhere on track
+                        
+                        
+                        
+                        if verbose % defunct because i folded pfmax etc into fieldprops
+                            drawnow;
+                            title(sprintf('Info: %.2f P=%.5f Peak: %.2f, p=%.5f',FieldProps.info(tr),...
+                                FieldProps.infoP(tr),FieldProps.PFmax(tr),FieldProps.PFmaxP(tr)));
+                            answer = questdlg('Stop verbose?', 'Verbose Menu', 'Yes, quiet','no, more figs','Yes, quiet');
+                            verbose=contains(answer,'no');
+                        end
+                    else
+                        fprintf('Sess %d traj %d doesnt have enough runs (%s sec)',ses,tr,sum(keepinds)/30);
                     end % if we have trajectories
+                    
                 end % of trajectories
-            end
+            end % of block breakout
+            if calctheta, SuperRat(ses).units(j).thetastats=thetastats; end
+            SuperRat(ses).units(j).FieldProps=FieldProps; % add all the props
             fprintf('%d ',j);
         end % units
         fprintf('\n Session %d done in %.2f mins \n',ses,toc/60);
     end
 end
 if any(savedir~=0)
-    save(fullfile(savedir,'SuperRatAllPFStats'),'SuperRat');
+    save(fullfile(savedir,'ClaireData4-3-20'),'SuperRat');
     fprintf('Finished Boot and Saved out \n');
 else
     fprintf('finished boot, didnt save \n');
@@ -345,76 +388,72 @@ for i=1:length(SuperRat)
     ha=waitbar(0,'Starting Session');
     try SuperRat(i).units=rmfield(SuperRat(i).units,'TrajScores'); end
     for j=1:length(SuperRat(i).units)
-        
-        for bl=1:size(SuperRat(i).units(j).RunRates,1)
-            RunCell=SuperRat(i).units(j).RunRates(bl,:);
-            RunRates=[RunCell{1} RunCell{2} RunCell{3} RunCell{4};...
-                ones(1,length(RunCell{1})) ones(1,length(RunCell{2}))+1 ...
-                ones(1,length(RunCell{3}))+2 ones(1,length(RunCell{4}))+3]';
-            % out left vs out right (1, 2), in left vs in right
-            % positive is left preferring, negative is right preferring
-            % for now these scores are total spikes, maybe well need max
-            % which would take a different math here for the P value
-            TrajScore=(nanmean(RunRates(RunRates(:,2)==1,1))-nanmean(RunRates(RunRates(:,2)==2,1)))/...
-                (nanmean(RunRates(RunRates(:,2)==1,1))+nanmean(RunRates(RunRates(:,2)==1,1)));
-            TrajScore(3)=(nanmean(RunRates(RunRates(:,2)==3,1))-nanmean(RunRates(RunRates(:,2)==4,1)))/...
-                (nanmean(RunRates(RunRates(:,2)==3,1))+nanmean(RunRates(RunRates(:,2)==4,1)));
-            
-            if boot>0
-                % get the pull for
-                outTraj=RunRates(RunRates(:,2)==1 | RunRates(:,2)==2,1);
-                inTraj=RunRates(RunRates(:,2)==3 | RunRates(:,2)==4,1);
-                TrajBoot=[nan nan];
-                for bt=1:boot
-                    % randomize the order so you can even odd them
-                    outOrder=randperm(length(outTraj));
-                    inOrder=randperm(length(inTraj));
-                    TrajBoot(bt,1)=abs(nanmean(outTraj(mod(outOrder,2)==1))-...
-                        nanmean(outTraj(mod(outOrder,2)==0)))/...
-                        (nanmean(outTraj(mod(outOrder,2)==1))+...
-                        nanmean(outTraj(mod(outOrder,2)==0)));
-                    TrajBoot(bt,2)=abs(nanmean(inTraj(mod(inOrder,2)==1))-...
-                        nanmean(inTraj(mod(inOrder,2)==0)))/...
-                        (nanmean(inTraj(mod(inOrder,2)==1))+...
-                        nanmean(inTraj(mod(inOrder,2)==0)));
+        if length(SuperRat(i).units(j).RunRates)>=2
+            if ~isempty(SuperRat(i).units(j).RunRates{1}) && ~isempty(SuperRat(i).units(j).RunRates{2})
+                % bl takes care if youre breaking out by block
+                
+                RunCell=SuperRat(i).units(j).RunRates;
+                RunRates=[RunCell{1} RunCell{2};...
+                    ones(1,length(RunCell{1})) ones(1,length(RunCell{2}))+1]';
+                % out left vs out right (1, 2), in left vs in right
+                % positive is left preferring, negative is right preferring
+                % for now these scores are total spikes, maybe well need max
+                % which would take a different math here for the P value
+                TrajScore=(nanmean(RunRates(RunRates(:,2)==1,1))-nanmean(RunRates(RunRates(:,2)==2,1)))/...
+                    (nanmean(RunRates(RunRates(:,2)==1,1))+nanmean(RunRates(RunRates(:,2)==1,1)));
+                
+                if boot>0
+                    % get the pull for
+                    outTraj=RunRates(RunRates(:,2)==1 | RunRates(:,2)==2,1);
+                    
+                    TrajBoot=[nan nan];
+                    for bt=1:boot
+                        % randomize the order so you can even odd them
+                        outOrder=randperm(length(outTraj));
+                        TrajBoot(bt,1)=abs(nanmean(outTraj(mod(outOrder,2)==1))-...
+                            nanmean(outTraj(mod(outOrder,2)==0)))/...
+                            (nanmean(outTraj(mod(outOrder,2)==1))+...
+                            nanmean(outTraj(mod(outOrder,2)==0)));
+                    end
+                    TrajScore(2)=1-normcdf(abs(TrajScore(1)), nanmean(TrajBoot(:,1)),nanstd(TrajBoot(:,1)));
+                    
+                else
+                    TrajScore(2)=nan;
                 end
-                TrajScore(2)=1-normcdf(abs(TrajScore(1)), nanmean(TrajBoot(:,1)),nanstd(TrajBoot(:,1)));
-                TrajScore(4)=1-normcdf(abs(TrajScore(3)), nanmean(TrajBoot(:,2)),nanstd(TrajBoot(:,2)));
-            else
-                TrajScore(2)=nan; TrajScore(4)=nan;
+                SuperRat(i).units(j).TrajScores=TrajScore;
             end
-            SuperRat(i).units(j).TrajScores(bl,:)=TrajScore;
+            waitbar(j/length(SuperRat(i).units),ha,sprintf('running unit %d',j));
         end
-        waitbar(j/length(SuperRat(i).units),ha,sprintf('running unit %d',j));
     end
     close(ha);
     fprintf('Session %d took %.2f minutes \n',i,toc/60);
-    
 end
+
+
+
 
 
 %% just look at some cells to see if they're selective and that
 % the raw rates look reasonable
 
-
+ses=1;
 % now lets see if there are valid priors here
 for i=1:length(SuperRat(ses).units)
     if any(SuperRat(ses).units(i).PFexist)
         figure;
-        for j=1:length(SuperRat(ses).RunEpochs)
-            subplot(1,length(SuperRat(ses).RunEpochs),j)
-            plot(SuperRat(ses).units(i).LinPlaceFields{j}(1,:));
-            hold on;
-            plot(-SuperRat(ses).units(i).LinPlaceFields{j}(2,:));
-            plot(SuperRat(ses).units(i).LinPlaceFields{j}(3,:));
-            plot(-SuperRat(ses).units(i).LinPlaceFields{j}(4,:));
-            
-            title([num2str(i) ' ' SuperRat(ses).units(i).area SuperRat(ses).units(i).type]);
-        end
+        try, plot(SuperRat(ses).units(i).LinPlaceFields{1}(1,:)); end
+        hold on;
+        try, plot(-SuperRat(ses).units(i).LinPlaceFields{1}(2,:)); end
+        try, plot(SuperRat(ses).units(i).LinPlaceFields{1}(3,:)); end
+       try,  plot(-SuperRat(ses).units(i).LinPlaceFields{1}(4,:)); end
+        
+        title([num2str(i) ' ' SuperRat(ses).units(i).area SuperRat(ses).units(i).type]);
+        
     end
 end
 % looks really good actually!
 
 %%
+
 
 

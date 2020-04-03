@@ -156,7 +156,7 @@ for rt=1:length(ratfolders)
         taskfile{3}=[thisdir '\' ratName 'nosepokeWindow' sprintf('%02d',i) '.mat'];
         taskfile{4}=[thisdir '\' ratName 'rewardTimes' sprintf('%02d',i) '.mat'];
         taskfile{5}=[thisdir '\' ratName 'rewards' sprintf('%02d',i) '.mat'];
-        taskfile{5}=[thisdir '\' ratName 'odorTriggers' sprintf('%02d',i) '.mat'];
+        taskfile{6}=[thisdir '\' ratName 'odorTriggers' sprintf('%02d',i) '.mat'];
         
         % put this into its own fx because its a lot of accounting
         [trialdata,usedfiles,oldbeh] = ParseClaireBehavior(taskfile,i);
@@ -257,7 +257,7 @@ for i=1:length(cellinfo)
 end
 
 
-%% this is because CS39 doesnt have the reward10 flag, so I have to make my own\
+%% this is because CS39 doesnt have the reward10 flag, so I have to make my own
 %{
 basically you can tell if there is a reward based on whether the
 immediately following event is a reward, and the reward says which side
@@ -310,6 +310,82 @@ for ses=1:length(SuperRat)
         sum(SuperRat(ses).trialdata.CorrIncorr10));
     end        
 end
+%% this reloads the unit data for each session
+
+tempstruct=struct('tet',[],'unitnum',[],'ts',[],'meanrate',[],'tag',[],...
+    'area',[]);
+
+
+for ses=1:length(SuperRat)
+    
+    spikes=SuperRat(ses).oldspikes;
+    metadata=SuperRat(ses).cellinfo;
+    % now go in and grab the unit data (across small epochs)...
+    clear unitdata;
+    cumct=1;
+    for i=1:length(spikes) % always full
+        % for each tetrode
+        for j=1:length(spikes{i}) % sometimes empty
+            if ~isempty(spikes{i}{j})
+                % for unit on that tetrode
+                for k=1:length(spikes{i}{j}) % often empty
+                    if ~isempty(spikes{i}{j}{k})
+                        %fprintf('index: epoch %d, tetrode %d, unit %d  had mean rate %.2f \n',i, j, k, rawunits.spikes{i}{j}{k}.meanrate);
+                        unitdata(cumct)=tempstruct; % load the blank struct
+                        unitdata(cumct).ts=spikes{i}{j}{k}.data; % add data
+                        unitdata(cumct).tet=j; unitdata(cumct).unitnum=k; % tet and unit
+                        
+                        try
+                            unitdata(cumct).tag= spikes{i}{j}{k}.tag; % the tag
+                        end
+                        if isempty(unitdata(cumct).tag)
+                            try
+                                unitdata(cumct).tag=metadata{i}{j}{k}.tag;
+                            end
+                        end
+                        % now pull metadata
+                        try
+                            unitdata(cumct).meanrate=metadata{i}{j}{k}.meanrate; % mean rate
+                            unitdata(cumct).area=metadata{i}{j}{k}.area;
+                        end
+                        cumct=cumct+1;
+                    end
+                end
+            end
+        end
+    end
+    % remove the empty units
+    unitdata(cellfun(@(a) isempty(a), {unitdata.ts}))=[];
+    cumct=1;
+    % now we collapse them into single units
+    if exist('unitdata','var')
+        activetets=unique([unitdata.tet]);
+        clear newunitdata; cumct=1;
+        for i=1:length(activetets)
+            cellcts=unique([unitdata([unitdata.tet]==activetets(i)).unitnum]);
+            for j=1:length(cellcts)
+                newunitdata(cumct)=unitdata(find([unitdata.tet]==activetets(i) & [unitdata.unitnum]==cellcts(j),1,'first'));
+                newunitdata(cumct).ts=cell2mat({unitdata([unitdata.tet]==activetets(i) & [unitdata.unitnum]==cellcts(j)).ts}');
+                cumct=cumct+1;
+            end
+        end
+    end
+    SuperRat(ses).units=newunitdata;
+end
+       
+% claire took one unit from an HPC ref
+
+%% for one session the metadata file was missing... oof
+
+ses=18;
+[metadatafile,metadir]=uigetfile;
+metadataalt=load(fullfile(metadir,metadatafile));
+fname=fieldnames(metadataalt);
+daymeta=metadataalt.(fname{1})(SuperRat(ses).daynum);
+for i=1:length(SuperRat(ses).units)
+    tetmatch=daymeta{1}{1}{SuperRat(ses).units(i).tet};
+    SuperRat(ses).units(i).area=tetmatch.area;
+end
 
 %% need to designate the epoch for all the sessions
 
@@ -326,26 +402,65 @@ for i=1:length(SuperRat)
 end
 
 
-%% to get cell numbers
-
+%% and now to figure out which epochs are the epochs we want
 for i=1:length(SuperRat)
-    for j=1:length(SuperRat(i).units)
-        SuperRat(i).units(j).clusternum=sum(cell2mat({SuperRat(i).units(1:j).tet})==SuperRat(i).units(j).tet);
-    end
+    fileroot=SuperRat(i).files.info; % pull the root dir from one file
+    filefolder=fileroot(1:find(fileroot=='\',1,'last')-1); % get the directory only
+    filename=sprintf('%stask%02d',SuperRat(i).name,SuperRat(i).daynum); % generate the filename
+    SuperRat(i).files.taskfile=[SuperRat(i).files.taskfile; {fullfile(filefolder,filename)}]; % add to filedata
+    epochdata=load(fullfile(filefolder,filename)); subfield=fieldnames(epochdata); % load
+    
+    epochs=epochdata.(subfield{1})(cellfun(@(a) ~isempty(a),epochdata.(subfield{1}))); % grab the day data
+    RunEpochs=find(cellfun(@(a) isfield(a,'environment'), epochs{1})); % grab the epochs that have an arean
+    SuperRat(i).RunEpochs=RunEpochs(cellfun(@(a) contains(a.environment,'odorplace'),epochs{1}(RunEpochs))); % compare
+    SuperRat(i).EpochData= epochs{1}; % load data in for safe keeping
 end
-
 
 
 %% to get the designated tetrode:
  % there will be one dCA1 tetrode designated for the LFP
  
  for i=1:length(SuperRat)
-     [ncells,besttet]=max(accumarray([SuperRat(i).units.tet]',1));
+     % need to get that its ca1 tho
+     
+     CA1tets=cellfun(@(a) contains(a,'CA1'), {SuperRat(i).units.area});
+     [ncells,besttet]=max(accumarray([SuperRat(i).units(CA1tets).tet]',1));
     SuperRat(i).LFP.nCells=ncells;
     SuperRat(i).LFP.tet=besttet;
  end
 
+%% quick code to aggregate the LFP data for our dCA1 LFP
 
+% For each session, this algorithm generates a file for the LFP data, and
+% then adds the filename (and suggested path) to the superrat struct.
+
+% Filepath is as follows:
+% parentdir\(ratname) 'Expt'\EEG\(ratname)'theta'(%2d(daynum))-(block)-tetrode).mat
+
+parentdir=uigetdir([],'Find the directory of folders with rat animal data (animal-Expt files)');
+
+for i=1:length(SuperRat)
+    tic
+    ratname=SuperRat(i).name;
+    daynum=sprintf('%02d',SuperRat(i).daynum);
+    EEGfolder=sprintf('%sExpt\\EEG',ratname);
+    filematch=sprintf('%stheta%s',ratname,daynum);
+    filelist=dir(fullfile(parentdir,EEGfolder));
+    goodfiles=find(contains({filelist.name}',filematch));
+    
+    clear eegstruct;
+    for j=1:length(goodfiles)
+        eegtemp=load(fullfile(filelist(goodfiles(j)).folder,...
+            filelist(goodfiles(j)).name));
+        mytetrode=filelist(goodfiles(j)).name(end-5:end-4);
+        eegstruct(j)=eegtemp.theta{str2double(daynum)}{j}{str2double(mytetrode)};
+    end
+    eegFname=sprintf('ThetaFull%s-%s',ratname,daynum);
+    save(fullfile(filelist(goodfiles(j)).folder,eegFname),'eegstruct');
+    SuperRat(i).LFP.filedir=filelist(goodfiles(j)).folder;
+    SuperRat(i).LFP.filename=eegFname;
+    fprintf('sess %d done in %.2f mins \n',i,toc/60);
+end
 
 
 
