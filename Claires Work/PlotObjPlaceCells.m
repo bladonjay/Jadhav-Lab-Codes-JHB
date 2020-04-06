@@ -6,12 +6,13 @@
 % it does so for each day individually, not for each epoch in a day
 
 %%
-region='PFC';
-nameappend='-objplaceplotOSCell';
-speedthresh=3;
-maxtimejump=1;
-saveoutdir=uigetdir('e:\',sprintf('Region is %s, name to append is %s',region,nameappend));
-
+Params.region='PFC';
+Params.nameappend='-PlaceSelective';
+Params.speedthresh=3;
+Params.timesmooth=8; % bins
+Params.maxtimejump=1;
+saveoutdir=uigetdir('e:\',sprintf('Region is %s, name to append is %s',Params.region,Params.nameappend));
+%%
 
 for ses=1:length(SuperRat)
     
@@ -22,171 +23,149 @@ for ses=1:length(SuperRat)
     CodingCell=cellfun(@(a) any(a==1), {SuperRat(ses).units.PFexist});                      %***** CHANGE HERE
 
     % NO INS
-    inRegion=cellfun(@(a) contains(a,region), {SuperRat(ses).units.area});
+    inRegion=cellfun(@(a) contains(a,Params.region), {SuperRat(ses).units.area});
     isPyram=cellfun(@(a) contains(a,'pyr'),{SuperRat(ses).units.type}); % already classified
-    
-    ObjCell=find(CodingCell & inRegion & isPyram);
+    UseCells=find(CodingCell & inRegion & isPyram);
     
     %---- get trial data
     % get curves for this sessions trials (zdefunct, data are
     % already in struct
     trialdata=SuperRat(ses).trialdata;
     % first grab the tuning curves during the one second delay
-    trialmat=[trialdata.sniffstart trialdata.sniffend trialdata.leftright10 trialdata.CorrIncorr10];
+    fulltrialmat=[trialdata.sniffstart trialdata.sniffend trialdata.leftright10,...
+        trialdata.CorrIncorr10 trialdata.EpochInds(:,2)];
     % correct trials, and ID their odor
-    goodtrials=trialmat(:,4)==1;
-    odorid=trialmat(goodtrials,3);
+    oktrials=fulltrialmat(:,4)==1 & ismember(fulltrialmat(:,5),SuperRat(ses).RunEpochs);
+    trialmat=fulltrialmat(oktrials,:); % no learning data!!!
 
-    %---- get tracking lined up
+    %---- get tracking lined up (remove blocks with no spikes tho...)
     %  use only spikes and tracking where the animal is moving
     % were doign this differently because the lincoords is already
     % stitched (so there are major time jumps)
     % have to smooth velocity data because it oscillates everty 3 time
     % indices
     tracking=SuperRat(ses).tracking.data;
-    disptracking=tracking; 
-    okepoch=disptracking(:,6)==SuperRat(ses).RunEpochs(1);
-    if length(SuperRat(ses).RunEpochs)>1
-        for k=2:length(SuperRat(ses).RunEpochs)
-            okepoch=okepoch |disptracking(:,6)==SuperRat(ses).RunEpochs(k);
-        end
-    end
-    disptracking(smoothdata(disptracking(:,5))<speedthresh |~okepoch,:)=nan;
-    % find where the tracking skips more than a sec and remove spikes
-    % in those gaps
-    thistrack=tracking(tracking(:,5)>speedthresh & okepoch,:);
+    % pull only run data
+    okepoch=ismember(tracking(:,6),SuperRat(ses).RunEpochs);
+    disptracking=tracking(okepoch,:); % this is all the run data
+    % 8 bins to smooth velocity, speed less than 3 ditch
+    tooslow=SmoothMat2(disptracking(:,5),[0 50],Params.timesmooth)<=Params.speedthresh;
     
-    jumps=find(diff(thistrack(:,1))>maxtimejump);
+    % this scrubs the slow data to calculate occupancy
+    thistrack=disptracking(~tooslow,:);
+    % this removes spikes inbetween run epochs
+    jumps=find(diff(thistrack(:,1))>Params.maxtimejump);
     goodepochs=[[thistrack(1); thistrack(jumps+1,1)] [thistrack(jumps,1); thistrack(end,1)]];
-    
-    
-    
+
     % plot each cell
-    for i=1:length(ObjCell)
+    for i=1:length(UseCells)
         figure;
-
-
-        %tracking=SuperRat(ses).LinCoords;
-        spikedata=SuperRat(ses).units(ObjCell(i)).ts(:,1);
-        
+        spikedata=SuperRat(ses).units(UseCells(i)).ts(:,1);
         
         % remove spikes between the tracking
         thesespikes=EpochCoords(spikedata,goodepochs);
-        fprintf('%d of %d spikes are during run \n',length(thesespikes),length(spikedata));
-        subplot(5,1,1);
+        fprintf('%d of %d spikes are during runs \n',length(thesespikes),length(spikedata));
+        subplot(4,1,1);
         plot(disptracking(:,2),disptracking(:,3),'k');
         hold on;
         spikex=interp1(thistrack(:,1),thistrack(:,2),thesespikes);
         spikey=interp1(thistrack(:,1),thistrack(:,3),thesespikes);
-        plot(spikex,spikey,'r*'); box off;
-        %legend('trajectory','Spikes');
-        %if k==1
-        title([SuperRat(ses).name ' ' num2str(ses) ' ' SuperRat(ses).units(ObjCell(i)).area,...
-            ' ' SuperRat(ses).units(ObjCell(i)).type ' ' num2str(ObjCell(i))]);
+        plot(spikex,spikey,'r.'); box off;
+        
+        title([SuperRat(ses).name ' ' num2str(ses) ' ' SuperRat(ses).units(UseCells(i)).area,...
+            ' ' SuperRat(ses).units(UseCells(i)).type ' ' num2str(UseCells(i))]);
         %end
         axis tight; box off; axis off;
         
         % now make place plot here
-        subplot(5,1,2);
+        subplot(4,1,2);
         session=struct('edit_coords',thistrack);
         thisunit=struct('ts',thesespikes);
         % this is the really basic open field place plotting script
         [ratemap,~,finalcolormap]=cell_SmoothPlacePlot(session,thisunit,...
-            'Factor',3,'suppress',1,'gaussdev',1.5);
+            'Factor',2,'suppress',1,'gaussdev',1.5);
         image(finalcolormap); set(gca,'YDir','normal');
         title(sprintf('         Max: %.2f Hz',max(linearize(ratemap))));
         box off; axis off;
 
         % going to do a box and whisker plot for odor rates
-        [~,spkevs]=event_spikes(spikedata,trialmat(goodtrials,1),...
-            0,trialmat(goodtrials,2)-trialmat(goodtrials,1));
+        subplot(4,1,3);
+        
+        [~,spkevs,~,trspkinds]=event_spikes(spikedata,trialmat(:,1),...
+            0,trialmat(:,2)-trialmat(:,1));
+        spknums=cellfun(@(a) length(a), trspkinds);
+        % scrub any block that is zero
+        spikesperblock=accumarray(trialmat(:,5),spknums);
+        trialsperblock=accumarray(trialmat(:,5),1);
+        %find those inds and remove them
+        keeptrials=sum(find(spikesperblock>trialsperblock/2)'==trialmat(:,5),2)>0;
+        odorid=trialmat(:,3);
+        
         % remember LR10
-        subplot(5,1,3);
-        boxScatterplot(spkevs,double(trialmat(goodtrials,3)==0),'yLabel','Rate',...
-           'xLabels',{sprintf('Odor Left %.2f Hz',SuperRat(ses).units(ObjCell(i)).OdorMeans(1,1)),...
-            sprintf('Odor Right %.2f Hz',SuperRat(ses).units(ObjCell(i)).OdorMeans(1,2))},...
-            'position',{},'plotBox',false);
-        % standard boxplots...
-        %{
         
-        boxplot(spkevs,double(trialmat(goodtrials,3)==0)+1,...
-            'color','k','symbol','k','Labels',...
-            {sprintf('Odor Left %.2f Hz',SuperRat(ses).units(ObjCell(i)).OdorMeans(1,1)),...
-            sprintf('Odor Right %.2f Hz',SuperRat(ses).units(ObjCell(i)).OdorMeans(1,2))});
-        boxProps = get(gca,'Children');
-        [boxProps(1).Children.LineWidth] = deal(2);
-        %}
-        % just a dot for the center, and a 95% confidence interval as a
-        % line
-        odorl=spkevs(trialmat(goodtrials,3)==1); odorr=spkevs(trialmat(goodtrials,3)==0);
-        hold on; plot(0,nanmean(odorl),'k.','MarkerSize',26); 
-        plot([0 0],[max([0 nanmean(odorl)-2*nanstd(odorl)]) nanmean(odorl)+2*nanstd(odorl)],'k.-','LineWidth',2);
-        plot(1,nanmean(odorr),'k.','MarkerSize',26); hold on;
-        plot([1 1],[max([0 nanmean(odorr)-2*nanstd(odorr)]) nanmean(odorr)+2*nanstd(odorr)],'k.-','LineWidth',2);
-        set(gca,'XTick',[0 1],'XTickLabel',{sprintf('Odor Left %.2f Hz',SuperRat(ses).units(ObjCell(i)).OdorMeans(1,1)),...
-            sprintf('Odor Right %.2f Hz',SuperRat(ses).units(ObjCell(i)).OdorMeans(1,2))});
-        xlim([-0.5 1.5]);
-
-        
-        ylabel('Firing rate, Hz');
-        title(sprintf('A=%.2f B=%.2f, p=%.3f', SuperRat(ses).units(ObjCell(i)).OdorMeans(1,1),...
-            SuperRat(ses).units(ObjCell(i)).OdorMeans(1,2),...
-            SuperRat(ses).units(ObjCell(i)).OdorSelective(1,2)));
-        box off;
-        
-        % this is the rate curve plot here
-        %{
-        % do a timeseries for the rates around poke
-        timeedges=-2:.001:2; timebins=-2:.001:1.999;
-        % for these cells i want to see a timeseries of the odor
-        [~,~,~,~,~,spikets]=event_spikes(SuperRat(ses).units(ObjCell(i)).ts,...
-            trialmat(goodtrials,1),2, 4); % 2 before and 2 after
-        curves=cellfun(@(a) SmoothMat2(histcounts(a,timeedges),[1000 0],100), spikets, 'UniformOutput', false);
-        curvemat=cell2mat(curves');
-        
-        
-        subplot(5,1,4);
-        imagesc(timebins,[1:size(curvemat,1)],curvemat); box off 
-        ylabel('Trial #');
-        yyaxis right;
-        plot(timebins,nanmean(curvemat)*1000,'k','LineWidth',6);
-        ylabel('rate'); xlabel('Seconds from odor Onset');
-        title(sprintf('mean change is %.2f hz, p=%.4f',SuperRat(ses).units(ObjCell(i)).OdorResponsive(2),...
-            SuperRat(ses).units(ObjCell(i)).OdorResponsive(4)));
-        
-        %}
+        if any(spkevs(keeptrials))
+            
+            boxScatterplot(spkevs(keeptrials),double(odorid(keeptrials)==0),'yLabel','Rate',...
+                'xLabels',{sprintf('Odor Left %.2f Hz',SuperRat(ses).units(UseCells(i)).OdorMeans(1,1)),...
+                sprintf('Odor Right %.2f Hz',SuperRat(ses).units(UseCells(i)).OdorMeans(1,2))},...
+                'position',{},'plotBox',false);
+            % now line bar
+            odorl=spkevs(keeptrials & odorid==1); odorr=spkevs(keeptrials & odorid==0);
+            hold on; plot(0,nanmean(odorl),'k.','MarkerSize',26);
+            plot([0 0],[max([0 nanmean(odorl)-2*nanstd(odorl)]) nanmean(odorl)+2*nanstd(odorl)],'k.-','LineWidth',2);
+            plot(1,nanmean(odorr),'k.','MarkerSize',26); hold on;
+            plot([1 1],[max([0 nanmean(odorr)-2*nanstd(odorr)]) nanmean(odorr)+2*nanstd(odorr)],'k.-','LineWidth',2);
+            set(gca,'XTick',[0 1],'XTickLabel',{sprintf('Odor Left %.2f Hz',SuperRat(ses).units(UseCells(i)).OdorMeans(1,1)),...
+                sprintf('Odor Right %.2f Hz',SuperRat(ses).units(UseCells(i)).OdorMeans(1,2))});
+            xlim([-0.5 1.5]); ylabel('Firing rate, Hz');
+            title(sprintf('A=%.2f B=%.2f, p=%.3f', SuperRat(ses).units(UseCells(i)).OdorMeans(1,1),...
+                SuperRat(ses).units(UseCells(i)).OdorMeans(1,2),...
+                SuperRat(ses).units(UseCells(i)).OdorSelective(1,2)));
+            box off;
+        else
+            title('No Spikes During odor delivery');
+        end
         % now to make the linearized place plots
         % for runs its out left, out right in left in right (1:4)
-        subplot(5,1,5);
+        subplot(4,1,4);
         mycolors=lines(2);
         % out left
-        p=plot(SuperRat(ses).units(ObjCell(i)).LinPlaceFields{1}(1,:),'color',mycolors(1,:),'LineWidth',3); hold on;
-        % out right
-        plot(-SuperRat(ses).units(ObjCell(i)).LinPlaceFields{1}(2,:),'color',mycolors(1,:),'LineWidth',3);
-        % in left
-        p(2)=plot(SuperRat(ses).units(ObjCell(i)).LinPlaceFields{1}(3,:),'color',mycolors(2,:),'LineWidth',3);
-        % in right
-        plot(-SuperRat(ses).units(ObjCell(i)).LinPlaceFields{1}(4,:),'color',mycolors(2,:),'LineWidth',3);
-        plot([0 100],[0 0],'k'); % get a zero line in there
-        legend(p,'Outbound','Inbound');
-        oldlim=max(abs(get(gca,'Ylim'))); ylim([-oldlim oldlim]);
-        box off; ylabel({'Rate, Hz';'Right Arm      Left Arm'});
+        if iscell(SuperRat(ses).units(UseCells(i)).LinPlaceFields)
+            try
+                p=plot(SuperRat(ses).units(UseCells(i)).LinPlaceFields{1}(1,:),'color',mycolors(1,:),'LineWidth',3); hold on;
+            end
+            try
+                plot(-SuperRat(ses).units(UseCells(i)).LinPlaceFields{1}(2,:),'color',mycolors(1,:),'LineWidth',3);
+            end
+            % in left
+            try
+             p(2)=plot(SuperRat(ses).units(UseCells(i)).LinPlaceFields{1}(3,:),'color',mycolors(2,:),'LineWidth',3);
+                % in right
+                plot(-SuperRat(ses).units(UseCells(i)).LinPlaceFields{1}(4,:),'color',mycolors(2,:),'LineWidth',3);
+            end
+            plot([0 100],[0 0],'k'); % get a zero line in there
+            legend(p,'Outbound','Inbound');
+            oldlim=max(abs(get(gca,'Ylim'))); ylim([-oldlim oldlim]);
+            box off; ylabel({'Rate, Hz';'Right Arm      Left Arm'});
+        end
+        
+        
         %legend('Left Outbound','Right Outbound','Left Return','Right Return');
-        pfstats=SuperRat(ses).units(ObjCell(i)).FieldProps;
+        pfstats=SuperRat(ses).units(UseCells(i)).FieldProps;
         [info,bestfield]=max(pfstats.info);
         title(sprintf('Max=%.1fHz, Info=%.2f, Width=%2.f',max(pfstats.PFmax),...
             max(pfstats.info),pfstats.PFsize(bestfield)));
         set(gca,'XTick',[0 50 100],'XTickLabel',{'Odor Port','Decision Point','Reward Port'});
         xlabel('Lineaized Position on maze');
         sgtitle(sprintf('Ses %s Unit %s # %d', SuperRat(ses).name,...
-            SuperRat(ses).units(ObjCell(i)).area,ObjCell(i)));
+            SuperRat(ses).units(UseCells(i)).area,UseCells(i)));
         % set the plot size
-        set(gcf,'Position',[250 250 300 800]);
+        set(gcf,'Position',[250 100 300 900]);
         % save out
-        savefig(gcf,fullfile(saveoutdir,[SuperRat(ses).name '-' num2str(ses) '-' SuperRat(ses).units(ObjCell(i)).area,...
-            '-' SuperRat(ses).units(ObjCell(i)).type num2str(ObjCell(i)) nameappend]));
-        saveas(gcf,fullfile(saveoutdir,[SuperRat(ses).name '-' num2str(ses) '-' SuperRat(ses).units(ObjCell(i)).area,...
-            '-' SuperRat(ses).units(ObjCell(i)).type num2str(ObjCell(i)) nameappend]),'tif');
+        savefig(gcf,fullfile(saveoutdir,[SuperRat(ses).name '-' num2str(ses) '-' SuperRat(ses).units(UseCells(i)).area,...
+            '-' SuperRat(ses).units(UseCells(i)).type num2str(UseCells(i)) Params.nameappend]));
+        saveas(gcf,fullfile(saveoutdir,[SuperRat(ses).name '-' num2str(ses) '-' SuperRat(ses).units(UseCells(i)).area,...
+            '-' SuperRat(ses).units(UseCells(i)).type num2str(UseCells(i)) Params.nameappend]),'tif');
         close(gcf);
     end
 end

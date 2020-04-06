@@ -237,6 +237,16 @@ for ses=1:length(SuperRat)
                         
                         % grab all the spikes WITHIN the run epochs
                         [Espikes,Erates,~,~,trspikes]=event_spikes(spikes(:,1),runepochs(:,1),0,diff(runepochs,1,2));
+                        if verbose % show the position raster
+                            trpos=cellfun(@(a) interp1(temptraj(:,1), temptraj(:,8),a,'linear'), trspikes,'UniformOutput',false);
+                            trpos=trpos(~cellfun(@(a) isempty(a), trpos));
+                            figure;
+                            for i=1:length(trpos)
+                                xvals=linearize(repmat([0;1;nan],1,(length(trpos{i}))))+i;
+                                plot(linearize(repmat(trpos{i}',3,1)),xvals,'k');
+                                hold on;
+                            end
+                        end
                         SuperRat(ses).units(j).RunRates{1,tr}=Erates; % run the splitter score later
                         % filter spike and lfp adata below to match coords
                         
