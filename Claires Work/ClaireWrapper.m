@@ -54,3 +54,25 @@ edit ClaireRippleAnalysis
 
 %%
 clearvars -except SuperRat
+
+
+%%
+%{
+notes for splitter:
+wenbo did a correlation type scoring across the two linearize trajectories
+One thing yu can do is run an xcorr between the two rate maps.  The other
+way to do this is to bootstrap the absoluite differenes between the rate
+maps. the algorithm would go as follows:"
+- gather the full ratemaps for the real data, and at each bin take the
+absolute difference between the two maps
+- to get signficance, gather each 'run' and randomize which trajectory it is.
+Then you can build rate maps for each trajectory, and then run the absolute
+difference between the two.  WEnbo ran the diff over sum, but
+mathematically, that underrepresents high firing pixels and i dont know if
+i want that...
+the regression i think we're looking for is how similar the rate maps are,
+but i'll need to normalize them by maybe their rates overall?
+
+
+%}
+

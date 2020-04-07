@@ -151,9 +151,9 @@ chiraw=[sum(sum(PFcounts(objSel==0 & objRes==0,:),2)==0)...
     sum(sum(PFcounts(objSel==0 & objRes==0,:),2)>1)...
     sum(sum(PFcounts(objSel==0 & objRes~=0,:),2)>1)...
     sum(sum(PFcounts(objSel~=0,:),2)>1)];
-[a,b]=chi2indep(chiraw);
-fprintf('%s Chi2 test for different run activity prevalence across odor repsonses p(%.2f)=%e\n',...
-    region{r},b,a)
+[a,b,c]=chi2indep(chiraw);
+fprintf('%s Chi2 test for different run activity prevalence across odor repsonses chi2(%d)= %.2f p=%e \n',...
+    region{r},c,b,a)
 end
 %% okay now to plot odor period rates vs run rates
 
@@ -169,12 +169,13 @@ nanfilt=~isnan(odormeans) & ~isnan(runmeans);
 subplot(1,2,i);
 scatter(odormeans(regionfilt & PYRfilt & nanfilt),runmeans(regionfilt & PYRfilt & nanfilt)); hold on;
 scatter(odormeans(regionfilt & INfilt & nanfilt),runmeans(regionfilt & INfilt & nanfilt)); legend('pyr','IN');
-xlabel('Rate during odorpoke'); ylabel('Rate during run'); title('HPC');
+xlabel('Rate during odorpoke'); ylabel('Rate during run'); title(region{i}); set(gca,'Xscale','log','Yscale','log');
 
 [a,b]=corr(odormeans(regionfilt & PYRfilt & nanfilt)',runmeans(regionfilt & PYRfilt & nanfilt)','type','spearman');
 [a2,b2]=corr(odormeans(regionfilt & INfilt & nanfilt)',runmeans(regionfilt & INfilt & nanfilt)','type','spearman');
-fprintf('%s pyr corr=%.2f p=%e, HC in corr=%.2f p=%e\n',region{i},a,b,a2,b2)
+fprintf('%s pyr odor rate to run rate corr=%.2f p=%e, HC in corr=%.2f p=%e\n',region{i},a,b,a2,b2)
 end  
+linkaxes(get(gcf,'children'));
 
 
  %%
@@ -243,10 +244,46 @@ text(xtips,ytips2,labels2,'HorizontalAlignment','center',...
 ylim([0 100]);
 sgtitle(sprintf('Place Fields of %s cells from %s, out of a pool of %d active', type, region{i}, length(PFtest)));
 xtickangle(340); box off;
-ratecontrol=0;
+
+% chi square test for independence
+chiraw=[sum(sum(PFcounts(cellclasses==1,:),2)==0)...        % nonselective
+    sum(sum(PFcounts(cellclasses==2,:),2)==0)...            % odor responsive
+    sum(sum(PFcounts(cellclasses==3,:),2)==0);...           % odor selective
+    sum(sum(PFcounts(cellclasses==1,:),2)==1)...            % nonselective
+    sum(sum(PFcounts(cellclasses==2,:),2)==1)...            % odor responsive
+    sum(sum(PFcounts(cellclasses==3,:),2)==1);...           % odor selective
+    sum(sum(PFcounts(cellclasses==1,:),2)>1)...
+    sum(sum(PFcounts(cellclasses==2,:),2)>1)...
+    sum(sum(PFcounts(cellclasses==3,:),2)>1)];
+[a,b,c]=chi2indep(chiraw);
+
+fprintf('%s Chi2 on pf rates across object responsiveness is chi2(%d)=%.2f, p%e \n',...
+    region{i},c,b,a);
+ end
+ %%
+ for i=1:length(region)
+ratecontrol=1;
 if ratecontrol
+     cellfilt=cellfun(@(a) contains(a,region{i},'IgnoreCase',true),{SuperUnits.area}) &...
+        cellfun(@(a) contains(a,type,'IgnoreCase',true),{SuperUnits.type}) &...
+        cellfun(@(a) any(a),{SuperUnits.FiresDuringRun});
+    PFtest=SuperUnits(cellfilt);
+    % what %% of cells that fire on a run have a pf on that run
+    % 1 if left preferring, -1 if right preferring, 0 if no pref
+    objSel=cellfun(@(a) a(3)==1,{PFtest.OdorSelective}).*...
+        ((cellfun(@(a) a(1)>0, {PFtest.OdorSelective})-.5)*2);
+    % -1 if downreg, 0 if no reg, 1 if upreg
+    % to get direction, use the min p index (they're always the same direction)
+    objRes=cellfun(@(a) any(a(:,4)<.05),{PFtest.OdorResponsive}).*...
+        ((cellfun(@(a) any(a((a(:,4)==min(a(:,4))),2)>0),{PFtest.OdorResponsive})-.5)*2); % we cant do
+
+    % condense into cell classes
+    cellclasses=double(objSel==0 & objRes==0); cellclasses(objSel==0 & objRes~=0)=2; cellclasses(objSel~=0)=3;
+    PFcounts=cell2mat(cellfun(@(a) a(1:2), {PFtest.PFexist},'UniformOutput',false)');
+
+   
     % this could be the overall firing rate...
-    overallrate=log2(cellfun(@(a)  a, {PFtest.meanrate}));
+    overallrate=(cellfun(@(a)  a, {PFtest.meanrate}));
     
     meansy=[nanmean(overallrate(cellclasses==1)) nanmean(overallrate(cellclasses==2))...
         nanmean(overallrate(cellclasses==3))];
@@ -255,6 +292,7 @@ if ratecontrol
     figure; bar(1:3,meansy); hold on; errorbar(1:3, meansy, SEMsy,'k.');
     set(gca,'XTickLabel',{'Task Responsive','Odor Responsive','Odor Selective'});
     xtickangle(-10); ylabel('Log_2 Mean Rate');
+    sgtitle(region{i});
     
     meansy=[nanmean(overallrate(sum(PFcounts,2)==0)) nanmean(overallrate(sum(PFcounts,2)==1))...
         nanmean(overallrate(sum(PFcounts,2)==2))];
@@ -262,7 +300,9 @@ if ratecontrol
         SEM(overallrate(sum(PFcounts,2)==2))];
     figure; bar(1:3,meansy); hold on; errorbar(1:3, meansy, SEMsy,'k.');
     set(gca,'XTickLabel',{'No PFs','One PF','2+ PFs'});
-    xtickangle(-10); ylabel('Log_2 Mean Rate');
+    xtickangle(340); ylabel(' Mean Rate');
+    sgtitle(region{i});
+    % stats are friedman test if you want them...
 end
  end
 %% the inverse of this is what proportion of place cells
@@ -327,19 +367,14 @@ chiraw=[sum(objRes(PFcounts==0)==0)...
     sum(objSel(PFcounts==1)~=0)...    % %% of 1 pf units who are selective
     sum(objSel(PFcounts>1)~=0)];
 
-[a,b]=chi2indep(chiraw);
-fprintf('%s chi2 test for obj sel given pf counts chi2(%.2f) p=%e \n',region{i},b,a);
+[a,b,c]=chi2indep(chiraw);
+fprintf('%s chi2 test for obj sel given pf counts chi2(%d)=%.2f p=%e \n',region{i},c,b,a);
 end
 %%
 % do the place fields of odor responsive/selective cells differ?
 % width, in vs out of field rate, peak, and sparsity
 
-
-%**************** BIG PROBLEM HERE: SHOULD WE TAKE OUTBOUND AND INBOUND OR JUST OUT
-
-
-
-
+% this only assays outbound runs, NOT INBOUND RUNS...
 
 % each cell can have 4 pfs, but we ought to probably just take one? or just
 % the outbound pfs?
@@ -384,13 +419,12 @@ for i=1:length(region)
         {'Obj Unresponsive','Obj Responsive','Obj Selective'},'position',[]);
     ylabel('%s Place Field Peak Rate (Hz)');  xtickangle(340); box off;
     [p,tbl,stats]=anovan(PFpeaks(celltypes>0),celltypes(celltypes>0),'display','off');
-    fprintf('%s Peak Rate: anovan f(%d)=%.2f, p=%.4f \n',region{i},tbl{2,3},tbl{2,6},tbl{2,7});
-    [p,h,stats]=ranksum(PFpeaks(celltypes==1),PFpeaks(celltypes==2));
-    fprintf('%s Nonresponsive vs responsive z= %.2f, p=%.4f \n',region{i},stats.zval,p);
-    [p,h,stats]=ranksum(PFpeaks(celltypes==1),PFpeaks(celltypes==3));
-    fprintf('%s Nonresponsive vs selective z= %.2f, p=%.4f \n',region{i},stats.zval,p);
-    [p,h,stats]=ranksum(PFpeaks(celltypes==2),PFpeaks(celltypes==3));
-    fprintf('%s responsive vs responsive z= %.2f, p=%.4f \n',region{i},stats.zval,p);
+    [p,tbl,stats]=kruskalwallis(PFpeaks(celltypes>0),celltypes(celltypes>0),'off');
+    [c,m] = multcompare(stats,'Display','off');
+    fprintf('%s Peak Rate: KruskalWallis Chi2(%d)=%.2f, p=%.4f \n',region{i},tbl{2,3},tbl{2,5},tbl{2,6});
+    fprintf('%s Nonresponsive vs. responsive diff= %.2f, p=%.4f \n',region{i},c(1,4),c(1,6));
+    fprintf('%s Nonresponsive vs. selective diff= %.2f, p=%.4f \n',region{i},c(2,4),c(2,6));
+    fprintf('%s responsive vs. responsive diff= %.2f, p=%.4f \n',region{i},c(3,4),c(3,6));
     fprintf('\n');
     
     
@@ -403,13 +437,12 @@ for i=1:length(region)
     ylabel('Place Field Width (% of maze)');  xtickangle(340); box off;
     sgtitle(sprintf('Place Fields of %s cells from %s',type, region{i}));
     [p,tbl,stats]=anovan(PFwidth(celltypes>0),celltypes(celltypes>0),'display','off');
-    fprintf('%s PF Width: anovan f(%d)=%.2f, p=%.4f \n',region{i},tbl{2,3},tbl{2,6},tbl{2,7});
-    [p,h,stats]=ranksum(PFwidth(celltypes==1),PFwidth(celltypes==2));
-    fprintf('%s Unresponsive vs responsive z= %.2f, p=%.4f \n',region{i},stats.zval,p);
-    [p,h,stats]=ranksum(PFwidth(celltypes==1),PFwidth(celltypes==3));
-    fprintf('%s Unresponsive vs selective z= %.2f, p=%.4f \n',region{i},stats.zval,p);
-    [p,h,stats]=ranksum(PFwidth(celltypes==2),PFwidth(celltypes==3));
-    fprintf('%s responsive vs responsive z= %.2f, p=%.4f \n',region{i},stats.zval,p);
+    [p,tbl,stats]=kruskalwallis(PFwidth(celltypes>0),celltypes(celltypes>0),'off');
+    [c,m] = multcompare(stats,'Display','off');
+    fprintf('%s PF Width: anovan f(%d)=%.2f, p=%.4f \n',region{i},tbl{2,3},tbl{2,5},tbl{2,6});
+    fprintf('%s Unresponsive vs responsive diff= %.2f, p=%.4f \n',region{i},c(1,4),c(1,6));
+    fprintf('%s Unresponsive vs selective zdiff= %.2f, p=%.4f \n',region{i},c(2,4),c(2,6));
+    fprintf('%s responsive vs responsive diff= %.2f, p=%.4f \n',region{i},c(3,4),c(3,6));
     fprintf('\n');
     
     % next is sparsity
@@ -419,15 +452,13 @@ for i=1:length(region)
     boxScatterplot(log2(PFsparsity(celltypes>0)),celltypes(celltypes>0),'xLabels',...
         {'Obj Unresponsive','Obj Responsive','Obj Selective'},'position',[]);
     ylabel('Log_2 Place Field sparsity');  xtickangle(340); box off;
-    
     [p,tbl,stats]=anovan(PFsparsity(celltypes>0),celltypes(celltypes>0),'display','off');
-    fprintf('%s PF Sparsity: anovan f(%d)=%.2f, p=%.4f \n',region{i},tbl{2,3},tbl{2,6},tbl{2,7});
-    [p,h,stats]=ranksum(PFsparsity(celltypes==1),PFsparsity(celltypes==2));
-    fprintf('%s Unresponsive vs responsive z= %.2f, p=%.4f \n',region{i},stats.zval,p);
-    [p,h,stats]=ranksum(PFsparsity(celltypes==1),PFsparsity(celltypes==3));
-    fprintf('%s Unresponsive vs selective z= %.2f, p=%.4f \n',region{i},stats.zval,p);
-    [p,h,stats]=ranksum(PFsparsity(celltypes==2),PFsparsity(celltypes==3));
-    fprintf('%s responsive vs responsive z= %.2f, p=%.4f \n',region{i},stats.zval,p);
+    [p,tbl,stats]=kruskalwallis(PFsparsity(celltypes>0),celltypes(celltypes>0),'off');
+    [c,m] = multcompare(stats,'Display','off');
+    fprintf('%s PF Sparsity: KruskalWallis f(%d)=%.2f, p=%.4f \n',region{i},tbl{2,3},tbl{2,5},tbl{2,6});
+    fprintf('%s Unresponsive vs responsive z= %.2f, p=%.4f \n',region{i},c(1,4),c(1,6));
+    fprintf('%s Unresponsive vs selective z= %.2f, p=%.4f \n',region{i},c(2,4),c(2,6));
+    fprintf('%s responsive vs responsive z= %.2f, p=%.4f \n',region{i},c(3,4),c(3,6));
     fprintf('\n');
     
     % next is information in bits/spike
@@ -438,13 +469,12 @@ for i=1:length(region)
     ylabel('Log_2 Place Field information (bits/spike)'); xtickangle(340); box off;
     
     [p,tbl,stats]=anovan(PFinfo(celltypes>0),celltypes(celltypes>0),'display','off');
-    fprintf('%s PF Information: anovan f(%d)=%.2f, p=%.4f \n',region{i},tbl{2,3},tbl{2,6},tbl{2,7});
-    [p,h,stats]=ranksum(PFinfo(celltypes==1),PFinfo(celltypes==2));
-    fprintf('%s Unresponsive vs responsive z= %.2f, p=%.4f \n',region{i},stats.zval,p);
-    [p,h,stats]=ranksum(PFinfo(celltypes==1),PFinfo(celltypes==3));
-    fprintf('%s Unresponsive vs selective z= %.2f, p=%.4f \n',region{i},stats.zval,p);
-    [p,h,stats]=ranksum(PFinfo(celltypes==2),PFinfo(celltypes==3));
-    fprintf('%s responsive vs responsive z= %.2f, p=%.4f \n',region{i},stats.zval,p);
+    [p,tbl,stats]=kruskalwallis(PFinfo(celltypes>0),celltypes(celltypes>0),'off');
+    [c,m] = multcompare(stats,'Display','off');
+    fprintf('%s PF Information: anovan f(%d)=%.2f, p=%.4f \n',region{i},tbl{2,3},tbl{2,5},tbl{2,6});
+    fprintf('%s Unresponsive vs responsive z= %.2f, p=%.4f \n',region{i},c(1,4),c(1,6));
+    fprintf('%s Unresponsive vs selective z= %.2f, p=%.4f \n',region{i},c(2,4),c(2,6));
+    fprintf('%s responsive vs responsive z= %.2f, p=%.4f \n',region{i},c(3,4),c(3,6));
     fprintf('\n');
     
     % next is field gain (this is a hard one...)

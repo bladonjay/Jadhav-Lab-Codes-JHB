@@ -155,14 +155,14 @@ for ses= 1:length(SuperRat)
         if contains(SuperRat(ses).units(j).area,'CA1')
             % I think we need to positively select PYRs and leave ins
             % to whatever is left
-            if SuperRat(ses).units(j).meanrate<=7 && SuperRat(ses).units(j).burstIndex>=1.5
+            if SuperRat(ses).units(j).meanrate<=9.5
                 SuperRat(ses).units(j).type='pyr';
             else
                 SuperRat(ses).units(j).type='in';
             end
             
         elseif contains(SuperRat(ses).units(j).area,'PFC')
-            if SuperRat(ses).units(j).meanrate<7
+            if SuperRat(ses).units(j).meanrate<9.5
                 SuperRat(ses).units(j).type='pyr';
             else
                 SuperRat(ses).units(j).type='in';
@@ -171,9 +171,9 @@ for ses= 1:length(SuperRat)
         end
         % but if it has more than 5% 1msec ISIs and it fires above
         % 7 hz, its prob not an IN either
-        if SuperRat(ses).units(j).meanrate>=7 && SuperRat(ses).units(j).shortISI(2)>SuperRat(ses).units(j).numspikes(1)*.01
-            SuperRat(ses).units(j).type='mua';
-        end
+        %if SuperRat(ses).units(j).meanrate>=7 %  && SuperRat(ses).units(j).shortISI(2)>SuperRat(ses).units(j).numspikes(1)*.01
+        %    SuperRat(ses).units(j).type='mua';
+        %end
         
     end
 end

@@ -83,7 +83,7 @@ for ses=1:length(SuperRat)
         thisunit=struct('ts',thesespikes);
         % this is the really basic open field place plotting script
         [ratemap,~,finalcolormap]=cell_SmoothPlacePlot(session,thisunit,...
-            'Factor',2,'suppress',1,'gaussdev',1.5);
+            'Factor',2,'suppress',1,'gaussdev',1.5,'ColorScheme','parula');
         image(finalcolormap); set(gca,'YDir','normal');
         title(sprintf('         Max: %.2f Hz',max(linearize(ratemap))));
         box off; axis off;
@@ -160,7 +160,7 @@ for ses=1:length(SuperRat)
         sgtitle(sprintf('Ses %s Unit %s # %d', SuperRat(ses).name,...
             SuperRat(ses).units(UseCells(i)).area,UseCells(i)));
         % set the plot size
-        set(gcf,'Position',[250 100 300 900]);
+        set(gcf,'Position',[-450 100 300 900]);
         % save out
         savefig(gcf,fullfile(saveoutdir,[SuperRat(ses).name '-' num2str(ses) '-' SuperRat(ses).units(UseCells(i)).area,...
             '-' SuperRat(ses).units(UseCells(i)).type num2str(UseCells(i)) Params.nameappend]));
