@@ -5,8 +5,6 @@ function [LinPlaceField,FiresDuringRun,PFexist,RunRates,FieldProps,SmoothOccup] 
 %   LinCoords: n by 3 vector of ts, linearized position, and velocity
 %   Spikes: a vector of spike timestamps
 % OPTIONAL:
-%   veltimesmooth: how many timebins to smooth (should be time)
-%   speedthreshold: below which speed should we ditch data?
 %   calctheta: empty if you dont want theta data, otherwise its an n by 2
 %       vector if ts and LFP phases
 %   verbose: show raster and bootstrap data?
@@ -26,18 +24,16 @@ p=inputParser;
 addOptional(p,'calctheta',false);
 addOptional(p,'verbose',false);
 addOptional(p,'nBoots',500);
-
 parse(p,varargin{:});
-
 calctheta=p.Results.calctheta;
 verbose=p.Results.verbose;
 nBoots=p.Results.nBoots;
 
 PFexist=0;
 FiresDuringRun=0;
-RunRates={};
-LinPlaceField=[];
-
+RunRates={}; % this will fill in before silent cells get spit out
+LinPlaceField=zeros(1,99); % initialize the rates
+SmoothOccup=nan(1,99);
 FieldProps=struct('PFmax',nan,'PFmaxpos',nan,'info',nan,...
     'sparsity',nan,'Zpfmax',nan,'PFsize',nan,...
     'PFmaxP',nan,'infoP',nan,'sparsityP',nan);

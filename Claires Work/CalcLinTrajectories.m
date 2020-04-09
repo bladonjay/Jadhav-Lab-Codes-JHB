@@ -35,18 +35,23 @@ FieldPropsNan=struct('PFmax',nan(1,4),'PFmaxpos',nan(1,4),...
     'sparsityP',nan(1,4));
 
 
-for ses=1:length(SuperRat)
+for ses=7:length(SuperRat)
     tic
     if SuperRat(ses).longTrack
         % 1 is bottom left, 2 is bottom right, 3 is home
         % 4,5 are the left linearized positions
         % 6,7 are the right linearized positions
-        keepinds=[]; allposplot=[];
+
         % grab the run blocks
         blocks=SuperRat(ses).RunEpochs;
         fulltraj=SuperRat(ses).LinCoords;
+        
+        % first, get a true velocity, filter (1 if running, 0 if not)
+        fulltraj(:,10)=SmoothMat2(fulltraj(:,7),[0 50],veltimesmooth)>=speedthreshold;
+        
+        % now start dicing up the data by epoch
         fulltraj(~ismember(fulltraj(:,6),blocks),:)=[]; % use only run sesses
-        epochbreaks=fulltraj(diff(fulltraj(:,6))~=0,1);
+        epochbreaks=fulltraj(diff(fulltraj(:,6))~=0,1); % get transitions between epochs
         if any(epochbreaks)
             epochtimes=[fulltraj(1) epochbreaks'+1; epochbreaks' fulltraj(length(fulltraj),1)]';
         else
@@ -65,13 +70,19 @@ for ses=1:length(SuperRat)
 
         % run blocks
         for j=1:length(SuperRat(ses).units)
+            % only use blocks where the cell has fired (or stop if the cell
+            % doesnt fire during behavior)
             FieldProps=FieldPropsNan; % initialize the field props struct
             spikes=SuperRat(ses).units(j).ts;
             [allspikes,epochspk]=event_spikes(spikes,epochtimes(:,1),0,diff(epochtimes,1,2));           
 
             % remove all runs in epochs with no spikes
-            keepblocks=blocks(epochspk==0);
-            celltraj=fulltraj(ismember(fulltraj(:,6),keepblocks),:);
+            killblocks=blocks(epochspk==0);
+            if any(killblocks)
+                thistraj=fulltraj(~ismember(fulltraj(:,6),killblocks),:);
+            else
+                thistraj=fulltraj;
+            end
             clear thetastats;
             
             % preallocate
@@ -86,7 +97,7 @@ for ses=1:length(SuperRat)
                 continue;
             end
             % initialize the field props in case this cell doesnt ever fire
-            if runblocks
+            if runblocks % old...
                 %{
                 for bl=1:length(blocks)
                     % for each trajectory
@@ -212,20 +223,17 @@ for ses=1:length(SuperRat)
                     end % of trajectories
                 end % blocks
                 %}
-                %  now one for all the blocks
             else % if run whole day as unitary session
-                for tr=1:4 % for each trajectory
-                    % this this trajectory (e.g. start and finish are
-                    % correct
-                    keepinds=fulltraj(:,4)==trajinds(tr,1) & fulltraj(:,5)==trajinds(tr,2);
+                for tr=1:4 % for each trajectory (out left, out right, in left, in right)
+                    
+                    keepinds=thistraj(:,4)==trajinds(tr,1) & thistraj(:,5)==trajinds(tr,2);
                     % did the animal spend enough time in this trajectory?
                     if sum(keepinds)>30*10 % 15 seconds of data
                         
-                        % this probably can be chunked:
                         % pull this traj, order epochs chronologically
-                        temptraj=sortrows(fulltraj(keepinds,:),1);
-                        % 50 bin span, but a std of only 1/4 second or like 3/4 of a second
-                        temptraj(SmoothMat2(temptraj(:,7),[0 50],veltimesmooth)<=speedthreshold,:)=[];
+                        temptraj=sortrows(thistraj(keepinds,:),1);
+                        % remove slow timestamps to get just the runs
+                        temptraj(temptraj(:,10)==0,:)=[];
                         % find the epochs so you can kill bad spikes
                         breaks=find(diff(temptraj(:,1))>1); % only use time breaks that last more than a second
                         runepochs=[[temptraj(1); temptraj(breaks+1,1)] [temptraj(breaks,1); temptraj(end,1)]];
@@ -233,10 +241,10 @@ for ses=1:length(SuperRat)
                         temptraj=EpochCoords(temptraj,runepochs); % remove the really short runs
                         % gather the place field from that run
                         [SuperRat(ses).units(j).LinPlaceFields{tr},...
-                            SuperRat(ses).units(j).FiresDurignRun(tr),...
+                            SuperRat(ses).units(j).FiresDuringRun(tr),...
                             SuperRat(ses).units(j).PFexist(tr),...
                             SuperRat(ses).units(j).RunRates{tr},...
-                            FieldPropstemp,SmoothOccup{tr}]=...
+                            FieldPropsTemp]=...
                             CalcLinPlaceField(temptraj(:,[1,8,7]),spikes(:,1));
                         % slot the data into the struct
                         PFfieldnames=fieldnames(FieldPropsTemp);
@@ -385,14 +393,20 @@ for ses=1:length(SuperRat)
                         fprintf('Sess %d traj %d doesnt have enough runs (%s sec)',ses,tr,sum(keepinds)/30);
                     end % if we have trajectories
                    %} 
-                    end % if this trajectory is big enough
+                    else
+                        keyboard;
+                        % this would be the unlikely event that this run
+                        % block actually doesnt have enough runs to analyze
+                    end % of if this trajectory is big enough
                     
                 end % of trajectories 
             end % of block breakout
-            if calctheta, SuperRat(ses).units(j).thetastats=thetastats; end
+            % havent done the theta work yet, but i can...
+            %if calctheta, SuperRat(ses).units(j).thetastats=thetastats; end
             SuperRat(ses).units(j).FieldProps=FieldProps; % add all the props
             fprintf('%d ',j);
         end % units
+        %SuperRat(ses).LinOccup=SmoothOccup;
         fprintf('\n Session %d done in %.2f mins \n',ses,toc/60);
     end
 end
@@ -458,62 +472,101 @@ end
 %% this runs the bootstrap on splittyness on the linearized pfs
 % the idea is to randomly split the right and left runs, and then calculate
 % the pixelwise absolute difference between the runs.
-
+nboots=500;
 trajinds=[3 1; 3 2];
 speedthreshold=3;
 veltimesmooth=8; % bins
-sumdiff=@(a,b) sum(abs(a-b)./(a+b));
+sumdiff=@(a,b) nansum(abs(a-b)./(a+b)); % the function to get our splitter score
 
-for ses=1:length(SuperRat)
+for ses=7:length(SuperRat)
     tic
-    if SuperRat(ses).longTrack
-        % 1 is bottom left, 2 is bottom right, 3 is home
-        % 4,5 are the left linearized positions
-        % 6,7 are the right linearized positions
 
-        % grab the run blocks
-        blocks=SuperRat(ses).RunEpochs;
-        fulltraj=SuperRat(ses).LinCoords;
-        fulltraj(~ismember(fulltraj(:,6),blocks),:)=[]; % use only run sesses
-        epochbreaks=fulltraj(diff(fulltraj(:,6))~=0,1);
-         for j=1:length(SuperRat(ses).units)
-             if ~isempty(LinPFs{1}) && ~isempty(LinPFs{2})
-            LinPFs=SuperRat(ses).units(j).LinPlaceFields;
-            SplitScore=sumdiff(LinPFs{1},LinPFs{2});
-            spikes=SuperRat(ses).units(j).ts;
-            [allspikes,epochspk]=event_spikes(spikes,epochtimes(:,1),0,diff(epochtimes,1,2));           
-
-            % remove all runs in epochs with no spikes
-            keepblocks=blocks(epochspk==0);
-            celltraj=fulltraj(ismember(fulltraj(:,6),keepblocks),:);
-
-            % now bootstrap the number of pfs
-                for  boot=1:nBoots
-                    % this this trajectory (e.g. start and finish are
-                    % correct
-                    keepinds=fulltraj(:,4)==trajinds(tr,1) & fulltraj(:,5)==trajinds(tr,2);
-                    keepinds=ismember(fulltraj(:,[4 5]),trajinds); %
-                    % and split by epoching the data
-        
-        
+    % grab the run blocks
+    blocks=SuperRat(ses).RunEpochs;
+    fulltraj=SuperRat(ses).LinCoords;
+    
+    % first, get a true velocity, filter (1 if running, 0 if not)
+    fulltraj(:,10)=SmoothMat2(fulltraj(:,7),[0 50],veltimesmooth)>=speedthreshold;
+    
+    % now start dicing up the data by epoch
+    fulltraj(~ismember(fulltraj(:,6),blocks),:)=[]; % use only run sesses
+    epochbreaks=fulltraj(diff(fulltraj(:,6))~=0,1); % get transitions between epochs
+    if any(epochbreaks)
+        epochtimes=[fulltraj(1) epochbreaks'+1; epochbreaks' fulltraj(length(fulltraj),1)]';
+    else
+        epochtimes=[fulltraj(1) fulltraj(end,1)];
+    end
+    % run cells
+    for j=1:length(SuperRat(ses).units)
+                
+        % initialize the field props in case this cell doesnt ever fire
+        RunRates=SuperRat(ses).units(j).LinPlaceFields;
+        if length(RunRates)<2 || (isempty(RunRates{1}) || isempty(RunRates{2}))
+            SuperRat(ses).units(j).SplitterScore=[nan nan];
+            continue
+        end
+        SuperRat(ses).units(j).SplitterScore=sumdiff(RunRates{1},RunRates{2});
+        % only use blocks where the cell has fired (or stop if the cell
+        % doesnt fire during behavior)
+        spikes=SuperRat(ses).units(j).ts;
+        [allspikes,epochspk]=event_spikes(spikes,epochtimes(:,1),0,diff(epochtimes,1,2));
+        % remove all runs in epochs with no spikes
+        killblocks=blocks(epochspk==0);
+        fulltraj(ismember(fulltraj(:,6),killblocks),:)=[];
+        % just pull outbound runs
+        keepinds=ismember(fulltraj(:,4:5),trajinds,'rows');
+        % did the animal spend enough time in these trajectories?
+        if sum(keepinds)>30*10 % 15 seconds of data from spiking epochs
+            % pull this traj, order epochs chronologically
+            temptraj=sortrows(fulltraj(keepinds,:),1);
+            % remove slow timestamps to get just the runs
+            temptraj(temptraj(:,10)==0)=[];
+            % find the epochs so you can kill bad spikes
+            breaks=find(diff(temptraj(:,1))>1); % only use time breaks that last more than a second
+            runepochs=[[temptraj(1); temptraj(breaks+1,1)] [temptraj(breaks,1); temptraj(end,1)]];
+            runepochs(diff(runepochs,1,2)<=.5,:)=[]; % if the run itself is less than 1/2 second, scrub
+            
+            % now divvy up the run epochs randomly between two trajectories
+            SplitterScoreNull=nan(nboots,1);
+            for boot=1:nboots
+                randtraj=mod(randperm(size(runepochs,1)),2);
+                templeft=EpochCoords(temptraj,runepochs(randtraj==0,:));
+                tempright=EpochCoords(temptraj,runepochs(randtraj==1,:));
+                
+                [tempfieldL]=CalcLinPlaceField(templeft(:,[1,8,7]),spikes(:,1),...
+                    'nBoots',0);
+                [tempfieldR]=CalcLinPlaceField(tempright(:,[1,8,7]),spikes(:,1),...
+                    'nBoots',0);
+                SplitterScoreNull(boot)=sumdiff(tempfieldL,tempfieldR);
+            end
+            SuperRat(ses).units(j).SplitterScore(2)=...
+                 1-normcdf( SuperRat(ses).units(j).SplitterScore,...
+                 nanmean(SplitterScoreNull), nanstd(SplitterScoreNull));
+        else
+            SuperRat(ses).units(j).SplitterScore(2)=nan;
+        end
+        fprintf(' %d',j);
+    end
+    fprintf('\n Session %d took %.2f minutes \n',ses,toc/60); 
+end
 %% just look at some cells to see if they're selective and that
 % the raw rates look reasonable
-
-ses=1;
-% now lets see if there are valid priors here
-for i=1:length(SuperRat(ses).units)
-    if any(SuperRat(ses).units(i).PFexist)
-        figure;
-        try, plot(SuperRat(ses).units(i).LinPlaceFields{1}(1,:)); end
-        hold on;
-        try, plot(-SuperRat(ses).units(i).LinPlaceFields{1}(2,:)); end
-        try, plot(SuperRat(ses).units(i).LinPlaceFields{1}(3,:)); end
-       try,  plot(-SuperRat(ses).units(i).LinPlaceFields{1}(4,:)); end
-        
-        title([num2str(i) ' ' SuperRat(ses).units(i).area SuperRat(ses).units(i).type]);
-        
-    end
-end
+% 
+% ses=1;
+% % now lets see if there are valid priors here
+% for i=1:length(SuperRat(ses).units)
+%     if any(SuperRat(ses).units(i).PFexist)
+%         figure;
+%         try, plot(SuperRat(ses).units(i).LinPlaceFields{1}(1,:)); end
+%         hold on;
+%         try, plot(-SuperRat(ses).units(i).LinPlaceFields{1}(2,:)); end
+%         try, plot(SuperRat(ses).units(i).LinPlaceFields{1}(3,:)); end
+%        try,  plot(-SuperRat(ses).units(i).LinPlaceFields{1}(4,:)); end
+%         
+%         title([num2str(i) ' ' SuperRat(ses).units(i).area SuperRat(ses).units(i).type]);
+%         
+%     end
+% end
 % looks really good actually!
 
 %%
