@@ -477,9 +477,8 @@ for ses=1:length(SuperRat)
         fulltraj(~ismember(fulltraj(:,6),blocks),:)=[]; % use only run sesses
         epochbreaks=fulltraj(diff(fulltraj(:,6))~=0,1);
          for j=1:length(SuperRat(ses).units)
-             if ~isempty(LinPFs{1}) && ~isempty(LinPFs{2})
             LinPFs=SuperRat(ses).units(j).LinPlaceFields;
-            SplitScore=sumdiff(LinPFs{1},LinPFs{2});
+            SplitScore=sumdiff(LinPFs
             spikes=SuperRat(ses).units(j).ts;
             [allspikes,epochspk]=event_spikes(spikes,epochtimes(:,1),0,diff(epochtimes,1,2));           
 
@@ -487,8 +486,14 @@ for ses=1:length(SuperRat)
             keepblocks=blocks(epochspk==0);
             celltraj=fulltraj(ismember(fulltraj(:,6),keepblocks),:);
 
-            % now bootstrap the number of pfs
-                for  boot=1:nBoots
+            % if no valid spikes, move on
+            if isempty(allspikes)
+                fprintf('\nSess %d Unit %d (%d tot) has no valid spikes \n', ses,j,length(spikes));
+                continue;
+            end
+            % initialize the field props in case this cell doesnt ever fire
+           
+                for tr=1:4 % for each trajectory for boot=1:nBoots
                     % this this trajectory (e.g. start and finish are
                     % correct
                     keepinds=fulltraj(:,4)==trajinds(tr,1) & fulltraj(:,5)==trajinds(tr,2);
