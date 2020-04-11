@@ -155,9 +155,9 @@ if nBoots>0
     FieldProps.PFmaxP=1-normcdf(FieldProps.PFmax,nanmean(Bmax),nanstd(Bmax)); % peak statistically high?
     FieldProps.infoP=1-normcdf(FieldProps.info,nanmean(Binfo),nanstd(Binfo)); % information statistically high?
     FieldProps.sparsityP=1-normcdf(FieldProps.sparsity,nanmean(Bsparsity),nanstd(Bsparsity)); % Sparsity?
-    PFexist=FieldProps.PFmaxP<.05 && FieldProps.PFmax>2 && FieldProps.PFsize<75; % is it a place cell
+    PFexist=FieldProps.PFmaxP<.05 && FieldProps.PFmax>1 && FieldProps.PFsize<75; % is it a place cell
 else
-    PFexist=FieldProps.PFmax>2 && FieldProps.Zpfmax>2 && FieldProps.PFsize<75; % is it a place cell
+    PFexist=FieldProps.PFmax>1 && FieldProps.Zpfmax>2 && FieldProps.PFsize<75; % is it a place cell
 end
 FiresDuringRun=FieldProps.PFmax>1; % is this cell active? e.g. does it pass 1 hz at anywhere on track
 

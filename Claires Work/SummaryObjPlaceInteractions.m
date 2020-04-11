@@ -99,22 +99,22 @@ for r=1:2
 cellfilt=cellfun(@(a) contains(a,region{r},'IgnoreCase',true),{SuperUnits.area}) &...
     cellfun(@(a) contains(a,type,'IgnoreCase',true),{SuperUnits.type});
 
-PFtest=SuperUnits(cellfilt);
+cellPool=SuperUnits(cellfilt);
 
-% what %% of cells ocerall have a pf
+% what %% of cells overall have a pf
 
 % 1 if left preferring, -1 if right preferring, 0 if no pref
-objSel=cellfun(@(a) a(3)==1,{PFtest.OdorSelective}).*...
-    ((cellfun(@(a) a(1)>0, {PFtest.OdorSelective})-.5)*2);
+objSel=cellfun(@(a) a(3)==1,{cellPool.OdorSelective}).*...
+    ((cellfun(@(a) a(1)>0, {cellPool.OdorSelective})-.5)*2);
 % -1 if downreg, 0 if no reg, 1 if upreg (This ough tto work as only one
 % cell is going to have opposite firing on the runs)
-objRes=cellfun(@(a) any(a(:,4)<.05),{PFtest.OdorResponsive}).*...
-    ((cellfun(@(a) any(a((a(:,4)==min(a(:,4))),2)>0),{PFtest.OdorResponsive})-.5)*2);
+objRes=cellfun(@(a) any(a(:,4)<.05),{cellPool.OdorResponsive}).*...
+    ((cellfun(@(a) any(a((a(:,4)==min(a(:,4))),2)>0),{cellPool.OdorResponsive})-.5)*2);
     
 
 % ok %% of cells with 1 and %% of cells with more than 1 pf that arent obj
 % for forward and reverse or just foreward?
-PFcounts=cell2mat(cellfun(@(a) a(1:2), {PFtest.FiresDuringRun},'UniformOutput',false)');
+PFcounts=cell2mat(cellfun(@(a) a(1:2), {cellPool.FiresDuringRun},'UniformOutput',false)');
 
 bary=[nanmean(sum(PFcounts(objSel==0 & objRes==0,:),2)==1)...
     nanmean(sum(PFcounts(objSel==0 & objRes~=0,:),2)==1)...
@@ -137,9 +137,15 @@ labels2 = {sum(sum(PFcounts(objSel==0 & objRes==0,:),2)>1) sum(sum(PFcounts(objS
 text(xtips,ytips2,labels2,'HorizontalAlignment','center',...
     'VerticalAlignment','bottom');
 ylim([0 100]);
- sgtitle(sprintf('Outbound Run Firing of %s cells from %s, out of a pool of %d', type, region{r}, length(PFtest)));
+ sgtitle(sprintf('Outbound Run Firing of %s cells from %s, out of a pool of %d', type, region{r}, length(cellPool)));
  xtickangle(340); box off;
  
+fprintf('%s numbers: Nonresponsive tot %d: one %d (%.f): two %d (%.f) \n',...
+   region{r},sum(objSel==0 & objRes==0), labels{1}, bary(1,1), labels2{1},bary(2));
+ fprintf('%s numbers: Responsive tot %d: one %d (%.f): two %d (%.f) \n',...
+   region{r},sum(objSel==0 & objRes~=0), labels{2}, bary(1,2), labels2{1},bary(2,2));
+ fprintf('%s numbers: Selective tot %d: one %d (%.f): two %d (%.f) \n',...
+   region{r},sum(objSel~=0), labels{3}, bary(1,3), labels2{3},bary(1,3));
  
  
 chiraw=[sum(sum(PFcounts(objSel==0 & objRes==0,:),2)==0)...
@@ -152,7 +158,7 @@ chiraw=[sum(sum(PFcounts(objSel==0 & objRes==0,:),2)==0)...
     sum(sum(PFcounts(objSel==0 & objRes~=0,:),2)>1)...
     sum(sum(PFcounts(objSel~=0,:),2)>1)];
 [a,b,c]=chi2indep(chiraw);
-fprintf('%s Chi2 test for different run activity prevalence across odor repsonses chi2(%d)= %.2f p=%e \n',...
+fprintf('%s Chi2 test, # routs with spikes across odor repsonses chi2(%d)= %.2f p=%.2e \n',...
     region{r},c,b,a)
 end
 %% okay now to plot odor period rates vs run rates
@@ -160,22 +166,30 @@ end
 odormeans=cellfun(@(a) nanmean(a), {SuperUnits.OdorMeans}); 
 runmeans=cellfun(@(a) mean(cell2mat(a)), {SuperUnits.RunRates});
 figure;
+clear sp si; mycolors=lines(2);
 for i=1:length(region)
 regionfilt=cellfun(@(a) contains(a,region{i}), {SuperUnits.area});
 PYRfilt=cellfun(@(a) contains(a,'pyr'), {SuperUnits.type});
 INfilt=cellfun(@(a) contains(a,'in'), {SuperUnits.type});
 nanfilt=~isnan(odormeans) & ~isnan(runmeans);
 
-subplot(1,2,i);
-scatter(odormeans(regionfilt & PYRfilt & nanfilt),runmeans(regionfilt & PYRfilt & nanfilt)); hold on;
-scatter(odormeans(regionfilt & INfilt & nanfilt),runmeans(regionfilt & INfilt & nanfilt)); legend('pyr','IN');
-xlabel('Rate during odorpoke'); ylabel('Rate during run'); title(region{i}); set(gca,'Xscale','log','Yscale','log');
-
 [a,b]=corr(odormeans(regionfilt & PYRfilt & nanfilt)',runmeans(regionfilt & PYRfilt & nanfilt)','type','spearman');
 [a2,b2]=corr(odormeans(regionfilt & INfilt & nanfilt)',runmeans(regionfilt & INfilt & nanfilt)','type','spearman');
-fprintf('%s pyr odor rate to run rate corr=%.2f p=%e, HC in corr=%.2f p=%e\n',region{i},a,b,a2,b2)
+fprintf('%s pyr odor rate to run rate corr=%.2f p=%.2e, HC in corr=%.2f p=%.2e\n',region{i},a,b,a2,b2)
+
+sp(i)=subplot(2,2,i);
+scatter(odormeans(regionfilt & PYRfilt & nanfilt),runmeans(regionfilt & PYRfilt & nanfilt),4,mycolors(1,:),'filled');
+xlabel('Rate during odorpoke'); ylabel('Rate during run');  set(gca,'Xscale','log','Yscale','log');
+title(sprintf('%s r2=%.2f p=%.2e',region{i},a,b)); legend('pyr');
+si(i)=subplot(2,2,i+2);
+scatter(odormeans(regionfilt & INfilt & nanfilt),runmeans(regionfilt & INfilt & nanfilt),4,mycolors(2,:),'filled'); 
+xlabel('Rate during odorpoke'); ylabel('Rate during run');set(gca,'Xscale','log','Yscale','log');
+title(sprintf('%s r2=%.2f p=%.2e',region{i},a2,b2)); legend('IN');
+
+
 end  
-linkaxes(get(gcf,'children'));
+linkaxes(sp);
+linkaxes(si);
 
 
  %%
@@ -204,22 +218,22 @@ if usetercile
         cellfun(@(a) log2(a)>lowfilt & log2(a)<highfilt, {SuperUnits.meanrate});
 end
 
-PFtest=SuperUnits(cellfilt);
+cellPool=SuperUnits(cellfilt);
 % what %% of cells that fire on a run have a pf on that run
 % 1 if left preferring, -1 if right preferring, 0 if no pref
-objSel=cellfun(@(a) a(3)==1,{PFtest.OdorSelective}).*...
-    ((cellfun(@(a) a(1)>0, {PFtest.OdorSelective})-.5)*2);
+objSel=cellfun(@(a) a(3)==1,{cellPool.OdorSelective}).*...
+    ((cellfun(@(a) a(1)>0, {cellPool.OdorSelective})-.5)*2);
 % -1 if downreg, 0 if no reg, 1 if upreg
 % to get direction, use the min p index (they're always the same direction)
-objRes=cellfun(@(a) any(a(:,4)<.05),{PFtest.OdorResponsive}).*...
-    ((cellfun(@(a) any(a((a(:,4)==min(a(:,4))),2)>0),{PFtest.OdorResponsive})-.5)*2); % we cant do
+objRes=cellfun(@(a) any(a(:,4)<.05),{cellPool.OdorResponsive}).*...
+    ((cellfun(@(a) any(a((a(:,4)==min(a(:,4))),2)>0),{cellPool.OdorResponsive})-.5)*2); % we cant do
 
 
 % condense into cell classes
 cellclasses=double(objSel==0 & objRes==0); cellclasses(objSel==0 & objRes~=0)=2; cellclasses(objSel~=0)=3;
 
 % ok %% of cells with 1 and %% of cells with more than 1 pf that arent obj
-PFcounts=cell2mat(cellfun(@(a) a(1:2), {PFtest.PFexist},'UniformOutput',false)');
+PFcounts=cell2mat(cellfun(@(a) a(1:2), {cellPool.PFexist},'UniformOutput',false)');
 
 bary=[nanmean(sum(PFcounts(cellclasses==1,:),2)==1)...          % nonselective
     nanmean(sum(PFcounts(cellclasses==2,:),2)==1)...            % odor responsive
@@ -242,8 +256,19 @@ labels2 = {sum(sum(PFcounts(cellclasses==1,:),2)>1) sum(sum(PFcounts(cellclasses
 text(xtips,ytips2,labels2,'HorizontalAlignment','center',...
     'VerticalAlignment','bottom');
 ylim([0 100]);
-sgtitle(sprintf('Place Fields of %s cells from %s, out of a pool of %d active', type, region{i}, length(PFtest)));
+sgtitle(sprintf('Place Fields of %s cells from %s, out of a pool of %d active', type, region{i}, length(cellPool)));
 xtickangle(340); box off;
+
+
+% raw numbers and their perceotages
+fprintf('%s numbers: Nonresponsive tot %d: one %d (%.f): two %d (%.f) \n',...
+   region{i},sum(objSel==0 & objRes==0), labels{1}, bary(1,1), labels2{1},bary(2,1));
+ fprintf('%s numbers: Responsive tot %d: one %d (%.f): two %d (%.f) \n',...
+   region{i},sum(objSel==0 & objRes~=0), labels{2}, bary(1,2), labels2{2},bary(2,2));
+ fprintf('%s numbers: Selective tot %d: one %d (%.f): two %d (%.f) \n',...
+   region{i},sum(objSel~=0), labels{3}, bary(1,3), labels2{3}, bary(2,3));
+ 
+
 
 % chi square test for independence
 chiraw=[sum(sum(PFcounts(cellclasses==1,:),2)==0)...        % nonselective
@@ -257,8 +282,25 @@ chiraw=[sum(sum(PFcounts(cellclasses==1,:),2)==0)...        % nonselective
     sum(sum(PFcounts(cellclasses==3,:),2)>1)];
 [a,b,c]=chi2indep(chiraw);
 
-fprintf('%s Chi2 on pf rates across object responsiveness is chi2(%d)=%.2f, p%e \n',...
+% the chi2 tests...
+fprintf('%s Chi2 on pf rates across object responsiveness is chi2(%d)=%.2f, p%.2e \n',...
     region{i},c,b,a);
+[a,b,c]=chi2indep(chiraw(:,1:2));
+fprintf('%s posthoc unresp v resp chi2(%d)=%.2f, bonf. p=%.2e \n',...
+    region{i},c,b,a*3);
+[a,b,c]=chi2indep(chiraw(:,[1 3]));
+fprintf('%s posthoc unresp v sel chi2(%d)=%.2f, bonf. p=%.2e \n',...
+    region{i},c,b,a*3);
+[a,b,c]=chi2indep(chiraw(:,2:3));
+fprintf('%s posthoc resp v sel chi2(%d)=%.2f, bonf. p=%.2e \n',...
+    region{i},c,b,a*3);
+
+% now run binomial test on pf prevalence
+[y]=binocdf(chiraw(2,2)+chiraw(3,2),sum(chiraw(:,2)),(chiraw(2,1)+chiraw(3,1))/sum(chiraw(:,1)));
+fprintf('binomial test on p(odorresponsive) cells  pval=%.2e\n',1-y);
+[y]=binocdf(chiraw(2,3)+chiraw(3,3),sum(chiraw(:,3)),(chiraw(2,1)+chiraw(3,1))/sum(chiraw(:,1)));
+fprintf('binomial test on p(odorselective) cells  pval=%.2e\n',1-y)
+
  end
  %%
  for i=1:length(region)
@@ -267,23 +309,23 @@ if ratecontrol
      cellfilt=cellfun(@(a) contains(a,region{i},'IgnoreCase',true),{SuperUnits.area}) &...
         cellfun(@(a) contains(a,type,'IgnoreCase',true),{SuperUnits.type}) &...
         cellfun(@(a) any(a),{SuperUnits.FiresDuringRun});
-    PFtest=SuperUnits(cellfilt);
+    cellPool=SuperUnits(cellfilt);
     % what %% of cells that fire on a run have a pf on that run
     % 1 if left preferring, -1 if right preferring, 0 if no pref
-    objSel=cellfun(@(a) a(3)==1,{PFtest.OdorSelective}).*...
-        ((cellfun(@(a) a(1)>0, {PFtest.OdorSelective})-.5)*2);
+    objSel=cellfun(@(a) a(3)==1,{cellPool.OdorSelective}).*...
+        ((cellfun(@(a) a(1)>0, {cellPool.OdorSelective})-.5)*2);
     % -1 if downreg, 0 if no reg, 1 if upreg
     % to get direction, use the min p index (they're always the same direction)
-    objRes=cellfun(@(a) any(a(:,4)<.05),{PFtest.OdorResponsive}).*...
-        ((cellfun(@(a) any(a((a(:,4)==min(a(:,4))),2)>0),{PFtest.OdorResponsive})-.5)*2); % we cant do
+    objRes=cellfun(@(a) any(a(:,4)<.05),{cellPool.OdorResponsive}).*...
+        ((cellfun(@(a) any(a((a(:,4)==min(a(:,4))),2)>0),{cellPool.OdorResponsive})-.5)*2); % we cant do
 
     % condense into cell classes
     cellclasses=double(objSel==0 & objRes==0); cellclasses(objSel==0 & objRes~=0)=2; cellclasses(objSel~=0)=3;
-    PFcounts=cell2mat(cellfun(@(a) a(1:2), {PFtest.PFexist},'UniformOutput',false)');
+    PFcounts=cell2mat(cellfun(@(a) a(1:2), {cellPool.PFexist},'UniformOutput',false)');
 
    
     % this could be the overall firing rate...
-    overallrate=(cellfun(@(a)  a, {PFtest.meanrate}));
+    overallrate=(cellfun(@(a)  a, {cellPool.meanrate}));
     
     meansy=[nanmean(overallrate(cellclasses==1)) nanmean(overallrate(cellclasses==2))...
         nanmean(overallrate(cellclasses==3))];
@@ -309,23 +351,23 @@ end
 % have object responsiveness or object selectivity?
 for i=1:length(region)
 % the pool is in this region and pyrs
-PFtest=SuperUnits(cellfun(@(a) contains(a,region{i},'IgnoreCase',true),{SuperUnits.area}) &...
+cellPool=SuperUnits(cellfun(@(a) contains(a,region{i},'IgnoreCase',true),{SuperUnits.area}) &...
     cellfun(@(a) contains(a,type,'IgnoreCase',true),{SuperUnits.type}) &...
     cellfun(@(a) any(a),{SuperUnits.FiresDuringRun}));
 
 % what %% of cells that fire on a run have a pf on that run
 
 % 1 if left preferring, -1 if right preferring, 0 if no pref
-objSel=cellfun(@(a) a(3)==1,{PFtest.OdorSelective}).*...
-    ((cellfun(@(a) a(1)>0, {PFtest.OdorSelective})-.5)*2);
+objSel=cellfun(@(a) a(3)==1,{cellPool.OdorSelective}).*...
+    ((cellfun(@(a) a(1)>0, {cellPool.OdorSelective})-.5)*2);
 % -1 if downreg, 0 if no reg, 1 if upreg
-objRes=cellfun(@(a) any(a(:,4)<.05),{PFtest.OdorResponsive}); %.*...
+objRes=cellfun(@(a) any(a(:,4)<.05),{cellPool.OdorResponsive}); %.*...
     %((cellfun(@(a) a(2)>0,{PFtest.OdorResponsive})-.5)*2); % we cant do
     %this right now...
 
 % ok %% of cells with 1 and %% of cells with more than 1 pf that arent obj
 % for forward and reverse or just foreward?
-PFcounts=cell2mat(cellfun(@(a) sum(a(1:2)), {PFtest.PFexist},'UniformOutput',false)');
+PFcounts=cell2mat(cellfun(@(a) sum(a(1:2)), {cellPool.PFexist},'UniformOutput',false)');
 
 % so itll be 0 pf, 1pf, 2+pf, stacks are resp and ontop sel
 bary=[nanmean(objRes(PFcounts==0)~=0 & objSel(PFcounts==0)==0)...  % %% of 0 pf units who are selective              
@@ -354,7 +396,7 @@ labels2 = {sum(objSel(PFcounts==0)~=0)...
 text(xtips,ytips2,labels2,'HorizontalAlignment','center',...
     'VerticalAlignment','bottom');
 ylim([0 100]);
- sgtitle(sprintf('Place Fields of %s cells from %s, out of a pool of %d', type, region{i}, length(PFtest)));
+ sgtitle(sprintf('Place Fields of %s cells from %s, out of a pool of %d', type, region{i}, length(cellPool)));
  xtickangle(340); box off;
 
 chiraw=[sum(objRes(PFcounts==0)==0)...
@@ -390,19 +432,19 @@ for i=1:length(region)
     cellfilt=cellfun(@(a) contains(a,region{i},'IgnoreCase',true),{SuperUnits.area}) &...
         cellfun(@(a) contains(a,type,'IgnoreCase',true),{SuperUnits.type});
     
-    PFtest=SuperUnits(cellfilt);
+    cellPool=SuperUnits(cellfilt);
     % now I think i can probably take each unit and replicate it twice for out
     % l and out r and then cull those without place fields
     % first gather the place fields into a super long vector
-    allPFs=cell2mat(cellfun(@(a) a(1:2), {PFtest.PFexist},'UniformOutput',false));
+    allPFs=cell2mat(cellfun(@(a) a(1:2), {cellPool.PFexist},'UniformOutput',false));
     
     % replacate this twice per cell
     % 1 if left preferring, -1 if right preferring, 0 if no pref
-    objSel=repmat(cellfun(@(a) a(3)==1,{PFtest.OdorSelective}).*...
-        ((cellfun(@(a) a(1)>0, {PFtest.OdorSelective})-.5)*2),2,1);
+    objSel=repmat(cellfun(@(a) a(3)==1,{cellPool.OdorSelective}).*...
+        ((cellfun(@(a) a(1)>0, {cellPool.OdorSelective})-.5)*2),2,1);
     objSel=objSel';
     % -1 if downreg, 0 if no reg, 1 if upreg
-    objRes=repmat(cellfun(@(a) any(a(:,4)<.05),{PFtest.OdorResponsive}),2,1); %.*...
+    objRes=repmat(cellfun(@(a) any(a(:,4)<.05),{cellPool.OdorResponsive}),2,1); %.*...
     %((cellfun(@(a) a(2)>0,{PFtest.OdorResponsive})-.5)*2),2,1);
     objRes=objRes';
     
@@ -413,7 +455,7 @@ for i=1:length(region)
     
     figure;
     % first is pf peak rate
-    PFpeaks=cell2mat(cellfun(@(a) a.PFmax(1:2), {PFtest.FieldProps}, 'UniformOutput', false));
+    PFpeaks=cell2mat(cellfun(@(a) a.PFmax(1:2), {cellPool.FieldProps}, 'UniformOutput', false));
     subplot(1,2,1);
     boxScatterplot(PFpeaks(celltypes>0),celltypes(celltypes>0),'xLabels',...
         {'Obj Unresponsive','Obj Responsive','Obj Selective'},'position',[]);
@@ -431,7 +473,7 @@ for i=1:length(region)
     % this does boxscatterplots, mainly cause they make everything look the
     % Place field Width
     subplot(1,2,2);
-    PFwidth=cell2mat(cellfun(@(a) a.PFsize(1:2), {PFtest.FieldProps}, 'UniformOutput', false));
+    PFwidth=cell2mat(cellfun(@(a) a.PFsize(1:2), {cellPool.FieldProps}, 'UniformOutput', false));
     boxScatterplot(PFwidth(celltypes>0),celltypes(celltypes>0),'xLabels',...
         {'Obj Unresponsive','Obj Responsive','Obj Selective'},'Position',[]);
     ylabel('Place Field Width (% of maze)');  xtickangle(340); box off;
@@ -448,7 +490,7 @@ for i=1:length(region)
     % next is sparsity
     figure;
     subplot(1,4,1);
-    PFsparsity=cell2mat(cellfun(@(a) a.sparsity(1:2), {PFtest.FieldProps}, 'UniformOutput', false));
+    PFsparsity=cell2mat(cellfun(@(a) a.sparsity(1:2), {cellPool.FieldProps}, 'UniformOutput', false));
     boxScatterplot(log2(PFsparsity(celltypes>0)),celltypes(celltypes>0),'xLabels',...
         {'Obj Unresponsive','Obj Responsive','Obj Selective'},'position',[]);
     ylabel('Log_2 Place Field sparsity');  xtickangle(340); box off;
@@ -463,7 +505,7 @@ for i=1:length(region)
     
     % next is information in bits/spike
     subplot(1,4,2);
-    PFinfo=cell2mat(cellfun(@(a) a.info(1:2), {PFtest.FieldProps}, 'UniformOutput', false));
+    PFinfo=cell2mat(cellfun(@(a) a.info(1:2), {cellPool.FieldProps}, 'UniformOutput', false));
     boxScatterplot(log2(PFinfo(celltypes>0)),celltypes(celltypes>0),'xLabels',...
         {'Obj Unresponsive','Obj Responsive','Obj Selective'},'position',[]);
     ylabel('Log_2 Place Field information (bits/spike)'); xtickangle(340); box off;
@@ -480,9 +522,9 @@ for i=1:length(region)
     % next is field gain (this is a hard one...)
     % here though, I am only using cells whose field isnt on the edge...
     cumct=1;
-    for j=1:length(PFtest)
+    for j=1:length(cellPool)
         try
-            linfield=PFtest(j).LinPlaceFields{1}(1,:);
+            linfield=cellPool(j).LinPlaceFields{1}(1,:);
             [pfmax,pfmaxpos]=max(linfield);
             pfstart=find(linfield(1:pfmaxpos) < pfmax*.25,1,'last');
             if isempty(pfstart), pfstart=1; end
@@ -499,7 +541,7 @@ for i=1:length(region)
         PFgains(cumct)=fieldgain; cumct=cumct+1;
         
         try
-            linfield=PFtest(j).LinPlaceFields{1}(2,:);
+            linfield=cellPool(j).LinPlaceFields{1}(2,:);
             [pfmax,pfmaxpos]=max(linfield);
             pfstart=find(linfield(1:pfmaxpos) < pfmax*.25,1,'last');
             if isempty(pfstart), pfstart=nan; end
@@ -537,11 +579,11 @@ for i=1:length(region)
     
     subplot(1,4,4);
     % what about overall rate for odor selective/odor responsive?
-    allPFs=cellfun(@(a) any(a(1:2)), {PFtest.FiresDuringRun});
-    celltypes2=double(allPFs & cellfun(@(a) any(a(:,4)<.05),{PFtest.OdorResponsive}));
-    celltypes2(allPFs & cellfun(@(a) a(3)==1, {PFtest.OdorSelective}))=2;
+    allPFs=cellfun(@(a) any(a(1:2)), {cellPool.FiresDuringRun});
+    celltypes2=double(allPFs & cellfun(@(a) any(a(:,4)<.05),{cellPool.OdorResponsive}));
+    celltypes2(allPFs & cellfun(@(a) a(3)==1, {cellPool.OdorSelective}))=2;
     
-    cellrates=cellfun(@(a) a(1), {PFtest.meanrate}); % overall mean rate
+    cellrates=cellfun(@(a) a(1), {cellPool.meanrate}); % overall mean rate
     boxScatterplot(log2(cellrates),celltypes2+1,'xLabels',...
         {'Obj Unresponsive','Obj Responsive','Obj Selective'},'position',[]);
     ylabel('Log_2 cell firing rate');  xtickangle(340); box off;
@@ -581,20 +623,23 @@ for i=1:length(region)
 % filter by region and celltype
 cellfilt=cellfun(@(a) contains(a,region{i},'IgnoreCase',true),{SuperUnits.area}) &...
     cellfun(@(a) contains(a,type,'IgnoreCase',true),{SuperUnits.type}) &...
-    cellfun(@(a) ~isempty(a), {SuperUnits.LinPlaceFields});
-PFtest=SuperUnits(cellfilt);
+    cellfun(@(a) (length(a)>1), {SuperUnits.LinPlaceFields});
+cellPool=SuperUnits(cellfilt);
+
+% second filter, has to have rate curves on both outbounds
+cellPool=cellPool(cellfun(@(a)  ~isempty(a{1}) && ~isempty(a{2}), {cellPool.LinPlaceFields}));
 % kill those with too few trajectories
-PFtest(cellfun(@(a) size(a{1},1), {PFtest.LinPlaceFields})<2)=[];
+
 
 
 % lets categorize the cells so we can plot their continuous dims
-% selectivity is -1 0 or 1
-objSel=cellfun(@(a) a(3)==1,{PFtest.OdorSelective}).*...
-    ((cellfun(@(a) diff(a(1:2))>0, {PFtest.OdorMeans})-.5)*2);
+% selectivity is -1 0 or 1, y/n and preferred dir
+objSel=cellfun(@(a) a(3)==1,{cellPool.OdorSelective}).*...
+    ((cellfun(@(a) diff(a(1:2))>0, {cellPool.OdorMeans})-.5)*2);
 % objres is 1 rate 2 change 3 is dprime 4 is signrankp
 % -1 if downreg, 0 if no reg, 1 if upreg
-objRes=cellfun(@(a) min(a(:,4))<.05,{PFtest.OdorResponsive}).*...
-    ((cellfun(@(a) nanmean(a(:,2))>0,{PFtest.OdorResponsive})-.5)*2);
+objRes=cellfun(@(a) min(a(:,4))<.05,{cellPool.OdorResponsive}).*...
+    ((cellfun(@(a) nanmean(a(:,2))>0,{cellPool.OdorResponsive})-.5)*2);
 
 % 0 for no object resp, 1 for resp, and 2 for sel, you can gather direction
 celltypes=double(objRes~=0 & objSel==0);
@@ -603,15 +648,15 @@ celltypes(objSel~=0)=2;
 % 1. does object responsiveness relate to corelation between trajectories?
 % first gather the object responsiveness (signed log10)
 % signed effect size
-objscores=cellfun(@(a)  mean(a(:,3))*((mean(a(:,2))>0)-.5)*2, {PFtest.OdorResponsive});
+objscores=cellfun(@(a)  mean(a(:,3))*((mean(a(:,2))>0)-.5)*2, {cellPool.OdorResponsive});
 
-% gather the trajectory correlations too
-trajcorrs=cellfun(@(a) corr(a{1}(1,:)',a{1}(2,:)','Rows','Pairwise'),{PFtest.LinPlaceFields});
+% gather the trajectory correlations too ** some have empty cells
+trajcorrs=cellfun(@(a) corr(a{1}',a{2}','Rows','Pairwise'),{cellPool.LinPlaceFields});
 
 figure; scatter(objscores(celltypes==0),trajcorrs(celltypes==0),12,'filled');
 hold on;
 scatter(objscores(celltypes>0),trajcorrs(celltypes>0),12,'filled');
-xlabel('object responsiveness score'); ylabel('outbound pf correlation');
+xlabel('object responsiveness score (chg from baseline)'); ylabel('outbound pf correlation');
 legend('obj nonresponsive','obj responsive');
 title(sprintf('%s %s cells',region{i}, type)); box off;
 % first filter based on has a trajectory, then run corr on trajectories
@@ -619,32 +664,33 @@ title(sprintf('%s %s cells',region{i}, type)); box off;
 
 % Does odor selectivity match trajectory selectivity (mean rates across
 % runs)
-%{
-odordiffs=cellfun(@(a) a(4), {PFtest.OdorSelective}).*cellfun(@(a) (((a(1)-a(2))>0)-.5)*2, {PFtest.OdorMeans});
-trajdiffs=cellfun(@(a) dprime(a{1},a{2}).*((mean(a{1})>mean(a{2}))-.5)*2, {PFtest.RunRates});
+% this is signed dprime effect size
+odordiffs=cellfun(@(a) a(4), {cellPool.OdorSelective}).*cellfun(@(a) (((a(1)-a(2))>0)-.5)*2, {cellPool.OdorMeans});
+% this is dprime effect size betweeen peak rates across runs
+trajdiffs=cellfun(@(a) dprime(a{1},a{2}).*((mean(a{1})>mean(a{2}))-.5)*2, {cellPool.RunRates});
 
 figure; scatter(odordiffs(celltypes<2),trajdiffs(celltypes<2),12,'filled');
 hold on;
 scatter(odordiffs(celltypes==2),trajdiffs(celltypes==2),12,'filled');
-xlabel('object s score'); ylabel('outbound pf difference score');
+xlabel('d'' obj selectivity'); ylabel('d'' outbout pf peak rate');
 legend('obj nonselective','obj selective');
-title(sprintf('%s %s cells',region, type));
-%}
+title(sprintf('%s %s cells',region{i}, type));
 
 
 
-% Does odor selectivity match  diff in peak rates fo each run
 
-odordiffs=cellfun(@(a) a(4), {PFtest.OdorSelective}).*cellfun(@(a) (((a(1)-a(2))>0)-.5)*2, {PFtest.OdorMeans});
-
-trajdiffs=cellfun(@(a) (max(a{1}(1,:))-max(a{1}(2,:)))/...
-    (max(a{1}(1,:))+max(a{1}(2,:))), {PFtest.LinPlaceFields});
+% Does odor selectivity match diff in peak rates fo each run
+% signed d' of odor coding
+odordiffs=cellfun(@(a) a(4), {cellPool.OdorSelective}).*cellfun(@(a) (((a(1)-a(2))>0)-.5)*2, {cellPool.OdorMeans});
+% this is just a raw difference in max
+trajdiffs=cellfun(@(a) (max(a{1})-max(a{2}))/...
+    (max(a{1})+max(a{2})), {cellPool.LinPlaceFields});
 
 
 figure; s=scatter(odordiffs(celltypes<2),trajdiffs(celltypes<2),12,'filled');
 hold on;
 s(2)=scatter(odordiffs(celltypes==2),trajdiffs(celltypes==2),12,'filled');
-xlabel('Odor Selectivity'); ylabel('Outbound Trajectory Selectivity');
+xlabel('Odor Selectivity (d'')'); ylabel('Outbound Trajectory Selectivity (grand mean diff/sum)');
 title(sprintf('%s %s cells',region{i}, type));
 hold on;
 plot([-1 1],[0 0],'k'); plot([0 0],[-1 1],'k');
@@ -664,8 +710,8 @@ fprintf('for full %s pop r^2=%.2f, p=%.4f, for selective cells, r^2=%.2f, p=%.4f
 % we need object selectivity, and the direction
 % thats objSel,  now we need pf presence, so it will have to be something
 % like 0, 1, or 2, and then if it has one, we multiply it by the diff
-pfnums=cellfun(@(a) sum(a(1:2)), {PFtest.PFexist});
-pfdir=cellfun(@(a) diff(a(1:2)), {PFtest.PFexist});
+pfnums=cellfun(@(a) sum(a(1:2)), {cellPool.PFexist});
+pfdir=cellfun(@(a) diff(a(1:2)), {cellPool.PFexist});
 pfnums(pfdir~=0)=pfnums(pfdir~=0).*pfdir(pfdir~=0); % sign all those who are 1
 % 53 left, 300 no pfs, 73 both, and 57 right
 % now aggregate,
@@ -691,3 +737,38 @@ text(xtips,ytips,labels,'HorizontalAlignment','center',...
 
 xtickangle(340); box off;
 end
+
+
+%%
+% shantanu had a question, basically the question is whether route
+% selective cells, or cells whose place fields significantly differ across
+% the routes behave differently than cells who arent...
+% the baseline here i think is cells that dont?
+
+% first gather the cells whose pf maps differ
+% those are the cells whose SplitterScore is nonzero and p is less than 0
+
+
+% the other problem is that it might be better to filter splitter cells to
+% cells who fire on the center stem and arent head direction cells, or
+% distal arm cells.. whatever, lets look for cells that have pfs but arent
+% splitters and then compare those to splitters
+
+for i=1:length(region)
+% filter by region and celltype and has to fire during at least one run
+cellfilt=cellfun(@(a) contains(a,region{i},'IgnoreCase',true),{SuperUnits.area}) &...
+    cellfun(@(a) contains(a,type,'IgnoreCase',true),{SuperUnits.type}) &...
+    cellfun(@(a) any(a),{SuperUnits.FiresDuringRun});
+
+% of the splitter cells, whats their object selectivity?
+cellPool=SuperUnits(cellfilt);
+Spllitters=cellfun(@(a) a(1)>0 & a(2)<.05, {cellPool.SplitterScore});
+
+% now compare rates of odor responsiveness and odor selectivity of the
+% splitters to the non splitters
+
+
+
+end
+
+

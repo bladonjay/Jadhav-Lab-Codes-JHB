@@ -78,7 +78,8 @@ bootct=1000;
 
 
 % OdorRates: a nx3 matrix, 1 rate, 2 nspikes, 3 lr10 (doesnt get you the CI10
-% odorSelective: a 4 element vector, 1 diff in mean rates, 2 pval, 3 is p<05
+% odorSelective: a 4 element vector, 1 diff in mean rates, 2 pval, 3 is
+% p<05, 4 is the dprime effect size
 % odorMeans: mean rate for each odor
 % odorResponsive: rate at odor, mean chg from before, std chg from before, pval
 

@@ -38,7 +38,7 @@ well it went to
 % at the bottom of this is where we designate the side well and home well
 % distances
 
-for i=26 %1:length(SuperRat)
+for i=1:length(SuperRat)
     tic
     coorddata=SuperRat(i).tracking.data;
     % these coord data come in as ts, x, y, dir?, smoothed vel (not
@@ -110,7 +110,7 @@ end
 
 % now go until you have a radius small enough to start this is
 % determinisitc
-for i=26 %:length(SuperRat)
+for i=1:length(SuperRat)
     if SuperRat(i).longTrack>0
         tic
         coorddata=SuperRat(i).tracking.data;
@@ -271,7 +271,7 @@ end
 
 %% now to designate the epoch for each video frame
 
-for ses= 26 %1:length(SuperRat)
+for ses= 1:length(SuperRat)
     myCoords=SuperRat(ses).LinCoords;
     allTracking=SuperRat(ses).tracking.data;
     % this will be the last datapoint until the next epoch starts

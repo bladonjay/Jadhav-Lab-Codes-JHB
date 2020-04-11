@@ -63,9 +63,9 @@ for ses=1:length(SuperRat)
         spikedata=SuperRat(ses).units(UseCells(i)).ts(:,1);
         
         % remove spikes between the tracking
+        subplot(4,1,1);
         thesespikes=EpochCoords(spikedata,goodepochs);
         fprintf('%d of %d spikes are during runs \n',length(thesespikes),length(spikedata));
-        subplot(4,1,1);
         plot(disptracking(:,2),disptracking(:,3),'k');
         hold on;
         spikex=interp1(thistrack(:,1),thistrack(:,2),thesespikes);
@@ -91,7 +91,7 @@ for ses=1:length(SuperRat)
         % going to do a box and whisker plot for odor rates
         subplot(4,1,3);
         
-        [~,spkevs,~,trspkinds]=event_spikes(spikedata,trialmat(:,1),...
+        [~,spkevs,~,trspkinds,~,evspikes]=event_spikes(spikedata,trialmat(:,1),...
             0,trialmat(:,2)-trialmat(:,1));
         spknums=cellfun(@(a) length(a), trspkinds);
         % scrub any block that is zero
@@ -100,7 +100,21 @@ for ses=1:length(SuperRat)
         %find those inds and remove them
         keeptrials=sum(find(spikesperblock>trialsperblock/2)'==trialmat(:,5),2)>0;
         odorid=trialmat(:,3);
-        
+
+        %or you can do the raster for time locked firing rate
+        subplot(4,1,3);
+          [~,~,~,~,~,evspikes]=event_spikes(spikedata,trialmat(keeptrials,1),...
+            2,trialmat(keeptrials,2)-trialmat(keeptrials,1)+2);
+        thismat=trialmat(keeptrials,:);
+         for q=1:length(evspikes)
+             if ~isempty(evspikes{q})
+                plot(linearize(repmat(evspikes{q}',3,1)),linearize(repmat([0 1 nan]',1,length(evspikes{q}))+q),'k');
+                hold on;
+                plot([thismat(q,2)-thismat(q,1) thismat(q,2)-thismat(q,1)],[q-1 q],'r');
+             end
+             ylim([0 length(evspikes)+1]);
+         end
+
         % remember LR10
         
         if any(spkevs(keeptrials))

@@ -17,7 +17,7 @@
 % place field for either (all the cells will have a left and a right out
 % field
 
-savedir=uigetdir;
+%savedir=uigetdir;
 runboots=500;
 verbose=0; % start with true, move to false
 runblocks=0;
@@ -35,7 +35,7 @@ FieldPropsNan=struct('PFmax',nan(1,4),'PFmaxpos',nan(1,4),...
     'sparsityP',nan(1,4));
 
 
-for ses=7:length(SuperRat)
+for ses=1:length(SuperRat)
     tic
     if SuperRat(ses).longTrack
         % 1 is bottom left, 2 is bottom right, 3 is home
@@ -224,11 +224,11 @@ for ses=7:length(SuperRat)
                 end % blocks
                 %}
             else % if run whole day as unitary session
-                for tr=1:4 % for each trajectory (out left, out right, in left, in right)
+                for tr=1:length(trajinds) % for each trajectory (out left, out right, in left, in right)
                     
                     keepinds=thistraj(:,4)==trajinds(tr,1) & thistraj(:,5)==trajinds(tr,2);
                     % did the animal spend enough time in this trajectory?
-                    if sum(keepinds)>30*10 % 15 seconds of data
+                    if sum(keepinds)>30*10 % 10 seconds of data
                         
                         % pull this traj, order epochs chronologically
                         temptraj=sortrows(thistraj(keepinds,:),1);
@@ -394,7 +394,7 @@ for ses=7:length(SuperRat)
                     end % if we have trajectories
                    %} 
                     else
-                        keyboard;
+                        %keyboard;
                         % this would be the unlikely event that this run
                         % block actually doesnt have enough runs to analyze
                     end % of if this trajectory is big enough
@@ -410,13 +410,14 @@ for ses=7:length(SuperRat)
         fprintf('\n Session %d done in %.2f mins \n',ses,toc/60);
     end
 end
-
-if any(savedir~=0)
-    save(fullfile(savedir,'ClaireData4-3-20'),'SuperRat');
-    fprintf('Finished Boot and Saved out \n');
-else
-    fprintf('finished boot, didnt save \n');
-end
+% 
+% if any(savedir~=0)
+%     today=datestr(now); mydate=today(1:find(today==' ',1,'first')-1);
+%     save(fullfile(savedir,sprintf('ClaireData%s',mydate)),'SuperRat');
+%     fprintf('Finished Boot and Saved out \n');
+% else
+%     fprintf('finished boot, didnt save \n');
+% end
 %% this runs the comparison of mean rates for each trajectory
 % Basically its a low-res splitter score, if it doesnt work we'll have to
 % do a spatial cross correlation between the trajectories
@@ -443,7 +444,9 @@ for i=1:length(SuperRat)
                     (nanmean(RunRates(RunRates(:,2)==1,1))+nanmean(RunRates(RunRates(:,2)==1,1)));
                 
                 if boot>0
-                    % get the pull for
+                    % get the pull for just outbound... not sure i need
+                    % this its from when i used to calculate splitter score on inbound
+                    % too
                     outTraj=RunRates(RunRates(:,2)==1 | RunRates(:,2)==2,1);
                     
                     TrajBoot=[nan nan];
@@ -478,7 +481,7 @@ speedthreshold=3;
 veltimesmooth=8; % bins
 sumdiff=@(a,b) nansum(abs(a-b)./(a+b)); % the function to get our splitter score
 
-for ses=7:length(SuperRat)
+for ses=1:length(SuperRat)
     tic
 
     % grab the run blocks
@@ -548,6 +551,14 @@ for ses=7:length(SuperRat)
         fprintf(' %d',j);
     end
     fprintf('\n Session %d took %.2f minutes \n',ses,toc/60); 
+end
+
+if any(savedir~=0)
+    today=datestr(now); mydate=today(1:find(today==' ',1,'first')-1);
+    save(fullfile(savedir,sprintf('ClaireData%s',mydate)),'SuperRat');
+    fprintf('Finished Boot and Saved out \n');
+else
+    fprintf('finished boot, didnt save \n');
 end
 %% just look at some cells to see if they're selective and that
 % the raw rates look reasonable

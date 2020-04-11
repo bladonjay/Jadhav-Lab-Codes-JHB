@@ -76,3 +76,73 @@ but i'll need to normalize them by maybe their rates overall?
 
 %}
 
+%{
+Notes from 4/10/20
+for figure 5- put letters for subpanels
+-remove odor 1 vs odor 2 rates for cells that are only responsive and not
+selective
+-add raster for odor responsiveness for some cells
+-more example cells
+-in supplement, show specifically cells that are odor selective and show
+their route selectivity is +, mnopt selective, or opposite selecting
+-for pfc, cause the regression works, pick cells that have matching route
+selectivity and odor selectivity
+-for route selectivity, nspikes per run is fine
+-for pfc place fields need to be called spatial fields
+-use a binomial test to compare the probability of responsive
+cells/selective cells having pfs to those not responsive or selective
+-replace the bar graph with pf numbers as x axis with the regression plot
+of rates during run and rates during odor presentation
+-use claires glm code to decode routes given odor activity.
+
+
+%}
+
+
+%{
+glm code
+% ok so Cellmatrix is n events by m cells, and its the number of spikes per
+event row.  my window will be 800 msec.  So the goal here will be to use
+exactly her decoder and then apply it to multiple spatial bin sizes.
+
+K = 5;
+cv = cvpartition(numtrials, 'kfold',K);
+%        
+for k=1:K
+    % training/testing indices for this fold
+    trainIdx = cv.training(k);
+    testIdx = cv.test(k);
+    
+    % train GLM model
+    
+    warning('off','all');
+    %disp('Fitting GLM')
+    mdl = fitglm(Cellmatrix(trainIdx,:), trialIDs(trainIdx),'Distribution', 'binomial');
+    
+    % predict regression output
+    Y_hat = predict(mdl, Cellmatrix(testIdx,:));
+    
+pred = round(Y_hat); %glm outputs very small values instead of zeros (binomial) for some reason, round to zero
+ids = trialIDs(testIdx);
+fract_correct(k) = sum(pred == ids)/length(pred);
+
+end
+fract_correct = mean(fract_correct);
+
+%Do shuffling
+for s = 1:100
+    if mod(s,10) == 0 || s == 1
+    %disp(['Doing shuffle- iteration ', num2str(s)])
+    end
+    
+    shuff_trialIDs = trialIDs(randperm(length(trialIDs)));
+    mdl = fitglm(Cellmatrix(trainIdx,:), shuff_trialIDs(trainIdx),'Distribution', 'binomial');
+    Y_hat_shuff = predict(mdl, Cellmatrix(testIdx,:));
+    pred_shuff = round(Y_hat_shuff);
+    ids_shuff = shuff_trialIDs(testIdx);
+    
+    fract_correct_shuff(s) = sum(pred_shuff == ids_shuff)/length(pred_shuff);
+end
+fract_correct_shuff = mean(fract_correct_shuff);
+
+%}
