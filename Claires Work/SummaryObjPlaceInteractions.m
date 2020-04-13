@@ -449,9 +449,9 @@ for i=1:length(region)
     objRes=objRes';
     
     % how many cells w pfs are odor selective or responsive...
-    celltypes=double(allPFs(:)==1 & objSel(:)==0 & objRes(:)==0);
-    celltypes(allPFs(:)==1 & objRes(:)~=0 & objSel(:)==0)=2;
-    celltypes(allPFs(:)==1 & objSel(:)~=0)=3;
+    celltypes=double(allPFs(:)==1 & objSel(:)==0 & objRes(:)==0); % 1 if it has pf, but no odor resp
+    celltypes(allPFs(:)==1 & objRes(:)~=0 & objSel(:)==0)=2; % 2 if has pf and odor resp but not sel
+    celltypes(allPFs(:)==1 & objSel(:)~=0)=3; % 3 if pf, and selective
     
     figure;
     % first is pf peak rate
@@ -687,14 +687,14 @@ trajdiffs=cellfun(@(a) (max(a{1})-max(a{2}))/...
     (max(a{1})+max(a{2})), {cellPool.LinPlaceFields});
 
 
-figure; s=scatter(odordiffs(celltypes<2),trajdiffs(celltypes<2),12,'filled');
+figure; boot=scatter(odordiffs(celltypes<2),trajdiffs(celltypes<2),12,'filled');
 hold on;
-s(2)=scatter(odordiffs(celltypes==2),trajdiffs(celltypes==2),12,'filled');
+boot(2)=scatter(odordiffs(celltypes==2),trajdiffs(celltypes==2),12,'filled');
 xlabel('Odor Selectivity (d'')'); ylabel('Outbound Trajectory Selectivity (grand mean diff/sum)');
 title(sprintf('%s %s cells',region{i}, type));
 hold on;
 plot([-1 1],[0 0],'k'); plot([0 0],[-1 1],'k');
-legend(s,'Non Selective','Odor Selective'); box off;
+legend(boot,'Non Selective','Odor Selective'); box off;
 xlim([-1 1]); ylim([-1 1]);
 [rho,p]=corr(odordiffs(celltypes<2)',trajdiffs(celltypes<2)','rows','complete');
 [rho2,p2]=corr(odordiffs(celltypes==2)',trajdiffs(celltypes==2)','rows','complete');
@@ -709,7 +709,7 @@ fprintf('for full %s pop r^2=%.2f, p=%.4f, for selective cells, r^2=%.2f, p=%.4f
 %somethiing like none, same, opposite both
 % we need object selectivity, and the direction
 % thats objSel,  now we need pf presence, so it will have to be something
-% like 0, 1, or 2, and then if it has one, we multiply it by the diff
+% like -1, 0, 1, or 2, and then if it has one, we multiply it by the diff
 pfnums=cellfun(@(a) sum(a(1:2)), {cellPool.PFexist});
 pfdir=cellfun(@(a) diff(a(1:2)), {cellPool.PFexist});
 pfnums(pfdir~=0)=pfnums(pfdir~=0).*pfdir(pfdir~=0); % sign all those who are 1
@@ -755,20 +755,146 @@ end
 % splitters and then compare those to splitters
 
 for i=1:length(region)
-% filter by region and celltype and has to fire during at least one run
+% filter by region and celltype and has to fire during at least one run AND
+% has to fire during odor delivery
 cellfilt=cellfun(@(a) contains(a,region{i},'IgnoreCase',true),{SuperUnits.area}) &...
     cellfun(@(a) contains(a,type,'IgnoreCase',true),{SuperUnits.type}) &...
-    cellfun(@(a) any(a),{SuperUnits.FiresDuringRun});
+    cellfun(@(a) any(a),{SuperUnits.FiresDuringRun}) &...
+    cellfun(@(a) ~isempty(a), {SuperUnits.OdorRates});
 
 % of the splitter cells, whats their object selectivity?
 cellPool=SuperUnits(cellfilt);
-Spllitters=cellfun(@(a) a(1)>0 & a(2)<.05, {cellPool.SplitterScore});
+Splitters=cellfun(@(a) a(1)>0 & a(2)<.01, {cellPool.SplitterScore}); % pval splitter
 
 % now compare rates of odor responsiveness and odor selectivity of the
 % splitters to the non splitters
+OdorSelectivity=cellfun(@(a) a(1), {cellPool.OdorSelective}); % diff/sum 
 
-
+boxScatterplot(OdorSelectivity,Splitters+1)
 
 end
+% so this is kindof a nonstarter, mostly because these cells all split
+% based on this metric... maybe i'll need to rework the stats on this, i
+% kindof hastily did the splitter score code
+%% so now the decoder analysis
+%{
+thhe gist is that i want to encode the odor sampling period, and then use
+it to decode the trajectory identity at each step along each run.
+
+% i can think of two ways to do this. first, run the exact code wenbo used
+to decode ripples but in reverse.  the other way is to train on the odor
+period and match 800 msec bins for each and every 'run' epoch, find the
+most well predicted bin in that epoch, classify, and mark its position...
+or mark every 800 msec bin, and aggregate the mean positions for each
+decode.
+
+% the rub i anticipate for the wenbo method is i'm not sure how to
+calculate p(spike|odor) if the rates excede 1.
+
+
+%}
+%CellMatrix is a trial by cell matrix of nspikes
+% trialIds is a column of left and right odors
+
+
+% so this will be done for each PFC and dHPC, will ahve to match for cell
+% counts, and will have to probably aggregate per area.  If need be i can
+% do a rigotti style analyisis where i randomly pull from any animal, but
+% i'd rather not do that
+ warning('off','all');
+for ses=1:length(SuperRat)
+
+    odorOK=SuperRat(ses).trialdata.CorrIncorr10 &...
+        ismember(SuperRat(ses).trialdata.EpochInds(:,2),SuperRat(ses).RunEpochs);
+    odorStarts=SuperRat(ses).trialdata.starttime(odorOK); % start time
+    odorIDs=SuperRat(ses).trialdata.leftright10(odorOK); % odor id
+    %
+    nfolds = 5;
+   
+    odorSpkMat=[]; % grab big old matrix
+    for j=1:length(SuperRat(ses).units)
+        [~,odorSpkMat(:,j)]=event_spikes(SuperRat(ses).units(j).ts,...
+            odorStarts,0,0.8);
+    end
+    badunits=mean(odorSpkMat==0,1)==1;
+    % now index columns that are members of PFC or dHPC
+    
+    for i=1:length(region)
+        inRegion=cellfun(@(a) contains(a,region{i},'IgnoreCase',true), {SuperRat(ses).units.area});
+        SpkMat=odorSpkMat(:,inRegion & ~badunits).*.8; % back to # spikes
+        
+        % true decoding
+        cv = cvpartition(length(odorIDs), 'kfold',nfolds);
+        for k=1:nfolds
+            trainIdx = cv.training(k); testIdx = cv.test(k);
+            mdl = fitglm(SpkMat(trainIdx,:), odorIDs(trainIdx),'Distribution', 'binomial');
+            % predict regression output
+            Y_hat = predict(mdl, SpkMat(testIdx,:));
+            pred = round(Y_hat); %glm outputs very small values instead of zeros (binomial) for some reason, round to zero
+            ids = odorIDs(testIdx);
+            fract_correct(k) = sum(pred == ids)/length(pred);
+        end
+        fract_correct_real = mean(fract_correct);
+        
+        %Do shuffling
+        nBoots=500;
+        for boot = 1:nBoots
+            shuff_odorIDs=odorIDs(randperm(length(odorIDs))); % reorder the matrix so it doesnt match odors
+            for k=1:nfolds
+                trainIdx = cv.training(k); testIdx = cv.test(k);
+                mdl = fitglm(SpkMat(trainIdx,:), shuff_odorIDs(trainIdx),'Distribution', 'binomial');
+                Y_hat_shuff = predict(mdl, SpkMat(testIdx,:));
+                pred_shuff = round(Y_hat_shuff);
+                ids_shuff = shuff_odorIDs(testIdx);
+                fract_correct_shuff(k) = sum(pred_shuff == ids_shuff)/length(pred_shuff);
+            end
+            fract_correct_null(boot) = mean(fract_correct_shuff);
+        end
+        p_correct=1-normcdf(fract_correct_real,nanmean(fract_correct_null),...
+            nanstd(fract_correct_null));
+        fprintf('%s odor decoding: %.f%% correct p=%.2e\n',region{i},...
+            fract_correct_real*100,p_correct);
+        
+        % now construct the spatial firing matrix...
+        regionIdx=find(inRegion & ~badunits);
+        clear runSpkMat;
+        for cn=1:length(regionIdx)
+            try
+                runSpkMat(:,cn,1)=SuperRat(ses).units(regionIdx(cn)).LinPlaceFields{1};
+                runSpkMat(:,cn,2)=SuperRat(ses).units(regionIdx(cn)).LinPlaceFields{2};
+            catch
+                runSpkMat(:,cn,1:2)=zeros(2,99);
+            end
+        end
+        
+        % get the classes
+        % start easy, train decoder on all the trials
+        mdl = fitglm(SpkMat, odorIDs,'Distribution', 'binomial');
+       
+        % LR 10
+        runIDs=[ones(99,1);zeros(99,1)];
+        runsCatted=[runSpkMat(:,:,1); runSpkMat(:,:,2)];
+        % poor predictibility, probably cause the numbers arent lined up...
+        pred=round(predict(mdl, allRuns));
+        fract_correct_run=sum(pred==allrunIDs)/length(pred);
+        
+     end
+    
+ warning('on','all');
+%% the other way to do this decoder analysis is to run the
+%{
+algorithm for decoding the runs:
+the question:
+    -where along the run does the neural ensemble resemble that of past
+    odor coding?
+       -maybe this approach is to pull the odor ensemble, then correlate it
+       to the following timebins for each 800 msec run, and then aggregate
+       across 
+    -does the odor discriminating code persist from odor coding into the
+    delay period?
+
+
+
+
 
 

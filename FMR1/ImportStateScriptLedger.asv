@@ -153,60 +153,42 @@ for i=1:length(rats)
     % 5. where was the last port?
     % 6. day number
     % 7. run number
-    
-    %  Task 1 _________       ___________
-    %         |   |   |       |    |    |
-    %         1   2   3       1    3    2 
-    
+    %   -
+    %   |   |   |
     % after transition, you have to every time it says 2 to say 3, this is
     % because now port 2 is in position 3, and port 3 is in position 2
     
-    % we'll have to put in the new positions (post switch) as new columns
-    % in this matrix
-    
-    % so there end up being a small number of rewarded trials where the
-    % animal does the wrong thing, we need to examine this further, but not
-    % yet
-    
     alldays=cell2mat({ratinfo(ratinds==i & taskinds==tk).armvisits}');
     alldays(:,end+1)=1:size(alldays,1);
-    % past port was center
-    leavingcenter=alldays(alldays(:,5)==2,:); % leaving center
-    % past port was an outside port
-    leavingsides=alldays(alldays(:,5)~=2,:); % e.g. him leaving the sides
-    
-    rightvisits=alldays(alldays(:,3)==1,:); 
-    leftvisits=alldays(alldays(:,3)==2,:); 
-    
+    sidevisits=alldays(alldays(:,5)==2,:); % leaving center
+    centervisits=alldays(alldays(:,5)~=2,:); % e.g. him leaving the sides
+    rightvisits=alldays(alldays(:,3)==1,:);
+    leftvisits=alldays(alldays(:,3)==2,:);
     [~,~,alldays(:,6)]=unique(alldays(:,6)); % reorder the days
    
-    %{
-    figure;
-    plot(centervisits(:,7),SmoothMat2(movsum(centervisits(:,4),10)/10,[1 30],3),'--.');
-    hold on;
-    plot(sidevisits(:,7),SmoothMat2(movsum(sidevisits(:,4),10)/10,[1 30],3),'--.');
-    plot([0 max([length(centervisits) max(sidevisits(:,7))])],[.5 .5],'r');
-    legend('Inbound performance','Outbound performance');
-    title(sprintf('10 trial moving average, %s ',rats{i}));
-    %}    
+%     figure;
+%     plot(centervisits(:,7),SmoothMat2(movsum(centervisits(:,4),10)/10,[1 30],3),'--.');
+%     hold on;
+%     plot(sidevisits(:,7),SmoothMat2(movsum(sidevisits(:,4),10)/10,[1 30],3),'--.');
+%     plot([0 max([length(centervisits) max(sidevisits(:,7))])],[.5 .5],'r');
+%     legend('Inbound performance','Outbound performance');
+%     title(sprintf('10 trial moving average, %s ',rats{i}));
     %  now the statespace model
     figure;    sp=subplot(2,1,1); 
-    [bmode,b05,b95,pmatrix,wintr] = CalcStateSpacePerformance(leavingsides(:,4)', 0.5);
+    [bmode,b05,b95,pmatrix,wintr] = CalcStateSpacePerformance(centervisits(:,4)', 0.5);
 
     % plot mode, confidence bounds, chance, and session marker
-    plot(sp(1),leavingsides(:,7)',bmode(1:end-1)); hold on; plot(sp(1),leavingsides(:,7),b05(1:end-1),'r--');
-    plot(sp(1),leavingsides(:,7),b95(1:end-1),'r--'); plot(sp(1),[0 max(leavingsides(:,7))],[.5 .5],'c');
+    plot(sp(1),centervisits(:,7)',bmode(1:end-1)); hold on; plot(sp(1),centervisits(:,7),b05(1:end-1),'r--');
+    plot(sp(1),centervisits(:,7),b95(1:end-1),'r--'); plot(sp(1),[0 max(centervisits(:,7))],[.5 .5],'c');
     plot(sp(1),find(mod(alldays(:,6),2)==1),0.1*ones(sum(mod(alldays(:,6),2)==1),1),'b.');
-    title(sprintf('%s learned task %d center at %d',rats{i},tk,leavingsides(find(pmatrix<.025,1,'first'),7)));
+    title(sprintf('%s learned task %d center at %d',rats{i},tk,centervisits(find(pmatrix<.025,1,'first'),7)));
     xlabel('trial'); ylabel('perf');
     sp(2)=subplot(2,1,2); 
-    
-    [bmode,b05,b95,pmatrix,wintr] = CalcStateSpacePerformance(leavingcenter(:,4)', 0.5);
-    
-    plot(sp(2),leavingcenter(:,7),bmode(1:end-1)); hold on; plot(sp(2),leavingcenter(:,7),b05(1:end-1),'r--');
-    plot(sp(2),leavingcenter(:,7),b95(1:end-1),'r--'); plot(sp(2),[0 max(leavingcenter(:,7))],[.5 .5],'c');
+    [bmode,b05,b95,pmatrix,wintr] = CalcStateSpacePerformance(sidevisits(:,4)', 0.5);
+    plot(sp(2),sidevisits(:,7),bmode(1:end-1)); hold on; plot(sp(2),sidevisits(:,7),b05(1:end-1),'r--');
+    plot(sp(2),sidevisits(:,7),b95(1:end-1),'r--'); plot(sp(2),[0 max(sidevisits(:,7))],[.5 .5],'c');
     plot(sp(2),find(mod(alldays(:,6),2)==1),0.1*ones(sum(mod(alldays(:,6),2)==1),1),'b.');
-    title(sprintf('%s learned task %d side at %d',rats{i}, tk, leavingcenter(find(pmatrix<.025,1,'first'),7)));
+    title(sprintf('%s learned task %d side at %d',rats{i}, tk, sidevisits(find(pmatrix<.025,1,'first'),7)));
     xlabel('trial'); ylabel('perf');
     end
 end
