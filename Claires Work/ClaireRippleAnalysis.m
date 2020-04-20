@@ -76,7 +76,7 @@ PlacePriorR=cell2mat(cellfun(@(a) a(2,:), {SuperRat(ses).units.LinPlaceFields},'
 % now just our units
 HPCunits=contains({SuperRat(ses).units.area},'CA1') & contains({SuperRat(ses).units.type},'pyr') & ...
     (sum(PlacePriorL,2)>0 | sum(PlacePriorR,2)>0);
-% object prior (right and left)
+% object prior (right and left) need to get odor ids tho
 ObjPrior=cell2mat({SuperRat(ses).units.OdorRates});
 
 % same, threshold the units
@@ -107,7 +107,8 @@ for ripnum=350:380
         
         ripbins=riptime(1):.01:riptime(2);
         % in real nspikes (has to be poisson)
-        % this is m units by n ripple bins
+        % this is m units by n ripple bins, this is /100 cause that makes
+        % its n spikes
         ripplemat=eventspikematrix(ripbins',SuperRat(ses).units(HPCunits),0,.01)'/100;
         
         % now to decode
@@ -135,8 +136,12 @@ for ripnum=350:380
             %probmat=(priorsmat.^repmat(ripslice,1,size(priorsmat,2)))./...
             %       repmat(factorial(ripslice),1,size(priorsmat,2)).*exp(-priorsmat);
             
-            % tau is 0.01 (because nspikes is per 100 msec,
-            %(x|spikes)=C(prod across units (mean rates)^spikesi ) * exp( -tau * sum(all rates at x)
+            % tau is 0.01 (because nspikes is per 100 msec)
+            
+            %(x|spikes)=C(prod across units (mean rates)^spikes_i ) * exp( -tau * sum(all rates at x)
+            % prodmat= prod units (mean rate_i).^spikes_i)
+            % summat= sum(mean_rate_i)
+            
             probmatL=(PlacePriorL.^repmat(ripslice,1,size(PlacePriorL,2))).*...
                 exp(-0.01*repmat(nanmean(PlacePriorL),size(PlacePriorL,1),1));
             % sum each units prob to 1

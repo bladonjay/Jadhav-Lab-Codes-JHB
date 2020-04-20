@@ -89,6 +89,8 @@ end
 % now go until you have a radius small enough to start this is
 % deterministic
 % this creates fields AllLinCoords
+
+
 %The cols are: 1. ts, 2. x, 3. y, 4. origin, 5. destination, 
 % 6. epoch,  7. speed, 8. Ldist, 9. Lind, 10. Rdist, 11. Rind,
 
@@ -279,6 +281,7 @@ for ses=1:length(SuperRat)
     for i=1:length(epochbreaks)-1
         myCoords(myCoords(:,1)>epochbreaks(i) & myCoords(:,1)<=epochbreaks(i+1),6)=i+1;
     end
+    
     % and normalize all the trajectories
     NumTraj=(size(myCoords,2)-7)/2;
     for tr=8:2:8+NumTraj
@@ -293,10 +296,10 @@ end
 % one rat... i guess i'll have to figure that out later
 verbose=0;
 
-for i=18 %:length(SuperRat)
+for i=1:length(SuperRat)
     % this will asssign each trajectory based on origin and destination
     trajinds=[3 1; 3 2; 1 3; 2 3];
-    % this needs to change to accommodate four trajectories *****
+    
     if size(SuperRat(i).AllLinCoords,2)>11
         linpull=[8 9; 10 11; 12 13; 14 15];
     else

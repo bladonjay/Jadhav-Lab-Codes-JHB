@@ -18,10 +18,13 @@ for ses=1:length(SuperRat)
     
     %----figure out which cells we want to use
     % cells in the region that code the right thing
-    %CodingCell=cellfun(@(a) a(4)<.05 & a(4)>0, {SuperRat(ses).units.OdorResponsive});
-    %CodingCell=cellfun(@(a) a(3)==1, {SuperRat(ses).units.OdorSelective});
-    CodingCell=cellfun(@(a) any(a==1), {SuperRat(ses).units.PFexist});                      %***** CHANGE HERE
-
+    if contains(Params.nameappend,'Odor','IgnoreCase',true)
+    CodingCell=cellfun(@(a) a(3)==1, {SuperRat(ses).units.OdorSelective});
+    elseif contains(Params.nameappend,'Place','IgnoreCase',true)
+    CodingCell=cellfun(@(a) any(a(1:2)==1), {SuperRat(ses).units.PFexist});                      %***** CHANGE HERE
+    else
+    continue;
+    end
     % NO INS
     inRegion=cellfun(@(a) contains(a,Params.region), {SuperRat(ses).units.area});
     isPyram=cellfun(@(a) contains(a,'pyr'),{SuperRat(ses).units.type}); % already classified
@@ -51,6 +54,7 @@ for ses=1:length(SuperRat)
     % 8 bins to smooth velocity, speed less than 3 ditch
     tooslow=SmoothMat2(disptracking(:,5),[0 50],Params.timesmooth)<=Params.speedthresh;
     
+    
     % this scrubs the slow data to calculate occupancy
     thistrack=disptracking(~tooslow,:);
     % this removes spikes inbetween run epochs
@@ -63,7 +67,7 @@ for ses=1:length(SuperRat)
         spikedata=SuperRat(ses).units(UseCells(i)).ts(:,1);
         
         % remove spikes between the tracking
-        subplot(4,1,1);
+        subplot(5,1,1);
         thesespikes=EpochCoords(spikedata,goodepochs);
         fprintf('%d of %d spikes are during runs \n',length(thesespikes),length(spikedata));
         plot(disptracking(:,2),disptracking(:,3),'k');
@@ -78,7 +82,7 @@ for ses=1:length(SuperRat)
         axis tight; box off; axis off;
         
         % now make place plot here
-        subplot(4,1,2);
+        subplot(5,1,2);
         session=struct('edit_coords',thistrack);
         thisunit=struct('ts',thesespikes);
         % this is the really basic open field place plotting script
@@ -89,7 +93,7 @@ for ses=1:length(SuperRat)
         box off; axis off;
 
         % going to do a box and whisker plot for odor rates
-        subplot(4,1,3);
+        subplot(5,1,3);
         
         [~,spkevs,~,trspkinds,~,evspikes]=event_spikes(spikedata,trialmat(:,1),...
             0,trialmat(:,2)-trialmat(:,1));
@@ -100,23 +104,6 @@ for ses=1:length(SuperRat)
         %find those inds and remove them
         keeptrials=sum(find(spikesperblock>trialsperblock/2)'==trialmat(:,5),2)>0;
         odorid=trialmat(:,3);
-
-        %or you can do the raster for time locked firing rate
-        subplot(4,1,3);
-          [~,~,~,~,~,evspikes]=event_spikes(spikedata,trialmat(keeptrials,1),...
-            2,trialmat(keeptrials,2)-trialmat(keeptrials,1)+2);
-        thismat=trialmat(keeptrials,:);
-         for q=1:length(evspikes)
-             if ~isempty(evspikes{q})
-                plot(linearize(repmat(evspikes{q}',3,1)),linearize(repmat([0 1 nan]',1,length(evspikes{q}))+q),'k');
-                hold on;
-                plot([thismat(q,2)-thismat(q,1) thismat(q,2)-thismat(q,1)],[q-1 q],'r');
-             end
-             ylim([0 length(evspikes)+1]);
-         end
-
-        % remember LR10
-        
         if any(spkevs(keeptrials))
             
             boxScatterplot(spkevs(keeptrials),double(odorid(keeptrials)==0),'yLabel','Rate',...
@@ -139,42 +126,153 @@ for ses=1:length(SuperRat)
         else
             title('No Spikes During odor delivery');
         end
+        
+        %or you can do the raster for time locked firing rate
+        subplot(5,1,4);
+        % gonna widen the window to two seconds before to two seconds
+        % after
+        [~,spkevs,~,trspkinds,~,evspikes]=event_spikes(spikedata,trialmat(:,1),...
+            2,2);
+        spknums=cellfun(@(a) length(a), trspkinds);
+        % scrub any block that is zero
+        spikesperblock=accumarray(trialmat(:,5),spknums);
+        trialsperblock=accumarray(trialmat(:,5),1);
+        %find those inds and remove them
+        keeptrials=sum(find(spikesperblock>trialsperblock/2)'==trialmat(:,5),2)>0;
+        
+        sidecolors=lines(2);
+        thismat=sortrows(trialmat(keeptrials,:),3);
+        [~,~,~,~,~,evspikes]=event_spikes(spikedata,thismat(:,1),...
+            2,2);
+        [~,~,~,~,~,evspikes2]=event_spikes(spikedata,thismat(:,1),...
+            0,thismat(:,2)-thismat(:,1));
+        
+        odorid=(thismat(:,3)==0)+1; %convert to indices (10 to 1 2) for left right
+        if any(spkevs(keeptrials))
+        for q=1:length(evspikes)
+            if ~isempty(evspikes{q})
+                ra=plot(linearize(repmat(evspikes{q}',3,1)),linearize(repmat([0 1 nan]'...
+                    ,1,length(evspikes{q}))+q),'color',[.8 .8 .8]);
+                hold on;
+                ra=plot(linearize(repmat(evspikes2{q}',3,1)),linearize(repmat([0 1 nan]'...
+                    ,1,length(evspikes2{q}))+q),'color',sidecolors(odorid(q),:));
+            end
+            ra2=plot([thismat(q,2)-thismat(q,1) thismat(q,2)-thismat(q,1)],[q q+1],'k');
+        end
+        ylim([0 length(evspikes)+1]); xlim([-2 2]);
+        xlabel('Seconds From Odor Onset')
+        ylabel('Trial Num');
+        legend([ra ra2],'Spikes','Odor End'); box off; 
+        title(sprintf('Odor L %.2f, odor R %.2f \n p=%.4f',...
+            max([SuperRat(ses).units(UseCells(i)).OdorMeans(1) 0]),...
+            max([SuperRat(ses).units(UseCells(i)).OdorMeans(2) 0]),...
+            SuperRat(ses).units(UseCells(i)).OdorSelective(1,2)))
+         else
+            title('No Spikes During odor delivery');
+        end
         % now to make the linearized place plots
         % for runs its out left, out right in left in right (1:4)
-        subplot(4,1,4);
+        subplot(5,1,5);
         mycolors=lines(2);
         % out left
         if iscell(SuperRat(ses).units(UseCells(i)).LinPlaceFields)
             try
-                p=plot(SuperRat(ses).units(UseCells(i)).LinPlaceFields{1}(1,:),'color',mycolors(1,:),'LineWidth',3); hold on;
+                p=plot(SuperRat(ses).units(UseCells(i)).LinPlaceFields{1},'color',mycolors(1,:),'LineWidth',3); hold on;
             end
             try
-                plot(-SuperRat(ses).units(UseCells(i)).LinPlaceFields{1}(2,:),'color',mycolors(1,:),'LineWidth',3);
+                p(2)=plot(SuperRat(ses).units(UseCells(i)).LinPlaceFields{2},'color',mycolors(2,:),'LineWidth',3);
             end
-            % in left
+            % inbound
+            %{
             try
-             p(2)=plot(SuperRat(ses).units(UseCells(i)).LinPlaceFields{1}(3,:),'color',mycolors(2,:),'LineWidth',3);
-                % in right
-                plot(-SuperRat(ses).units(UseCells(i)).LinPlaceFields{1}(4,:),'color',mycolors(2,:),'LineWidth',3);
+                p(2)=plot(SuperRat(ses).units(UseCells(i)).LinPlaceFields{3},'color',mycolors(2,:),'LineWidth',3);
             end
+            try
+                p(2)=plot(-SuperRat(ses).units(UseCells(i)).LinPlaceFields{4},'color',mycolors(2,:),'LineWidth',3);
+            end
+            %}
             plot([0 100],[0 0],'k'); % get a zero line in there
-            legend(p,'Outbound','Inbound');
-            oldlim=max(abs(get(gca,'Ylim'))); ylim([-oldlim oldlim]);
-            box off; ylabel({'Rate, Hz';'Right Arm      Left Arm'});
+            legend([p],'Left','Right'); %,legend(p,'Outbound','Inbound');
+            oldlim=max(abs(get(gca,'Ylim'))); %ylim([-oldlim oldlim]);
+            box off; 
+            %ylabel({'Rate, Hz';'Right Arm      Left Arm'});
+            ylabel('Rate, Hz');
         end
         
+       
+
         
         %legend('Left Outbound','Right Outbound','Left Return','Right Return');
         pfstats=SuperRat(ses).units(UseCells(i)).FieldProps;
-        [info,bestfield]=max(pfstats.info);
-        title(sprintf('Max=%.1fHz, Info=%.2f, Width=%2.f',max(pfstats.PFmax),...
-            max(pfstats.info),pfstats.PFsize(bestfield)));
+        [info,bestfield]=max(pfstats.info(1:2));
+        title(sprintf('Max=%.1fHz, Info=%.2f, Width=%2.f',max(pfstats.PFmax(1:2)),...
+            max(pfstats.info(1:2)),pfstats.PFsize(bestfield)));
         set(gca,'XTick',[0 50 100],'XTickLabel',{'Odor Port','Decision Point','Reward Port'});
         xlabel('Lineaized Position on maze');
+        
+        
+        % rasterplot of linearized place fields?
+       
+        %{
+        % probably just take outbound runs, gather the spike inds, grab
+        % their closest position, linear interp so theyre continuous, and
+        % plot as a line
+         subplot(6,1,6);
+
+        fulltraj=SuperRat(ses).LinCoords;
+    
+        % first, get a true velocity, filter (1 if running, 0 if not)
+        fulltraj(:,10)=SmoothMat2(fulltraj(:,7),[0 50],Params.timesmooth)>=Params.speedthresh;
+        trajinds=[3 1; 3 2]; % only outbound this time
+        keepinds=ismember(fulltraj(:,4:5),trajinds,'rows');
+        temptraj=sortrows(fulltraj(keepinds,:),1);
+        % kill slow moving times
+        killslow=0;
+        if killslow
+            temptraj(temptraj(:,10)==0)=[]; % now cut out when he's slow
+        end
+        % kill bins that are too close to the sampling period (1 sec)
+        deadspace=1.25;
+        clear hadtocut;
+        odorStarts=trialmat(keeptrials,:);
+        if deadspace>0
+            for w=1:length(odorStarts)
+                % kill the n seconds after the odor end
+                timediffs=temptraj(:,1)-odorStarts(w,1);
+                badtimes=timediffs<deadspace & timediffs>0;
+                temptraj(badtimes,:)=[];
+                hadtocut(w)=sum(badtimes);
+            end
+        end
+        breaks=find(diff(temptraj(:,1))>1); % only use time breaks that last more than a second
+        % concatenate the start of each traj, its end, and the origin and
+        % destination at that first index
+        mycolors=lines(2);
+        runepochs=[[temptraj(1); temptraj(breaks+1,1)] [temptraj(breaks,1);...
+            temptraj(end,1)] temptraj([1; breaks+1],[4 5])];
+        runinds=[[1; breaks+1] [breaks; size(temptraj,1)] temptraj([1; breaks+1],[4 5])];
+        runepochs(diff(runepochs(:,[1 2]),1,2)<=.5,:)=[]; % remove short epochs
+        runinds(diff(runepochs(:,[1 2]),1,2)<=.5,:)=[]; % remove short epochs
+        [sorted,sortind]=sort(runepochs(:,4));
+        [~,~,~,~,RunSpikes]=event_spikes(spikedata,runepochs(sortind,1),0,runepochs(sortind,2)-runepochs(sortind,1));
+        evspikes=cellfun(@(a) interp1(fulltraj(:,1),fulltraj(:,8),a),RunSpikes,'UniformOutput',false);
+        for q=1:length(evspikes)
+            if ~isempty(evspikes{q})
+                ra=plot(linearize(repmat(evspikes{q}',3,1)),linearize(repmat([0 1 nan]',1,length(evspikes{q}))+q),...
+                    'color',mycolors(sorted(q),:));
+                hold on;
+            end
+        end
+        
+        xlim([0 100]); xlabel('Position on maze'); ylabel('trial');
+        box off;
+        %}
+        
+        
         sgtitle(sprintf('Ses %s Unit %s # %d', SuperRat(ses).name,...
             SuperRat(ses).units(UseCells(i)).area,UseCells(i)));
         % set the plot size
-        set(gcf,'Position',[-450 100 300 900]);
+        set(gcf,'Position',[-450 -350 280 1350]);
         % save out
         savefig(gcf,fullfile(saveoutdir,[SuperRat(ses).name '-' num2str(ses) '-' SuperRat(ses).units(UseCells(i)).area,...
             '-' SuperRat(ses).units(UseCells(i)).type num2str(UseCells(i)) Params.nameappend]));

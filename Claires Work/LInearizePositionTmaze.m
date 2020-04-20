@@ -259,7 +259,7 @@ for i=1:length(SuperRat)
             AllLinCoords=[AllLinCoords; tempLinCoords];
         end
         fprintf('Session %d done in %.2f seconds \n',i,toc);
-        SuperRat(i).LinCoords=AllLinCoords;
+        SuperRat(i).AllLinCoords=AllLinCoords;
     else
         fprintf('Session %d was on a short track \n',i);
     end
@@ -267,6 +267,61 @@ end
 
 
 
+
+
+
+
+%% this is where we distill all the trajectories into the most likely traj
+% the problem here is that returns arent going to be the same as outs for
+% one rat... i guess i'll have to figure that out later
+verbose=0;
+
+for i=1:length(SuperRat)
+    % this will asssign each trajectory based on origin and destination
+    trajinds=[3 1; 3 2; 1 3; 2 3];
+    
+    if size(SuperRat(i).AllLinCoords,2)>11
+        linpull=[8 9; 10 11; 12 13; 14 15];
+    else
+        linpull=[8 9; 10 11; 8 9; 10 11];
+    end
+    keepinds=[];
+    colors=jet(20); colors=colors([1 5 15 20],:);
+    allposplot=[];
+    % this plots the trajectories BEFORE the slow parts are taken out
+    if verbose,    figure; end
+    % also you have to normalize all the trajectories
+    for tr=1:4
+        % first gather the four trajectories by nanning out all the other data
+        temptraj=SuperRat(i).AllLinCoords;
+        % filter based on speed % we'll do 3... but we need
+        temptraj(temptraj(:,7)<3,:)=[];
+        
+        % take account of the correct trajectories at the correct speed
+        keepinds=temptraj(:,4)==trajinds(tr,1) & temptraj(:,5)==trajinds(tr,2);
+        %tooslow=SmoothMat2(abs([0; diff(temptraj(:,linpull(tr,2)))]),[0 50],10)<1;
+        % cat the real data here (ts,x,y,linpos,lindist)
+        
+        allposplot=[allposplot; temptraj(keepinds,[1:7 linpull(tr,:)])];
+        % grab a temporary trajectory
+        temptraj(~keepinds,:)=nan;
+        trajplot{tr}=temptraj(:,[2 3]);
+        if verbose
+            % and plot it
+            subplot(3,4,tr);
+            plot(temptraj(:,2),temptraj(:,3),'color',colors(tr,:));
+            subplot(3,4,tr+4);
+            plot(temptraj(keepinds,linpull(tr,2)),temptraj(keepinds,linpull(tr,1)),'color',colors(tr,:));
+            subplot(3,4,tr+8);
+            [a,b]=histcounts(temptraj(keepinds,linpull(tr,1)),1:100);
+            bar(a);
+            title(sprintf('%s %d', SuperRat(i).name, SuperRat(i).daynum));
+            set(gcf,'Position',[1000,270,560,1060])
+        end
+    end
+    
+    SuperRat(i).LinCoords=sortrows(allposplot,1);
+end
 
 
 %% now to designate the epoch for each video frame
@@ -285,23 +340,6 @@ for ses= 1:length(SuperRat)
     end
     SuperRat(ses).LinCoords=myCoords;
 end
-
-%% now some sanity checks
-
-
-% first, lets double check that the epochs are right
-ses=26;
-tracking=SuperRat(ses).tracking.data;
-epochs=unique(tracking(:,6));
-figure;
-for k=1:length(epochs)
-subplot(1,length(epochs),epochs(k))
-plot(tracking(tracking(:,6)==epochs(k),2),tracking(tracking(:,6)==epochs(k),3));
-end
-
-
-
-
 
 
 

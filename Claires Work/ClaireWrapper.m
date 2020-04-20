@@ -2,6 +2,7 @@
 
 % first build your dataset;
 load('E:\Claire Data\ClaireData10-Apr-2020.mat')
+%% or to rebuild the dataset from scratch
 edit ClaireDataAggregator
 
 %% or load the dataset like this:
@@ -14,7 +15,8 @@ l
 % your tracks!
 edit LinearizePositionTmaze
 
-edit LinearizePositionTmaze4Traj
+% the 4 traj is better if your runs are all wonky (like for short tracks)
+edit LinearizePositionTmazeNTraj
 % some helpful fx for that:
  
 % - one is getcoord_Tmaze, this lets you draw the trajectories, or at
@@ -47,6 +49,7 @@ edit PlotObjPlaceCells
 
 edit SummaryObjPlaceInteractions
 
+edit Claire_Odor_Routedecoder
 %% now to analyze these data
 
 edit ClaireRippleAnalysis
@@ -145,3 +148,23 @@ end
 fract_correct_shuff = mean(fract_correct_shuff);
 
 %}
+%% random sketchpad
+
+odorinfo=[SuperRat(ses).trialdata.sniffstart SuperRat(ses).trialdata.leftright10,...
+    SuperRat(ses).trialdata.CorrIncorr10];
+rundata=SuperRat(ses).LinCoords;
+% now lets go trial by trial and see what the odor ID is, its correct
+% incorrect, and the route the animal took.
+
+% Correct: l is L, 0 is R
+%
+figure; 
+for i=1:5
+subplot(5,1,i);
+trial=i;
+runstart=find(rundata(:,1)>odorinfo(trial,1),1,'first');
+runstop=runstart+find(rundata(runstart:end,8)>55,1,'first');
+plot(rundata(runstart:runstop,2),rundata(runstart:runstop,3));
+title(sprintf('odorID=%d, corrincorr=%d',odorinfo(trial,2),odorinfo(trial,3)));
+end
+

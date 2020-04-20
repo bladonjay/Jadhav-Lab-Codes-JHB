@@ -304,8 +304,7 @@ fprintf('binomial test on p(odorselective) cells  pval=%.2e\n',1-y)
  end
  %%
  for i=1:length(region)
-ratecontrol=1;
-if ratecontrol
+
      cellfilt=cellfun(@(a) contains(a,region{i},'IgnoreCase',true),{SuperUnits.area}) &...
         cellfun(@(a) contains(a,type,'IgnoreCase',true),{SuperUnits.type}) &...
         cellfun(@(a) any(a),{SuperUnits.FiresDuringRun});
@@ -323,10 +322,23 @@ if ratecontrol
     cellclasses=double(objSel==0 & objRes==0); cellclasses(objSel==0 & objRes~=0)=2; cellclasses(objSel~=0)=3;
     PFcounts=cell2mat(cellfun(@(a) a(1:2), {cellPool.PFexist},'UniformOutput',false)');
 
+    isSplitter=cellfun(@(a) a(1)>0 & a(2)<.05, {cellPool.SplitterScore});
    
     % this could be the overall firing rate...
     overallrate=(cellfun(@(a)  a, {cellPool.meanrate}));
-    
+    figure;
+    subplot(1,2,1);
+    % boxscatter all of them
+    thisx=double(sum(PFcounts,2)>0)+isSplitter'*2; thisx(thisx==3)=2;
+    boxScatterplot(overallrate,thisx,'XLabels',{'no pf','PF','Splitter'},...
+        'Position',[],'YLabel','Mean Rate');
+    xtickangle(340); box off;
+    subplot(1,2,2);
+    boxScatterplot(overallrate,cellclasses,'XLabels',{'Odor Unresponsive',...
+        'Odor Responsove','Odor Selective'},'Position',[],'YLabel','Mean Rate');
+    xtickangle(340); box off;
+    sgtitle(sprintf('%s from %s',type,region{i}));
+   %{
     meansy=[nanmean(overallrate(cellclasses==1)) nanmean(overallrate(cellclasses==2))...
         nanmean(overallrate(cellclasses==3))];
     SEMsy=[SEM(overallrate(cellclasses==1)) SEM(overallrate(cellclasses==2))...
@@ -344,8 +356,11 @@ if ratecontrol
     set(gca,'XTickLabel',{'No PFs','One PF','2+ PFs'});
     xtickangle(340); ylabel(' Mean Rate');
     sgtitle(region{i});
-    % stats are friedman test if you want them...
-end
+    %}
+    
+    % maybe something like this: skinny boxscatter, with all the cells with
+    
+
  end
 %% the inverse of this is what proportion of place cells
 % have object responsiveness or object selectivity?
@@ -603,6 +618,26 @@ for i=1:length(region)
     % sgtitle doesnt really make sense here, gotta add numbers in xlabels
     sgtitle(sprintf('Place Fields of %s cells from %s',type, region{i}));
 end
+%% where do place field peaks fall for odor selective units?
+
+mycolors=lines(3);
+for i=1:length(region)
+    % pull pyrs frim this brain region
+    cellfilt=cellfun(@(a) contains(a,region{i},'IgnoreCase',true),{SuperUnits.area}) &...
+        cellfun(@(a) contains(a,type,'IgnoreCase',true),{SuperUnits.type});
+    
+    cellPool=SuperUnits(cellfilt);
+    % now I think i can probably take each unit and replicate it twice for out
+    % l and out r and then cull those without place fields
+    % first gather the place fields into a super long vector
+    allPFs=cell2mat(cellfun(@(a) a(1:2), {cellPool.PFexist},'UniformOutput',false));
+    
+    % i think i want to see where the place fields fall for the same run
+    % and the opposing run
+end
+
+
+
 %%
 % do cells that respond to odors respond to place differently?
 %{
@@ -687,14 +722,14 @@ trajdiffs=cellfun(@(a) (max(a{1})-max(a{2}))/...
     (max(a{1})+max(a{2})), {cellPool.LinPlaceFields});
 
 
-figure; boot=scatter(odordiffs(celltypes<2),trajdiffs(celltypes<2),12,'filled');
+figure; sc=scatter(odordiffs(celltypes<2),trajdiffs(celltypes<2),12,'filled');
 hold on;
-boot(2)=scatter(odordiffs(celltypes==2),trajdiffs(celltypes==2),12,'filled');
+sc(2)=scatter(odordiffs(celltypes==2),trajdiffs(celltypes==2),12,'filled');
 xlabel('Odor Selectivity (d'')'); ylabel('Outbound Trajectory Selectivity (grand mean diff/sum)');
 title(sprintf('%s %s cells',region{i}, type));
 hold on;
 plot([-1 1],[0 0],'k'); plot([0 0],[-1 1],'k');
-legend(boot,'Non Selective','Odor Selective'); box off;
+legend(sc,'Non Selective','Odor Selective'); box off;
 xlim([-1 1]); ylim([-1 1]);
 [rho,p]=corr(odordiffs(celltypes<2)',trajdiffs(celltypes<2)','rows','complete');
 [rho2,p2]=corr(odordiffs(celltypes==2)',trajdiffs(celltypes==2)','rows','complete');
@@ -735,6 +770,7 @@ labels = {sum(pfnums(objSel~=0)==0),...
 text(xtips,ytips,labels,'HorizontalAlignment','center',...
     'VerticalAlignment','bottom');
 
+title(sprintf('%s pf odds %d same vs opposite',region{i},1));
 xtickangle(340); box off;
 end
 
@@ -753,14 +789,16 @@ end
 % cells who fire on the center stem and arent head direction cells, or
 % distal arm cells.. whatever, lets look for cells that have pfs but arent
 % splitters and then compare those to splitters
-
+region={'CA1','PFC'};
+type='pyr';
 for i=1:length(region)
+
+    figure;
 % filter by region and celltype and has to fire during at least one run AND
 % has to fire during odor delivery
 cellfilt=cellfun(@(a) contains(a,region{i},'IgnoreCase',true),{SuperUnits.area}) &...
     cellfun(@(a) contains(a,type,'IgnoreCase',true),{SuperUnits.type}) &...
-    cellfun(@(a) any(a),{SuperUnits.FiresDuringRun}) &...
-    cellfun(@(a) ~isempty(a), {SuperUnits.OdorRates});
+    cellfun(@(a) any(a),{SuperUnits.FiresDuringRun});
 
 % of the splitter cells, whats their object selectivity?
 cellPool=SuperUnits(cellfilt);
@@ -769,132 +807,74 @@ Splitters=cellfun(@(a) a(1)>0 & a(2)<.01, {cellPool.SplitterScore}); % pval spli
 % now compare rates of odor responsiveness and odor selectivity of the
 % splitters to the non splitters
 OdorSelectivity=cellfun(@(a) a(1), {cellPool.OdorSelective}); % diff/sum 
+subplot(1,4,1);
+boxScatterplot(OdorSelectivity,Splitters+1,'Position',[],'xLabels',{'nonSplitter','Splitter'});
+ylabel('Odor Selectivity Score');
+[p,~,stats]=ranksum(OdorSelectivity(Splitters==0),OdorSelectivity(Splitters==1));
+title(sprintf('%s odor selectivity \n Z(%d)=%.2f, p=%.3f)',region{i},stats.ranksum,stats.zval,p));
+% how about odor rate
+subplot(1,4,2);
+OdorResponses=cell2mat(cellfun(@(a) a(:,2), {cellPool.OdorResponsive}, 'UniformOutput', false)'); % delta rate
+boxScatterplot(OdorResponses,linearize(repmat(Splitters'+1,2,1)),'Position',[],'xLabels',{'nonSplitter','Splitter'});
+ylabel('Odor Induced Rate Change');
 
-boxScatterplot(OdorSelectivity,Splitters+1)
+[p,~,stats]=ranksum(OdorResponses(linearize(repmat(Splitters',2,1))==0),...
+    OdorResponses(linearize(repmat(Splitters',2,1))==1));
+title(sprintf('%s odor responsiveness \n Z(%d)=%.2f, p=%.3f)',region{i},stats.ranksum,stats.zval,p));
+
+
+% likelihood of being significantly odor responsive, and significantly odor
+% selective
+isOdorResponsive=cellfun(@(a) any(a(:,4)<.05), {cellPool.OdorResponsive});
+isOdorSelective=cellfun(@(a) a(3)==1, {cellPool.OdorSelective});
+
+stackedy=[nanmean(isOdorResponsive(Splitters==0) & ~isOdorSelective(Splitters==0)),...
+    nanmean(isOdorSelective(Splitters==0));...
+    nanmean(isOdorResponsive(Splitters==1) & ~isOdorSelective(Splitters==1)),...
+    nanmean(isOdorSelective(Splitters==1))];
+
+
+subplot(1,4,3);
+b=bar(stackedy,'stacked');
+set(gca,'XTickLabel',{'nonSplitter','Splitter'});
+legend('Odor Responsive','Odor Selective');
+ylabel('% of units');
+
+xtips = b(2).XEndPoints; ytips = b(1).YEndPoints;  ytips2 = b(2).YEndPoints;
+labels = {sum(isOdorResponsive(Splitters==0) & ~isOdorSelective(Splitters==0)),...
+    sum(isOdorResponsive(Splitters==1) & ~isOdorSelective(Splitters==1))};
+  
+text(xtips,ytips,labels,'HorizontalAlignment','center',...
+    'VerticalAlignment','bottom');
+
+labels2 =  {sum(isOdorSelective(Splitters==0));...
+      sum(isOdorSelective(Splitters==1))};
+  
+text(xtips,ytips2,labels2,'HorizontalAlignment','center',...
+    'VerticalAlignment','bottom');
+
+chistats=[sum(~isOdorResponsive(Splitters==0)),...
+    sum(isOdorResponsive(Splitters==0) & ~isOdorSelective(Splitters==0)),...
+    sum(isOdorSelective(Splitters==0));...
+    sum(~isOdorResponsive(Splitters==1)),...
+    sum(isOdorResponsive(Splitters==1) & ~isOdorSelective(Splitters==1)),...
+    sum(isOdorSelective(Splitters==1))];
+[pval,chi2stat,df]=chi2indep(chistats');
+title(sprintf('Selectivity rates, \n Chi(%d)=%.2f, p=%.3f',df,chi2stat,pval));
+
+subplot(1,4,4);
+myrates=cellfun(@(a) a, {cellPool.meanrate});
+boxScatterplot(myrates,Splitters'+1,'Position',[]);
+title(sprintf('%s Mean rate', region{i}));
+set(gca,'XTickLabel',{'nonSplitter','Splitter'});
+[p,~,stats]=ranksum(myrates(Splitters),myrates(~Splitters));
+title(sprintf('%s odor rates \n Z(%d)=%.2f, p=%.3f)',region{i},stats.ranksum,stats.zval,p));
+ylabel('Mean Firing Rate (hz)');
+
 
 end
 % so this is kindof a nonstarter, mostly because these cells all split
 % based on this metric... maybe i'll need to rework the stats on this, i
 % kindof hastily did the splitter score code
-%% so now the decoder analysis
-%{
-thhe gist is that i want to encode the odor sampling period, and then use
-it to decode the trajectory identity at each step along each run.
-
-% i can think of two ways to do this. first, run the exact code wenbo used
-to decode ripples but in reverse.  the other way is to train on the odor
-period and match 800 msec bins for each and every 'run' epoch, find the
-most well predicted bin in that epoch, classify, and mark its position...
-or mark every 800 msec bin, and aggregate the mean positions for each
-decode.
-
-% the rub i anticipate for the wenbo method is i'm not sure how to
-calculate p(spike|odor) if the rates excede 1.
-
-
-%}
-%CellMatrix is a trial by cell matrix of nspikes
-% trialIds is a column of left and right odors
-
-
-% so this will be done for each PFC and dHPC, will ahve to match for cell
-% counts, and will have to probably aggregate per area.  If need be i can
-% do a rigotti style analyisis where i randomly pull from any animal, but
-% i'd rather not do that
- warning('off','all');
-for ses=1:length(SuperRat)
-
-    odorOK=SuperRat(ses).trialdata.CorrIncorr10 &...
-        ismember(SuperRat(ses).trialdata.EpochInds(:,2),SuperRat(ses).RunEpochs);
-    odorStarts=SuperRat(ses).trialdata.starttime(odorOK); % start time
-    odorIDs=SuperRat(ses).trialdata.leftright10(odorOK); % odor id
-    %
-    nfolds = 5;
-   
-    odorSpkMat=[]; % grab big old matrix
-    for j=1:length(SuperRat(ses).units)
-        [~,odorSpkMat(:,j)]=event_spikes(SuperRat(ses).units(j).ts,...
-            odorStarts,0,0.8);
-    end
-    badunits=mean(odorSpkMat==0,1)==1;
-    % now index columns that are members of PFC or dHPC
-    
-    for i=1:length(region)
-        inRegion=cellfun(@(a) contains(a,region{i},'IgnoreCase',true), {SuperRat(ses).units.area});
-        SpkMat=odorSpkMat(:,inRegion & ~badunits).*.8; % back to # spikes
-        
-        % true decoding
-        cv = cvpartition(length(odorIDs), 'kfold',nfolds);
-        for k=1:nfolds
-            trainIdx = cv.training(k); testIdx = cv.test(k);
-            mdl = fitglm(SpkMat(trainIdx,:), odorIDs(trainIdx),'Distribution', 'binomial');
-            % predict regression output
-            Y_hat = predict(mdl, SpkMat(testIdx,:));
-            pred = round(Y_hat); %glm outputs very small values instead of zeros (binomial) for some reason, round to zero
-            ids = odorIDs(testIdx);
-            fract_correct(k) = sum(pred == ids)/length(pred);
-        end
-        fract_correct_real = mean(fract_correct);
-        
-        %Do shuffling
-        nBoots=500;
-        for boot = 1:nBoots
-            shuff_odorIDs=odorIDs(randperm(length(odorIDs))); % reorder the matrix so it doesnt match odors
-            for k=1:nfolds
-                trainIdx = cv.training(k); testIdx = cv.test(k);
-                mdl = fitglm(SpkMat(trainIdx,:), shuff_odorIDs(trainIdx),'Distribution', 'binomial');
-                Y_hat_shuff = predict(mdl, SpkMat(testIdx,:));
-                pred_shuff = round(Y_hat_shuff);
-                ids_shuff = shuff_odorIDs(testIdx);
-                fract_correct_shuff(k) = sum(pred_shuff == ids_shuff)/length(pred_shuff);
-            end
-            fract_correct_null(boot) = mean(fract_correct_shuff);
-        end
-        p_correct=1-normcdf(fract_correct_real,nanmean(fract_correct_null),...
-            nanstd(fract_correct_null));
-        fprintf('%s odor decoding: %.f%% correct p=%.2e\n',region{i},...
-            fract_correct_real*100,p_correct);
-        
-        % now construct the spatial firing matrix...
-        regionIdx=find(inRegion & ~badunits);
-        clear runSpkMat;
-        for cn=1:length(regionIdx)
-            try
-                runSpkMat(:,cn,1)=SuperRat(ses).units(regionIdx(cn)).LinPlaceFields{1};
-                runSpkMat(:,cn,2)=SuperRat(ses).units(regionIdx(cn)).LinPlaceFields{2};
-            catch
-                runSpkMat(:,cn,1:2)=zeros(2,99);
-            end
-        end
-        
-        % get the classes
-        % start easy, train decoder on all the trials
-        mdl = fitglm(SpkMat, odorIDs,'Distribution', 'binomial');
-       
-        % LR 10
-        runIDs=[ones(99,1);zeros(99,1)];
-        runsCatted=[runSpkMat(:,:,1); runSpkMat(:,:,2)];
-        % poor predictibility, probably cause the numbers arent lined up...
-        pred=round(predict(mdl, allRuns));
-        fract_correct_run=sum(pred==allrunIDs)/length(pred);
-        
-     end
-    
- warning('on','all');
-%% the other way to do this decoder analysis is to run the
-%{
-algorithm for decoding the runs:
-the question:
-    -where along the run does the neural ensemble resemble that of past
-    odor coding?
-       -maybe this approach is to pull the odor ensemble, then correlate it
-       to the following timebins for each 800 msec run, and then aggregate
-       across 
-    -does the odor discriminating code persist from odor coding into the
-    delay period?
-
-
-
-
 
 
