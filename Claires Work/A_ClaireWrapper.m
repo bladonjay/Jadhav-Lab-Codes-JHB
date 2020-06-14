@@ -1,13 +1,13 @@
 %% ClaireWrapper
 
 % first build your dataset;
-load('E:\Claire Data\ClaireData10-Apr-2020.mat')
+load('E:\Claire Data\ClaireData22-Apr-2020.mat')
 %% or to rebuild the dataset from scratch
 edit ClaireDataAggregator
 
 %% or load the dataset like this:
 % this dataset contains 
-l
+
 
 % now you can linearize the positional data
 % as currently is 2-10-2020 this will ask you to redraw cs39 over again
@@ -39,7 +39,7 @@ edit ClaireQuickPlacePlot
 % plot linearized place fields
 edit PlotLinTrajectories
 % calculate them for the ripple decoding and to crossref with obj coding
-edit CalcLinTrajectories % <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+edit CalcLinTrajectories %
 % get object coding
 edit Object_selectivity
 
@@ -47,6 +47,7 @@ edit Object_selectivity
 % get spatial info for object cells
 edit PlotObjPlaceCells
 
+%% and the meat of the figures
 edit SummaryObjPlaceInteractions
 
 edit Claire_Odor_Routedecoder

@@ -143,9 +143,12 @@ for ses=1:length(SuperRat)
         sidecolors=lines(2);
         thismat=sortrows(trialmat(keeptrials,:),3);
         [~,~,~,~,~,evspikes]=event_spikes(spikedata,thismat(:,1),...
-            2,2);
+            2,4.5);
         [~,~,~,~,~,evspikes2]=event_spikes(spikedata,thismat(:,1),...
             0,thismat(:,2)-thismat(:,1));
+        
+        
+        
         
         odorid=(thismat(:,3)==0)+1; %convert to indices (10 to 1 2) for left right
         if any(spkevs(keeptrials))
@@ -159,14 +162,16 @@ for ses=1:length(SuperRat)
             end
             ra2=plot([thismat(q,2)-thismat(q,1) thismat(q,2)-thismat(q,1)],[q q+1],'k');
         end
-        ylim([0 length(evspikes)+1]); xlim([-2 2]);
+        ylim([0 length(evspikes)+1]); xlim([-2 4.5]);
         xlabel('Seconds From Odor Onset')
         ylabel('Trial Num');
         legend([ra ra2],'Spikes','Odor End'); box off; 
-        title(sprintf('Odor L %.2f, odor R %.2f \n p=%.4f',...
+        title(sprintf('Odor Delta Rate: %.2f p=%.4f \n Odor L %.2f, odor R %.2f  p=%.4f',...
+            max(abs(SuperRat(ses).units(UseCells(i)).OdorResponsive(:,2))),...
+            min(SuperRat(ses).units(UseCells(i)).OdorResponsive(:,4)),...
             max([SuperRat(ses).units(UseCells(i)).OdorMeans(1) 0]),...
             max([SuperRat(ses).units(UseCells(i)).OdorMeans(2) 0]),...
-            SuperRat(ses).units(UseCells(i)).OdorSelective(1,2)))
+            SuperRat(ses).units(UseCells(i)).OdorSelective(1,2)));
          else
             title('No Spikes During odor delivery');
         end
@@ -269,8 +274,9 @@ for ses=1:length(SuperRat)
         %}
         
         
-        sgtitle(sprintf('Ses %s Unit %s # %d', SuperRat(ses).name,...
-            SuperRat(ses).units(UseCells(i)).area,UseCells(i)));
+        sgtitle(sprintf('Ses %s Day:%d %s \n tet:%d cell#%d', SuperRat(ses).name,...
+            SuperRat(ses).daynum,SuperRat(ses).units(UseCells(i)).area,...
+            SuperRat(ses).units(UseCells(i)).tet,SuperRat(ses).units(UseCells(i)).unitnum));
         % set the plot size
         set(gcf,'Position',[-450 -350 280 1350]);
         % save out

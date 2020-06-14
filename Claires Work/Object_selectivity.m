@@ -124,6 +124,7 @@ for ses=1:length(SuperRat)
                 mytrialmat(:,1),0,mytrialmat(:,2)-mytrialmat(:,1));
             [~,prespkevs]=event_spikes(SuperRat(ses).units(i).ts(:,1),...
                 mytrialmat(:,1)-(mytrialmat(:,2)-mytrialmat(:,1)),0,mytrialmat(:,2)-mytrialmat(:,1));
+            
             spkcts=cellfun(@(a) length(a), spikeinds);
 
             % get the mean rates for each
