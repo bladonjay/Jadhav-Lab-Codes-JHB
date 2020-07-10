@@ -458,6 +458,8 @@ for i=1:length(region)
     % this could be the overall firing rate...
     overallrate=(cellfun(@(a)  a, {cellPool.meanrate}));
     figure;
+    % maybe something like this: skinny boxscatter, with all the cells with
+    %sgtitle(sprintf('%s from %s',type,region{i}));
     subplot(1,3,1);
     % boxscatter all of them
     thisx=double(sum(PFcounts,2)>0)+isSplitter'*2; thisx(thisx==3)=2;
@@ -479,12 +481,11 @@ for i=1:length(region)
     fprintf('%s grand mean rate odor types: KruskalWallis Chi2(%d)=%.2f, p=%.2e \n',region{i},tbl{2,3},tbl{2,5},tbl{2,6});
     
     [p,~,stats]=ranksum(overallrate(cellclasses==1),overallrate(cellclasses>1));
-    fprintf('%s Mean Rate: Ranksum z=%.2f, p=%.4f \n',region{i},stats.zval,p);
-    title(sprintf('%s Mean Rate: Ranksum z=%.2f, p=%.2e \n',region{i},stats.zval,p));
+    fprintf('%s Mean Rate: n=%d Ranksum z=%.2f, p=%.4f \n',region{i},length(overallrate),stats.zval,p);
+    title(sprintf('%s Mean Rate: n=%d Ranksum z=%.2f, p=%.2e \n',region{i},length(overallrate),stats.zval,p));
     
     
     % maybe something like this: skinny boxscatter, with all the cells with
-    sgtitle(sprintf('%s from %s',type,region{i}));
     
   
     subplot(1,3,3);
@@ -496,11 +497,11 @@ for i=1:length(region)
     
     [p,h,stats]=ranksum(overallrate(cellclasses2==1),overallrate(cellclasses2==2));
     fprintf('%s grand mean rate odor types: ranksum z=%.2f, p=%.2e \n',region{i},stats.zval,p);
-    title(sprintf('%s Mean Rate: Ranksum z=%.2f, p=%.2e \n',region{i},stats.zval,p));
+    title(sprintf('%s Mean Rate: n=%d Ranksum z=%.2f, p=%.2e \n',...
+        region{i},length(overallrate),stats.zval,p));
     
     
-    % maybe something like this: skinny boxscatter, with all the cells with
-    sgtitle(sprintf('%s from %s',type,region{i}));
+    
     
 end
 %% the inverse of this is what proportion of place cells
@@ -730,15 +731,15 @@ for i=1:length(region)
     %celltypes2(allPFs & cellfun(@(a) a(3)==1, {cellPool.OdorSelective}))=2;
     
     cellrates=cellfun(@(a) a(1), {cellPool.meanrate}); % overall mean rate
-    boxScatterplot(log2(cellrates),celltypes2+1,'xLabels',...
+    boxScatterplot((cellrates),celltypes2+1,'xLabels',...
         {'Odor Unresponsive','Odor Responsive','Odor Selective'},'position',[]);
-    ylabel('Log_2 cell firing rate');  xtickangle(340); box off;
+    ylabel('Mean firing rate');  xtickangle(340); box off;
     
-    [p,tbl,stats]=kruskalwallis(cellrates,celltypes2','off');
-    fprintf('PF rate: anovan f(%d)=%.2f, p=%.4f \n',tbl{2,3},tbl{2,5},tbl{2,6});
+    %[p,tbl,stats]=kruskalwallis(cellrates,celltypes2','off');
+    %fprintf('PF rate: anovan f(%d)=%.2f, p=%.4f \n',tbl{2,3},tbl{2,5},tbl{2,6});
     [p,~,stats]=ranksum(cellrates(celltypes2==0),cellrates(celltypes2>0));
-    fprintf('%s MeanRate: Ranksum z=%.2f, p=%.4f \n',region{i},stats.zval,p);
-    title(sprintf('%s MeanRate: Ranksum z=%.2f, p=%.4f \n',region{i},stats.zval,p));
+    fprintf('%s MeanRate: Ranksum z=%.2f, p=%.2e \n',region{i},stats.zval,p);
+    title(sprintf('%s MeanRate: Ranksum z=%.2f, p=%.2e \n',region{i},stats.zval,p));
         
     fprintf('\n');
     % sgtitle doesnt really make sense here, gotta add numbers in xlabels
