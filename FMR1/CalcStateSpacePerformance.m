@@ -6,7 +6,7 @@ function [bmode,b05,b95,pmatrix,wintr] = CalcStateSpacePerformance(TrialLog, Po,
 %   TrialLog: performance on each trial (win or lose 1/0)
 %   Po: Chance success rate (usually 50%)
 % OUTPUTS:
-%
+%   bmode= mode of the 
 %
 %
 
@@ -134,17 +134,17 @@ end
 [b05, b95, bmid, bmode, pmatrix] = pdistn(qnew, signewsq, muone, background_prob);
 
 %-------------------------------------------------------------------------------------
-%find the last point where the 90 interval crosses chance
+%find the last point where the 95 interval crosses chance
 %for the backward filter (cback)
 
 
-wintr = find(b05 < background_prob);
+wintr = find(b05 < background_prob); % find when the rat doesnt have it
 % I actually dont think this is necessary
-if(~isempty(wintr))
+if(~isempty(wintr)) % if there are points where he doesnt have it
     if(wintr(end) < size(I,2)) % if the last low perf is not the last trial
         wintr = wintr(end); % than cback is the last trial
     else
-        wintr = NaN; % otherwise, the animal never learned...
+        wintr = NaN; % otherwise, the animal always had it
     end
 else
     wintr = NaN;

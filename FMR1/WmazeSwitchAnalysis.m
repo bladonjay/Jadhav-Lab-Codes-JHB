@@ -139,8 +139,8 @@ switchdate{2}='22-Jan-2020'; % for ah3 and 6
  
 
 for i=1:length(ratinfo)
-    if ratinfo(i).ratname == 'AH1' | ratinfo(i).ratname == 'AH2'
-    ratinfo(i).tasknum=(datenum(ratinfo(i).rundate)>=datenum(switchdate{1}))+1;
+    if contains(ratinfo(i).ratname,'AH1') || contains(ratinfo(i).ratname,'AH2')
+        ratinfo(i).tasknum=(datenum(ratinfo(i).rundate)>=datenum(switchdate{1}))+1;
     else
           ratinfo(i).tasknum=(datenum(ratinfo(i).rundate)>=datenum(switchdate{2}))+1;
     end
@@ -245,26 +245,45 @@ end
 figure;
 sp=subplot(2,2,1); % center performance, task 1
 
+% first plot each curve in grey, and figure out when they actually achieve
+for k=1:4
+    critreached=find(b05s{k,1}>.5,1,'first');
+    if  isempty(critreached), critreached=1; end
+    plot(sidect{k,1}(1:critreached),bmodes{k,1}(1:critreached),':','Color',[.5 .5 .5]); hold on;
+    plot(sidect{k,1}(critreached:end),bmodes{k,1}(critreached:end-1),'-','Color',[.5 .5 .5]);
+end
+
 % aggregate trial and performance leaving sides (s)
-lastTr=min(cellfun(@(a) length(a), sidect(:,1)));
-bmodes1=cell2mat(cellfun(@(a) a(1:lastTr), bmodes(:,1), 'UniformOutput', false)');    
+lastTr=min(cellfun(@(a) length(a), sidect(:,1))); % shortest session
+% get all the mode performances, concatenate together
+bmodes1=cell2mat(cellfun(@(a) a(1:lastTr), bmodes(:,1), 'UniformOutput', false)');  
+% keep track of trial count for each rat (this is catted too)
 trcts=cell2mat(cellfun(@(a) a(1:lastTr), sidect(:,1), 'UniformOutput', false));
 % accumarray and smooth
 rawperf=accumarray(trcts, bmodes1',[max(trcts),1],@mean,nan);
-meanperfC1=SmoothMat2(rawperf,[1,5],2);
-plot(meanperfC1); xlim([0 500]); hold on; 
-trialCrit=round(mean(cell2mat(trialCritC(:,1))));
+meanperfS1=SmoothMat2(rawperf,[1,5],2);
+plot(meanperfS1,'b','LineWidth',2); xlim([0 500]); hold on; 
+trialCrit=round(mean(cell2mat(trialCritS(:,1))));
 critVar=nanstd(rawperf(trialCrit-5:trialCrit+5));
-errorbar(trialCrit,meanperfC1(trialCrit),SEM(cell2mat(trialCritC(:,1))),...
+errorbar(trialCrit,meanperfS1(trialCrit),SEM(cell2mat(trialCritS(:,1))),...
     'horizontal','r-x','MarkerSize',4,'LineWidth',1);
-errorbar(trialCrit,meanperfC1(trialCrit),critVar,...
+errorbar(trialCrit,meanperfS1(trialCrit),critVar,...
     'r-x','MarkerSize',4,'LineWidth',1);
-ylabel('Inbound performance (easier)'); title('N = 4');
-plot([0 500],[.5 .5],'k');
+ylabel(sprintf('Inbound Performance \n(easier)')); title('N = 4');
+plot([0 500],[.5 .5],'k'); box off;
 %legend('Mean Rate','Criterion reached','Chance');
 
 
 sp(2)=subplot(2,2,2); % center performance, task 2
+
+
+for k=1:4
+    critreached=find(b05s{k,2}>.5,1,'first');
+    if  isempty(critreached), critreached=1; end
+    li=plot(sidect{k,2}(1:critreached),bmodes{k,2}(1:critreached),':','Color',[.5 .5 .5]); hold on;
+    li(2)=plot(sidect{k,2}(critreached:end),bmodes{k,2}(critreached:end-1),'-','Color',[.5 .5 .5]);
+end
+
 % aggregate trial and performance
 lastTr=min(cellfun(@(a) length(a), sidect(:,2)));
 bmodes2=cell2mat(cellfun(@(a) a(1:lastTr), bmodes(:,2), 'UniformOutput', false)');    
@@ -272,37 +291,52 @@ trcts=cell2mat(cellfun(@(a) a(1:lastTr), sidect(:,2), 'UniformOutput', false));
 % accumarray and smooth
 rawperf=accumarray(trcts, bmodes2',[max(trcts),1],@mean,nan);
 meanperfC2=SmoothMat2(rawperf,[1,5],2);
-plot(meanperfC2); xlim([0 500]); hold on; 
-trialCrit=round(mean(cell2mat(trialCritC(:,2))));
+li(3)=plot(meanperfC2,'b','LineWidth',2); xlim([0 500]); hold on; 
+trialCrit=round(mean(cell2mat(trialCritS(:,2))));
 critVar=nanstd(rawperf(trialCrit-5:trialCrit+5));
-errorbar(trialCrit,meanperfC2(trialCrit),SEM(cell2mat(trialCritC(:,2))),...
+li(4)=errorbar(trialCrit,meanperfC2(trialCrit),SEM(cell2mat(trialCritS(:,2))),...
     'horizontal','r-x','MarkerSize',4,'LineWidth',1);
 errorbar(trialCrit,meanperfC2(trialCrit),critVar,...
     'r-x','MarkerSize',4,'LineWidth',1);
 plot([0 500],[.5 .5],'k');
-legend('Mean Rate','Criterion reached','Chance');
+legend(li,'Before Criterion','Individual Rat','Mean Performance','SEM');
 %ylabel('Inbound performance (easier)'); title('N = 4');
-
+ box off;
 
 sp(3)=subplot(2,2,3); % center performance, task 2
+for k=1:4
+    critreached=find(b05c{k,1}>.5,1,'first');
+    if  isempty(critreached), critreached=1; end
+    li=plot(centct{k,1}(1:critreached),bmodec{k,1}(1:critreached),':','Color',[.5 .5 .5]); hold on;
+    li(2)=plot(centct{k,1}(critreached:end),bmodec{k,1}(critreached:end-1),'-','Color',[.5 .5 .5]);
+end
 % leaving center
 lastTr=min(cellfun(@(a) length(a), centct(:,1)));
 bmodec1=cell2mat(cellfun(@(a) a(1:lastTr), bmodec(:,1), 'UniformOutput', false)');    
 trcts=cell2mat(cellfun(@(a) a(1:lastTr), centct(:,1), 'UniformOutput', false));
 % accumarray and smooth
 rawperf=accumarray(trcts, bmodec1',[max(trcts),1],@mean,nan);
-meanperfS1=SmoothMat2(rawperf,[1,5],2);
-plot(meanperfS1); xlim([0 500]); hold on; 
-trialCrit=round(mean(cell2mat(trialCritS(:,1))));
+meanperfC1=SmoothMat2(rawperf,[1,5],2);
+li(3)=plot(meanperfC1,'b','LineWidth',2); xlim([0 500]); hold on; 
+trialCrit=round(mean(cell2mat(trialCritC(:,1))));
 critVar=nanstd(rawperf(trialCrit-5:trialCrit+5));
-errorbar(trialCrit,meanperfS1(trialCrit),SEM(cell2mat(trialCritS(:,1))),...
+errorbar(trialCrit,meanperfC1(trialCrit),SEM(cell2mat(trialCritC(:,1))),...
     'horizontal','r-x','MarkerSize',4,'LineWidth',1);
-errorbar(trialCrit,meanperfS1(trialCrit),critVar,...
+errorbar(trialCrit,meanperfC1(trialCrit),critVar,...
     'r-x','MarkerSize',4,'LineWidth',1);
-ylabel('Outbound performance (harder)');
-plot([0 500],[.5 .5],'k'); xlabel('Trials in Standard W maze')
+ylabel(sprintf('Outbound Performance \n(harder)'));
+plot([0 500],[.5 .5],'k'); xlabel('Trials in Standard W Maze');  box off;
+
+
+
 
 sp(4)=subplot(2,2,4); % center performance, task 2
+for k=1:4
+    critreached=find(b05c{k,2}>.5,1,'first');
+    if  isempty(critreached), critreached=1; end
+    li=plot(centct{k,2}(1:critreached),bmodec{k,2}(1:critreached),':','Color',[.5 .5 .5]); hold on;
+    li(2)=plot(centct{k,2}(critreached:end),bmodec{k,2}(critreached:end-1),'-','Color',[.5 .5 .5]);
+end
 % aggregate trial and performance
 lastTr=min(cellfun(@(a) length(a), centct(:,2)));
 bmodec2=cell2mat(cellfun(@(a) a(1:lastTr), bmodec(:,2), 'UniformOutput', false)');    
@@ -310,13 +344,13 @@ trcts=cell2mat(cellfun(@(a) a(1:lastTr), centct(:,2), 'UniformOutput', false));
 % accumarray and smooth
 rawperf=accumarray(trcts, bmodec2',[max(trcts),1],@mean,nan);
 meanperfS2=SmoothMat2(rawperf,[1,5],2);
-plot(meanperfS2); xlim([0 500]); hold on; 
-trialCrit=round(mean(cell2mat(trialCritS(:,2))));
+li(3)=plot(meanperfS2,'b','LineWidth',2); xlim([0 500]); hold on; 
+trialCrit=round(mean(cell2mat(trialCritC(:,2))));
 critVar=nanstd(rawperf(trialCrit-5:trialCrit+5));
-errorbar(trialCrit,meanperfS2(trialCrit),SEM(cell2mat(trialCritS(:,2))),...
+errorbar(trialCrit,meanperfS2(trialCrit),SEM(cell2mat(trialCritC(:,2))),...
     'horizontal','r-x','MarkerSize',4,'LineWidth',1);
 errorbar(trialCrit,meanperfS2(trialCrit),critVar,...
     'r-x','MarkerSize',4,'LineWidth',1);
 plot([0 500],[.5 .5],'k');
-xlabel('Trials in ''switch'' task');
-linkaxes(sp);
+xlabel('Trials in ''Switch'' Task');
+linkaxes(sp); box off;
