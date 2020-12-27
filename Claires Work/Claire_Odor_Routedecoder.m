@@ -34,6 +34,11 @@ region={'CA1','PFC'};
 rstream = RandStream('mt19937ar','Seed',16);
 RandStream.setGlobalStream(rstream);
 %% this is claires algorithm...
+
+% we are not using this for the decoder right now
+
+%{
+
 warning('off','all');
 winsize=1;
 verbose=1;
@@ -121,6 +126,8 @@ for ses=1:length(SuperRat)
     
 end
 warning('on','all');
+
+
 %%
 figure;
 for i=1:2
@@ -131,7 +138,12 @@ for i=1:2
     set(gca,'XTick',[1 2],'XTickLabel',{'real','null'});
     title(sprintf('%s odor decoder',region{i}));
 end
+%}
+
 %% this is the same decoder but now also decoding odor on track runs
+% we also arent using claires decoder here
+
+%{
 %{
 
 algorithm for decoding the runs:
@@ -322,12 +334,15 @@ for i =1:2
     
 end
 linkaxes(get(gcf,'Children'),'y')
+
+%}
+
 %% now using the bayesian method with poisson firing
 % this uses a training set of odor spikes, and decodes left out odor trials
 % as well as run trials.  It may be a good idea to do the same leave one
 % out for this though...
 
-
+% quartiles or quintiles?
 % four
 runpos=[1 25; 25 50; 50 75; 75 100]; 
 % or five
@@ -350,7 +365,7 @@ winsize=1; % second of odor sampling
 % run
 deadspace=0.5; % seconds following odor sampling start to never consider
 verbose=0;
-nfolds = 5;
+nDolds = 5;
 nBoots=200;
 odorNames=[1 0];
 veltimesmooth=8;
@@ -460,6 +475,7 @@ for ses=1:length(SuperRat)
     thisdecode=mytemplate;
     for i=1:length(region)
         inRegion=cellfun(@(a) contains(a,region{i},'IgnoreCase',true), {SuperRat(ses).units.area});
+        % here is where you can use ONLY PLACE CELLS
         if sum(inRegion)>5
             SpkMat=odorSpkMat(:,inRegion & ~badunits)*winsize; % p(spike| 1 ms timebin)
             
@@ -609,7 +625,7 @@ winsize=1; % second of odor sampling
 % run
 deadspace=0.5; % seconds following odor sampling start to never consider
 verbose=0;
-nfolds = 5;
+nDolds = 5;
 nBoots=200;
 odorNames=[1 0];
 veltimesmooth=8;
@@ -785,10 +801,237 @@ end
 sgtitle('splitters are abundant across the track')
 linkaxes;
 
+%% now for each spatial bin test the performance on each other bin
+
+
+% four
+runpos=[1 25; 25 50; 50 75; 75 100]; 
+% or five
+runpos=[1 20; 21 40; 41 60; 61 80; 81 100]; 
+
+%or eight
+%runpos=[1 12; 13 24; 25 36; 37 50; 51 62; 63 74; 75 87; 88 100]; 
+% a quick wrapper
 
 
 
+% calculate the probability of each time given this activity
+rstream = RandStream('mt19937ar','Seed',16);
+RandStream.setGlobalStream(rstream);
 
+%p(x|spikes)=C(prod across units (mean rates)^spikes_i ) * exp( -tau * sum(all rates at x)
+onlyodorruns=1;
+decoderprobs=[];
+warning('off','all');
+winsize=1; % second of odor sampling
+% this is generally about 0.25 seconds of buffer time between end sample and start
+% run
+daytimer=tic;
+deadspace=0.5; % seconds following odor sampling start to never consider
+verbose=0;
+nDolds = 5; % n folds for decoder
+nBoots=200; % n boots for the null distr
+odorNames=[1 0];
+veltimesmooth=8; % seconds for the velocity smoothing kernel
+speedthreshold=3; % lowest movement speed
+region={'CA1','PFC'};
+
+mytemplate={sprintf('null, %d boots',nBoots),'Run-Run Decode (study x test)';'CA1',[];'PFC',[]};
+mytemplate(:,:,2)=mytemplate; mytemplate{1}='Success Prob real';
+
+for ses=1:length(SuperRat)
+    sesstimer=tic;
+   % take only correct trials during active epochs
+    odorOK=ismember(SuperRat(ses).trialdata.EpochInds(:,2),SuperRat(ses).RunEpochs);
+    odorStarts=SuperRat(ses).trialdata.sniffstart(odorOK); % start time
+    odorEnds=SuperRat(ses).trialdata.sniffend(odorOK); % End time
+    odorflip=~logical(SuperRat(ses).trialdata.CorrIncorr10(odorOK)); % wrong trials
+
+    odorIDs=SuperRat(ses).trialdata.leftright10(odorOK); % odor id
+    badtrials=isnan(odorIDs);
+    % somehow nans snuck into the odor ids? wtf?
+    odorStarts(badtrials)=[]; odorEnds(badtrials)=[];
+    odorIDs(badtrials)=[]; odorflip(badtrials)=[];
+    odorIDs(odorflip)=double(~odorIDs(odorflip)); % flip the sign of the wrong trials
+    % now gather all the runs.
+    fulltraj=SuperRat(ses).LinCoords;
+    
+    % first, get a true velocity, filter (1 if running, 0 if not)
+    fulltraj(:,10)=SmoothMat2(fulltraj(:,7),[0 50],veltimesmooth)>=speedthreshold;
+    % this might be a good place to figure out which cells are silent
+    % for which epochs
+    trajinds=[3 1; 3 2]; % only outbound this time
+    keepinds=ismember(fulltraj(:,4:5),trajinds,'rows');
+    fulltraj=sortrows(fulltraj(keepinds,:),1);
+    
+    %
+    % work up the tracking data into track bins
+    %
+    runSpkMat={}; runIDs={};
+    for ile=1:length(runpos)
+        % only use times when the linear trajectory is between...
+        okpos=runpos(ile,:);% segment out the arm
+        oktrackpos=fulltraj(:,8)>okpos(1) & fulltraj(:,8)<okpos(2);
+        temptraj=fulltraj(oktrackpos,:);
+        
+        killslow=0; % kill slow moving times
+        if killslow
+            temptraj(temptraj(:,10)==0)=[]; % now cut out when he's slow
+        end
+        
+        % kill bins that are too close to the sampling period (1 sec)
+        if deadspace>0
+            for i=1:length(odorEnds)
+                % Seconds after each end
+                timediffs=temptraj(:,1)-odorEnds(i,1);
+                afterstart=temptraj(:,1)-odorStarts(i,1);
+                % add dead space, kill anything after the end but within
+                % dead space time
+                badtimes=timediffs<deadspace & afterstart>0;
+                temptraj(badtimes,:)=[];
+                hadtocut(i)=sum(badtimes);
+            end
+        end
+        
+        % make this 50 to remove distal arm timestamps
+        killsidearm=0;
+        if killsidearm>0
+            temptraj(temptraj(:,8)>killsidearm,:)=[];
+        end
+        
+        
+        breaks=find(diff(temptraj(:,1))>1); % only use time breaks that last more than a second
+        % concatenate the start of each traj, its end, and the origin and
+        % destination at that first index
+        runepochs=[[temptraj(1); temptraj(breaks+1,1)] [temptraj(breaks,1);...
+            temptraj(end,1)] temptraj([1; breaks+1],[4 5])];
+        runinds=[[1; breaks+1] [breaks; size(temptraj,1)] temptraj([1; breaks+1],[4 5])];
+        %runepochs(diff(runepochs(:,[1 2]),1,2)<=.5,:)=[]; % remove short epochs
+        %runinds(diff(runepochs(:,[1 2]),1,2)<=.5,:)=[]; % remove short epochs
+        
+        % here would be the place to pick the runs that follow each correct
+        % odor sample...
+        
+        OKruninds=[]; OKrunepochs=[];
+        if onlyodorruns
+            for rn=1:length(odorStarts)
+                % find the next run start
+                nextind=find(runepochs(:,1)>odorStarts(rn,1),1,'first');
+                if ~isempty(nextind) % sometimes the last odor doesnt have a following run
+                    OKrunepochs(rn,:)=runepochs(nextind,:);
+                    OKruninds(rn,:)=runinds(nextind,:);
+                end
+            end
+        else
+            OKrunepochs=runepochs;
+            OKruninds=runinds;
+        end
+        
+        % identify each run epoch by which type of run it is
+        % now get the likelihood of each spike per msec
+        runIDs{ile}=ismember(OKruninds(:,[3 4]),trajinds(1,:),'rows');
+
+        for j=1:length(SuperRat(ses).units)
+            [~,runSpkMat{ile}(:,j)]=event_spikes(SuperRat(ses).units(j).ts,...
+                OKrunepochs(:,1),0,OKrunepochs(:,2)-OKrunepochs(:,1));
+        end
+        
+        
+    end
+    
+    % reshape all matrices to be the same size
+    matsz=cellfun(@(a) size(a,1), runSpkMat);
+    runSpkMat=cellfun(@(a) a(1:min(matsz),:), runSpkMat, 'UniformOutput', false);
+    runIDs=cellfun(@(a) a(1:min(matsz)), runIDs, 'UniformOutput', false);
+    
+    %
+    % run decoder
+    %
+
+    thisdecode=mytemplate;
+    for i=1:length(region)
+        
+        %%%%%%% FILTER UNITS HERE %%%%%%
+        inRegion=cellfun(@(a) contains(a,region{i},'IgnoreCase',true), {SuperRat(ses).units.area}) & ...
+        cell2mat(cellfun(@(a) any(a(1:2)), {SuperRat(ses).units.PFexist},'uniformOutput',false));
+
+        if sum(inRegion)>5
+            for ile=1:length(runpos)
+                for ile2=1:length(runpos)
+                tempMat=runSpkMat{ile}(:,inRegion); % ntrials x nunits
+                tempMat2=runSpkMat{ile2}(:,inRegion);
+                badunits=sum(tempMat>0)<10 | sum(tempMat2>0)<10; % spikes on fewer than 10 runs
+                tempMat(:,badunits)=[]; tempMat2(:,badunits)=[];
+                trueOdors=runIDs{ile}; % true run sides
+                
+                % run the within group decoder
+                [p_correct,fract_correct_real,fract_correct_null]...
+                    = nFoldBayesPoisson2(tempMat,tempMat2,trueOdors,nDolds,nBoots);
+                
+                thisdecode{i+1,2,1}(ile,ile2,:)=[fract_correct_real nanmean(fract_correct_null)];
+                thisdecode{i+1,2,2}(ile,ile2)=p_correct;
+                end
+            end
+        else
+            thisdecode{i+1,2,1}=nan(length(runpos),length(runpos),2);
+            thisdecode{i+1,2,2}=nan(length(runpos),length(runpos)); 
+            fprintf('%s %d %s not used, not enough units... \n',...
+                SuperRat(ses).name,SuperRat(ses).daynum,region{i});
+        end
+    end
+    SuperRat(ses).BayesDecodePvals_run_run=thisdecode;
+    % this method of taking the mean run probably doesnt make much sense
+    % i think i'd rather do something like a matched timewindow analysis
+    fprintf('Sess %d took %.2f minutes, overall we''re at %.2f minutes \n',...
+        ses,toc(sesstimer)/60,toc(daytimer)/60)
+end
+warning('on','all');
+
+%% and analyze the results
+% this will now be in a 2d matrix, so we'll have to get clever about
+% visualisations
+
+figure;
+linestart=jet(size(realProbs{1},1)+6);
+linestart2=autumn(size(realProbs{1},1)+1);
+linecolors=[linestart2(1:end-1,:) ; [.7 .7 .7]];
+linecolors(:,:,2)=[linestart(2:end-5,:); [.7 .7 .7]];
+% hot can be part of autumn, and cold (pfc) can be mid of parula
+for i=1:2
+    % this is the fraction correct real (:,:,2) is p correct real
+    realProbs=cellfun(@(a) permute(a{i+1,2,1}(:,:,1),[1 3 2]), {SuperRat.BayesDecodePvals_run_run}, 'UniformOutput', false);
+    % so the shape is study set x session x test set
+    realProbMat=cell2mat(realProbs(cellfun(@(a) size(a,1)>1,realProbs)));
+    nullProbs=cellfun(@(a) a{i+1,2,1}(:,:,2), {SuperRat.BayesDecodePvals_run_run}, 'UniformOutput', false);
+    nullProbMat=cell2mat(cellfun(@(a) permute(a,[1 3 2]), nullProbs(cellfun(@(a) length(a)>1,nullProbs)),'UniformOutput', false));
+
+    
+    %linecolors=[parula(length(runpos)); [.7 .7 .7]];
+    subplot(1,2,i);
+    for ile=1:size(realProbMat,1)
+        ho=errorbar((1:size(realProbMat,1))+ile*.05,nanmean(squeeze(realProbMat(ile,:,:))),...
+            SEM(squeeze(realProbMat(ile,:,:)),1),'-o','Color',linecolors(ile,:,i));
+        hold on;
+        ha=errorbar((1:size(realProbMat,1))+ile*.05,nanmean(squeeze(nullProbMat(ile,:,:))),...
+            SEM(squeeze(nullProbMat(ile,:,:)),1),'-o','Color',linecolors(end,:,i));
+        %[p,h]=signrank(realProbMat(ile,:)-nullProbMat(ile,:));
+        %[p,h] = ranksum(realProbMat(ile,:), nullProbMat(ile,:));
+       %if p<.05
+            %if p<0.01
+            %    text(ile,max(nanmean(realProbMat,2))*1.1,'**','FontSize',16);
+           % else
+            %    text(ile,max(nanmean(realProbMat,2))*1.1,'*','FontSize',16);
+           % end
+        %end
+    end
+    legend([ho ha],'Real Data','Null'); title(region{i});
+    xlim([.5 5.5]); box off; ylim([.45 .9]);
+    xlabel('track quintile'); ylabel('Decoding success probability');
+end
+sgtitle('splitters are abundant across the track')
+linkaxes;
+
+%% an alternative visualisation of the data is....
 
 %%     % so run the decoeer analysis on a run by run basis, so probably start each run
 
@@ -811,6 +1054,7 @@ thats interesting too...
 
 %% now using the  bayesian method with poisson firing
 %{
+% just a copy of the above
 clear realProbs nullProbs;
 
 runpos=[1 25; 25 50; 50 75; 75 100]; 

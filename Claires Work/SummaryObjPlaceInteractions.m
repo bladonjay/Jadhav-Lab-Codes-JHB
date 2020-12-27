@@ -432,7 +432,7 @@ for i=1:length(region)
         region{i},propssmall(2,2)/sum(propssmall(:,2)),propssmall(2,2),sum(propssmall(:,2)),1-y);
     
 end
-%%
+%% do place field characteristics differ? e.g. mean rate, p (place selective), 
 for i=1:length(region)
     
     cellfilt=cellfun(@(a) contains(a,region{i},'IgnoreCase',true),{SuperUnits.area}) &...
@@ -746,24 +746,68 @@ for i=1:length(region)
     %sgtitle(sprintf('Place Fields of %s cells from %s',type, region{i}));
 end
 %% where do place field peaks fall for odor selective units?
-
+figure;
 mycolors=lines(3);
 for i=1:length(region)
-    % pull pyrs from this brain region
+    % pull pyrs from this brain region that are ODOR SELECTIVE
     cellfilt=cellfun(@(a) contains(a,region{i},'IgnoreCase',true),{SuperUnits.area}) &...
-        cellfun(@(a) contains(a,type,'IgnoreCase',true),{SuperUnits.type});
+        cellfun(@(a) contains(a,type,'IgnoreCase',true),{SuperUnits.type}) &...
+        cellfun(@(a) a(3)==1, {SuperUnits.OdorSelective});
     
     cellPool=SuperUnits(cellfilt);
     % now I think i can probably take each unit and replicate it twice for out
     % l and out r and then cull those without place fields
     % first gather the place fields into a super long vector
-    allPFs=cell2mat(cellfun(@(a) a(1:2), {cellPool.PFexist},'UniformOutput',false));
+    allPFs=cell2mat(cellfun(@(a) a.PFmaxpos(1:2), {cellPool.FieldProps},'UniformOutput',false)');
     
     % i think i want to see where the place fields fall for the same run
     % and the opposing run
+    %[b,a]=histcounts(allPFs(:,1),0:5:100);
+    %plot(mean([a(2:end);a(1:end-1)]),SmoothMat2(b,[10 10],1)./sum(~isnan(allPFs(:,1))),'Color',mycolors( i,:));
+    %hold on;
+    %[b,a]=histcounts(allPFs(:,2),0:5:100);
+    %plot(mean([a(2:end);a(1:end-1)]),SmoothMat2(b,[10 10],1)./sum(~isnan(allPFs(:,1))),'Color',mycolors(i,:)*.6);
+    
+    [b,a]=histcounts(linearize(allPFs),0:5:100);
+    plot(mean([a(2:end);a(1:end-1)]),SmoothMat2(b,[10 10],1)./sum(~isnan(allPFs(:,1))),'Color',mycolors( i,:));
+    hold on;
+end
+mykids=get(gca,'Children');
+legend(region);
+title(sprintf('Distribution of Field Peaks \n of Odor Responsive Units'));
+xlabel('Track Position (% of total distance)');
+ylabel(sprintf('Relative Prevalence of \n Field Centers'));
+
+%% what about mean rate along track for odor responsive cells?
+figure;
+mycolors=lines(3);
+for i=1:length(region)
+    fullcurve=[];
+    % pull pyrs from this brain region that are ODOR RESPONSIVE
+    cellfilt=cellfun(@(a) contains(a,region{i},'IgnoreCase',true),{SuperUnits.area}) &...
+        cellfun(@(a) contains(a,type,'IgnoreCase',true),{SuperUnits.type}) &...
+        cellfun(@(a) a(3)==1, {SuperUnits.OdorSelective});
+    
+    cellPool=SuperUnits(cellfilt);
+    % now I think i can probably take each unit and replicate it twice for out
+    % l and out r and then cull those without place fields
+    % first gather the place fields into a super long vector
+    allPFs=cellfun(@(a) nanmean(cell2mat(a(1:2)')), {cellPool.LinPlaceFields},'UniformOutput',false);
+    allrates=cell2mat(allPFs(cellfun(@(a) length(a)==99, allPFs))');
+    
+    % i think i want to see where the place fields fall for the same run
+    % and the opposing run
+    meanrate=nanmean(allrates(:,1:98)); semrate=SEM(allrates(:,1:98),1);
+    plot(meanrate,'Color',mycolors(i,:)); hold on;
+    patch([1:length(meanrate) length(meanrate):-1:1],[meanrate+semrate ...
+        fliplr(meanrate-semrate)],mycolors(i,:),'FaceAlpha',.4,'EdgeColor','none');
 end
 
-
+mykids=get(gca,'Children');
+legend(mykids([4 2]),region);
+title(sprintf('Mean Ensemble rate \n of Odor Responsive Units'));
+xlabel('Track Position (% of total distance)');
+ylabel(sprintf('Ensemble Firing Rate (hz)'));
 
 %%
 % do cells that respond to odors respond to place differently?

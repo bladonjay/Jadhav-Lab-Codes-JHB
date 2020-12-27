@@ -51,8 +51,13 @@ edit PlotObjPlaceCells
 edit SummaryObjPlaceInteractions
 
 edit Claire_Odor_Routedecoder
-%% now to analyze these data
+%%
 
+
+%% now to analyze these data
+% one fun question is whether odor representations are replayed with goal
+% location representations, although it may be tough as there are only four
+% options, so the basrates are very high
 edit ClaireRippleAnalysis
 
 %%
