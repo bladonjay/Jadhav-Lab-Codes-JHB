@@ -70,6 +70,10 @@ same place?  e.g. are they splitters or are they directionally sensitive?
 
 
 %%
+
+region={'CA1','PFC'};
+type='pyr';
+
 % get a superrat of units
 SuperUnits=orderfields(SuperRat(1).units);
 
@@ -92,8 +96,7 @@ fprintf('pfc %d pyrs, %d IN''s \n', sum(cellfun(@(a) contains(a,'pyr'), {SuperUn
 %%
 % 1. do cells that respond to odors respond to place differently
 % First, how many of these cells spike during the outbound run bouts
-region={'CA1','PFC'};
-type='pyr';
+
 for r=1:2
     % the only pool in which it does matter whether
     cellfilt=cellfun(@(a) contains(a,region{r},'IgnoreCase',true),{SuperUnits.area}) &...
@@ -336,7 +339,7 @@ for i=1:length(region)
     
     
 end
-%%
+
 %% does place field prevalence differ across odor responses (ONLY RESPONSIVE)
 % now filter out the cells who dont spike during runs
 fprintf('\n \n');
@@ -748,6 +751,13 @@ end
 %% where do place field peaks fall for odor selective units?
 figure;
 mycolors=lines(3);
+peakcts=[]; allPFs={}; bootdistr={}; clear pt;
+
+rstream=RandStream('mt19937ar','Seed',16);
+RandStream.setGlobalStream(rstream);
+nboots=1000;
+bins=0:5:100; binctrs=2.5:5:97.5;
+
 for i=1:length(region)
     % pull pyrs from this brain region that are ODOR SELECTIVE
     cellfilt=cellfun(@(a) contains(a,region{i},'IgnoreCase',true),{SuperUnits.area}) &...
@@ -758,29 +768,76 @@ for i=1:length(region)
     % now I think i can probably take each unit and replicate it twice for out
     % l and out r and then cull those without place fields
     % first gather the place fields into a super long vector
-    allPFs=cell2mat(cellfun(@(a) a.PFmaxpos(1:2), {cellPool.FieldProps},'UniformOutput',false)');
+    allPFs{i}=cell2mat(cellfun(@(a) a.PFmaxpos(1:2), {cellPool.FieldProps},'UniformOutput',false)');
     
-    % i think i want to see where the place fields fall for the same run
-    % and the opposing run
-    %[b,a]=histcounts(allPFs(:,1),0:5:100);
-    %plot(mean([a(2:end);a(1:end-1)]),SmoothMat2(b,[10 10],1)./sum(~isnan(allPFs(:,1))),'Color',mycolors( i,:));
-    %hold on;
-    %[b,a]=histcounts(allPFs(:,2),0:5:100);
-    %plot(mean([a(2:end);a(1:end-1)]),SmoothMat2(b,[10 10],1)./sum(~isnan(allPFs(:,1))),'Color',mycolors(i,:)*.6);
-    
-    [b,a]=histcounts(linearize(allPFs),0:5:100);
-    plot(mean([a(2:end);a(1:end-1)]),SmoothMat2(b,[10 10],1)./sum(~isnan(allPFs(:,1))),'Color',mycolors( i,:));
+    peakcts(:,i)=SmoothMat2(histcounts(linearize(allPFs{i}),0:5:100),[2 2],1)./numel(allPFs{i});
+    %plot(mean([a(2:end);a(1:end-1)]),SmoothMat2(peakcts(:,i),[10 10],1)./sum(~isnan(allPFs{i}(:,1))),'Color',mycolors( i,:));
+    pt(i)=plot(binctrs,peakcts(:,i),'+-',...
+        'LineWidth',1.5,'Color',mycolors( i,:));
     hold on;
+    % now bootstrap a random distribution and indicate where the data
+    % exceed
+    bootraw=linearize(allPFs{i});
+    for j=1:nboots
+        bootpeaks=bootraw+round(rand(length(bootraw),1)*100); % add random shift
+        bootpeaks(bootpeaks>100)=bootpeaks(bootpeaks>100)-100; % now wrap around the 100
+        %bootdistr{i}(j,:)=SmoothMat2(histcounts(bootpeaks,0:5:100),[10 10],1)./sum(~isnan(bootraw));
+        bootdistr{i}(j,:)=histcounts(bootpeaks,0:5:100)./length(bootpeaks);
+    end
+    
+        
+    patch([binctrs fliplr(binctrs)],[nanmean(bootdistr{i})-2.3*nanstd(bootdistr{i}) ...
+        fliplr(nanmean(bootdistr{i})+2.3*nanstd(bootdistr{i}))],...
+        mycolors(i,:),'LineStyle','none','FaceAlpha',.5)
+    
+    for j=1:size(peakcts,1)
+        if peakcts(j,i)>nanmean(bootdistr{i}(:,j))+2.3*nanstd(bootdistr{i}(:,j))
+            text(binctrs(j),peakcts(j,i)+.012,'*','FontSize',16);
+        end
+    end
+    
+
 end
-mykids=get(gca,'Children');
-legend(region);
+legend(pt,region);
 title(sprintf('Distribution of Field Peaks \n of Odor Responsive Units'));
 xlabel('Track Position (% of total distance)');
 ylabel(sprintf('Relative Prevalence of \n Field Centers'));
 
+% statistical test: does the first 20% of the track contain more field
+% peaks than the remainder of the track?
+% lets do a chi square test against a uniform distribution:
+% e.g. num is # fields, denom is %% of track
+
+% 5% increments, so chi square for each as a proportion of the whole?
+% the kstest shows that neither distribution is uniform
+[~,p]=kstest(linearize(allPFs{1})); [~,p(2)]=kstest(linearize(allPFs{2})); 
+fprintf('KStest on CA1 p=%.2e, on PFC p=%.2e\n',p(1),p(2));
+
+[~,p]=kstest2(linearize(allPFs{1}),linearize(allPFs{2}));
+fprintf('Two sample KStest shows a significant difference btwn, p=%.2e \n',p);
+
+% an alternative is to do a complicated bootstrap shuffle that circshifts
+% the centers to estimate the uniform distribution....
+
+% or chi square, but prolly not the best idea to bin these data
+%{
+% a chi square on quintiles shows a difference?
+chiraw=[peakcts(1:4,1),peakcts(5:8,1),peakcts(9:12,1),peakcts(13:16,1),peakcts(17:20,1);...
+    peakcts(1:4,2),peakcts(5:8,2),peakcts(9:12,2),peakcts(13:16,2),peakcts(17:20,2)];
+
+[a,b]=chi2indep(chiraw);
+fprintf('as for difference in distribution, a chi2
+%}
+
 %% what about mean rate along track for odor responsive cells?
 figure;
 mycolors=lines(3);
+allrates={}; bootmeans={}; nboots=1000;
+clear pn;
+% set the boot order
+rstream = RandStream('mt19937ar','Seed',16);
+RandStream.setGlobalStream(rstream);
+
 for i=1:length(region)
     fullcurve=[];
     % pull pyrs from this brain region that are ODOR RESPONSIVE
@@ -793,21 +850,51 @@ for i=1:length(region)
     % l and out r and then cull those without place fields
     % first gather the place fields into a super long vector
     allPFs=cellfun(@(a) nanmean(cell2mat(a(1:2)')), {cellPool.LinPlaceFields},'UniformOutput',false);
-    allrates=cell2mat(allPFs(cellfun(@(a) length(a)==99, allPFs))');
+    allrates{i}=cell2mat(allPFs(cellfun(@(a) length(a)==99, allPFs))');
+    
+    %allrates{i}=nanzscore(cell2mat(allPFs(cellfun(@(a) length(a)==99, allPFs))'),[],2);
+    
+    for j=1:nboots
+        bootmat=[];
+        for k=1:size(allrates{i},1)
+            bootmat(k,:)=circshift(allrates{i}(k,:),randi(99));
+        end
+        bootmeans{i}(j,:)=nanmean(bootmat);
+    end
+    
     
     % i think i want to see where the place fields fall for the same run
     % and the opposing run
-    meanrate=nanmean(allrates(:,1:98)); semrate=SEM(allrates(:,1:98),1);
-    plot(meanrate,'Color',mycolors(i,:)); hold on;
+    meanrate=nanmean(allrates{i}(:,1:98)); semrate=nanstd(allrates{i}(:,1:98),[],1);
+    pn(i)=plot(meanrate,'Color',mycolors(i,:)); hold on;
     patch([1:length(meanrate) length(meanrate):-1:1],[meanrate+semrate ...
         fliplr(meanrate-semrate)],mycolors(i,:),'FaceAlpha',.4,'EdgeColor','none');
+    
+    for j=1:length(meanrate)
+        if meanrate(j)>prctile(bootmeans{i}(:,j),99)
+            plot([j-.5 j+.5], [1 1]+.1*i,'color',mycolors(i,:),'LineWidth',5);
+        end
+    end
 end
 
+
 mykids=get(gca,'Children');
-legend(mykids([4 2]),region);
+legend(pn,region);
 title(sprintf('Mean Ensemble rate \n of Odor Responsive Units'));
 xlabel('Track Position (% of total distance)');
 ylabel(sprintf('Ensemble Firing Rate (hz)'));
+
+% maybe run ancova on pos, rate, and region?
+% for this we can just divvy first 20% with the rest and run a ranksum...
+% on the plot we can just do the bar and lines
+
+% ranksum doesnt do it... its probably an inappropriate test because of the
+% different sample sizes....
+% likewise here the baseline is to circshift and get a uniform
+% and mark where the rates exceed the uniform
+
+
+% marks are against a bootstrap uniform test
 
 %%
 % do cells that respond to odors respond to place differently?

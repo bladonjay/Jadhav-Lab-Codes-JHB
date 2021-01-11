@@ -601,14 +601,12 @@ sgtitle('Odor coding ensembles persist into track run');
 
     
 %% and now a control, how easy is it to decode the run after training on the run?
-   
+
 
 % four
 runpos=[1 25; 25 50; 50 75; 75 100]; 
 % or five
 runpos=[1 20; 21 40; 41 60; 61 80; 81 100]; 
-
-% a quick wrapper
 
 
 
@@ -952,6 +950,7 @@ for ses=1:length(SuperRat)
     for i=1:length(region)
         
         %%%%%%% FILTER UNITS HERE %%%%%%
+        % right now its a place field and in region filter
         inRegion=cellfun(@(a) contains(a,region{i},'IgnoreCase',true), {SuperRat(ses).units.area}) & ...
         cell2mat(cellfun(@(a) any(a(1:2)), {SuperRat(ses).units.PFexist},'uniformOutput',false));
 
@@ -991,29 +990,29 @@ warning('on','all');
 % this will now be in a 2d matrix, so we'll have to get clever about
 % visualisations
 
-figure;
-linestart=jet(size(realProbs{1},1)+6);
-linestart2=autumn(size(realProbs{1},1)+1);
-linecolors=[linestart2(1:end-1,:) ; [.7 .7 .7]];
-linecolors(:,:,2)=[linestart(2:end-5,:); [.7 .7 .7]];
+figure; clear sp realProbMat
 % hot can be part of autumn, and cold (pfc) can be mid of parula
 for i=1:2
     % this is the fraction correct real (:,:,2) is p correct real
     realProbs=cellfun(@(a) permute(a{i+1,2,1}(:,:,1),[1 3 2]), {SuperRat.BayesDecodePvals_run_run}, 'UniformOutput', false);
     % so the shape is study set x session x test set
-    realProbMat=cell2mat(realProbs(cellfun(@(a) size(a,1)>1,realProbs)));
+    realProbMat{i}=cell2mat(realProbs(cellfun(@(a) size(a,1)>1,realProbs)));
     nullProbs=cellfun(@(a) a{i+1,2,1}(:,:,2), {SuperRat.BayesDecodePvals_run_run}, 'UniformOutput', false);
     nullProbMat=cell2mat(cellfun(@(a) permute(a,[1 3 2]), nullProbs(cellfun(@(a) length(a)>1,nullProbs)),'UniformOutput', false));
 
+    linestart=jet(size(realProbs{1},1)+6);
+    linestart2=autumn(size(realProbs{1},1)+1);
+    linecolors=[linestart2(1:end-1,:) ; [.7 .7 .7]];
+    linecolors(:,:,2)=[linestart(2:end-5,:); [.7 .7 .7]];
     
     %linecolors=[parula(length(runpos)); [.7 .7 .7]];
-    subplot(1,2,i);
-    for ile=1:size(realProbMat,1)
-        ho=errorbar((1:size(realProbMat,1))+ile*.05,nanmean(squeeze(realProbMat(ile,:,:))),...
-            SEM(squeeze(realProbMat(ile,:,:)),1),'-o','Color',linecolors(ile,:,i));
+    sp(i)=subplot(2,2,i);
+    for ile=1:size(realProbMat{i},1)
+        ho=errorbar((1:size(realProbMat{i},1))+ile*.05,nanmean(squeeze(realProbMat{i}(ile,:,:))),...
+            SEM(squeeze(realProbMat{i}(ile,:,:)),1),'.-','Color',linecolors(ile,:,i),'CapSize',0);
         hold on;
-        ha=errorbar((1:size(realProbMat,1))+ile*.05,nanmean(squeeze(nullProbMat(ile,:,:))),...
-            SEM(squeeze(nullProbMat(ile,:,:)),1),'-o','Color',linecolors(end,:,i));
+        ha=errorbar((1:size(realProbMat{i},1))+ile*.05,nanmean(squeeze(nullProbMat(ile,:,:))),...
+            SEM(squeeze(nullProbMat(ile,:,:)),1),'.-','Color',linecolors(end,:,i),'CapSize',0);
         %[p,h]=signrank(realProbMat(ile,:)-nullProbMat(ile,:));
         %[p,h] = ranksum(realProbMat(ile,:), nullProbMat(ile,:));
        %if p<.05
@@ -1025,13 +1024,62 @@ for i=1:2
         %end
     end
     legend([ho ha],'Real Data','Null'); title(region{i});
-    xlim([.5 5.5]); box off; ylim([.45 .9]);
+    xlim([.5 5.5]); box off; ylim([.45 1]);
     xlabel('track quintile'); ylabel('Decoding success probability');
+    myticks=get(gca,'XTickLabel');
+    for k=1:length(myticks)
+        myticks{k}=[' \color[rgb]{' num2str(squeeze(linecolors(k,:,i))) '} ' myticks{k}];
+    end
+    set(gca,'XTickLabel',myticks);
+    
+    
+    
+    %subplot(2,2,i+2);
+    %imagesc(squeeze(nanmean(realProbMat,2)));
 end
 sgtitle('splitters are abundant across the track')
-linkaxes;
+linkaxes(sp);
+
+% statistics: friedman tests?
+% so the question is 1. are there any differences in decoder success across
+% training quintiles?
+for i=1:2
+    % first linearize the rows
+    testmat=[];
+    for tr=1:size(realProbMat{i},1)
+        testmat(:,tr)=linearize(realProbMat{i}(tr,:,:));
+    end
+    testmat(sum(isnan(testmat),2)>0,:)=[];
+    fprintf('\n %s any trainign quintile better than others? \n',region{i}); 
+    [a,b,c]=friedman(testmat,size(realProbMat{i},1))
+    if a<.01, d = multcompare(c), end
+    
+end
+
+
+% and second, does the decoder do better when trained on the same quintile
+% as the test set?
+for i=1:2
+    % first linearize the rows
+    testmat={[],[]};
+    for tr=1:size(realProbMat{i},1)
+        testmat{1}=[testmat{1}; linearize(realProbMat{i}(tr,:,tr))];
+        testmat{2}=[testmat{2}; linearize(realProbMat{i}(tr,:,(1:size(realProbMat{i},1))~=tr))];
+    end
+
+    fprintf('\n %s same vs other quintile \n',region{i});
+    fprintf('n=%d \n',length(testmat{1}+length(testmat{2})))
+    [a,b,c]=ranksum(testmat{1},testmat{2})
+    %if a<.01, d = multcompare(c), end
+    
+end
+
+
 
 %% an alternative visualisation of the data is....
+% a matrix... but it looks worse...
+
+
 
 %%     % so run the decoeer analysis on a run by run basis, so probably start each run
 
