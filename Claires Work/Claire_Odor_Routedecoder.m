@@ -538,7 +538,7 @@ warning('on','all');
 
 
 
-%%
+%% work up data for odor period to odor period
 
 figure;
 for i=1:2
@@ -547,7 +547,8 @@ for i=1:2
     nullProbs=cellfun(@(a) a{i+1,2,1}(2), {SuperRat.BayesDecodePvals});
     
     subplot(2,2,i);
-    errorbar([1 2],[nanmean(realProbs), nanmean(nullProbs)],[SEM(realProbs),SEM(nullProbs)],'.');
+    errorbar([1 2],[nanmean(realProbs), nanmean(nullProbs)],[nanstd(realProbs),nanstd(nullProbs)],...
+        '.','CapSize',0);
     xlim([.5 2.5]);
     set(gca,'XTick',[1 2],'XTickLabel',{'real','null'});
     title(sprintf('%s odor decoder',region{i}));
@@ -560,7 +561,8 @@ for i=1:2
     nullProbs=cellfun(@(a) nanmean(a{i+1,3,1}(:,2)), {SuperRat.BayesDecodePvals});
     
     subplot(2,2,i+2);
-    errorbar([1 2],[nanmean(realProbs), nanmean(nullProbs)],[SEM(realProbs),SEM(nullProbs)],'.');
+    errorbar([1 2],[nanmean(realProbs), nanmean(nullProbs)],[SEM(realProbs),SEM(nullProbs)],...
+        '.','CapSize',0);
     title(region{i}); xlim([.5 2.5]);
     set(gca,'XTick',[1 2],'XTickLabel',{'real','null'});
     title(sprintf('%s run decoder',region{i}));
@@ -570,7 +572,7 @@ end
 
 
 linkaxes(get(gcf,'Children'),'y')
-%%
+%% work up data for odor period to track periods
 figure;
 linecolors=[lines(2); [.7 .7 .7]];
 for i=1:2
@@ -581,9 +583,11 @@ for i=1:2
 
     subplot(1,2,i);
     for ile=1:size(realProbMat,1)
-        ho=errorbar(ile,nanmean(realProbMat(ile,:)),SEM(realProbMat(ile,:)),'.','Color',linecolors(i,:));
+        ho=errorbar(ile,nanmean(realProbMat(ile,:)),nanstd(realProbMat(ile,:)),...
+            '.','Color',linecolors(i,:),'CapSize',0);
         hold on;
-        ha=errorbar(ile,nanmean(nullProbMat(ile,:)),SEM(nullProbMat(ile,:)),'.','Color',linecolors(3,:));
+        ha=errorbar(ile+.1,nanmean(nullProbMat(ile,:)),nanstd(nullProbMat(ile,:)),...
+            '.','Color',linecolors(3,:),'CapSize',0);
         [p,h]=signrank(realProbMat(ile,:)-nullProbMat(ile,:));
         %[p,h] = ranksum(realProbMat(ile,:), nullProbMat(ile,:));
         if p<.05
@@ -601,7 +605,7 @@ sgtitle('Odor coding ensembles persist into track run');
 
     
 %% and now a control, how easy is it to decode the run after training on the run?
-
+% e.g. train on a segment and test on THAT SEGMENT
 
 % four
 runpos=[1 25; 25 50; 50 75; 75 100]; 
@@ -779,21 +783,23 @@ for i=1:2
 
     subplot(1,2,i);
     for ile=1:size(realProbMat,1)
-        ho=errorbar(ile,nanmean(realProbMat(ile,:)),SEM(realProbMat(ile,:)),'.','Color',linecolors(i,:));
+        ho=errorbar(ile-.025,nanmean(realProbMat(ile,:)),nanstd(realProbMat(ile,:)),...
+            '.','Color',linecolors(i,:),'CapSize',0);
         hold on;
-        ha=errorbar(ile,nanmean(nullProbMat(ile,:)),SEM(nullProbMat(ile,:)),'.','Color',linecolors(3,:));
+        ha=errorbar(ile+.025,nanmean(nullProbMat(ile,:)),nanstd(nullProbMat(ile,:)),...
+            '.','Color',linecolors(3,:),'CapSize',0);
         [p,h]=signrank(realProbMat(ile,:)-nullProbMat(ile,:));
         %[p,h] = ranksum(realProbMat(ile,:), nullProbMat(ile,:));
         if p<.05
             if p<0.01
-                text(ile,max(nanmean(realProbMat,2))*1.1,'**','FontSize',16);
+                text(ile-.25,max(nanmean(realProbMat,2))*1.1,'**','FontSize',16);
             else
-                text(ile,max(nanmean(realProbMat,2))*1.1,'*','FontSize',16);
+                text(ile-.1,max(nanmean(realProbMat,2))*1.1,'*','FontSize',16);
             end
         end
     end
     legend('Real Data','Null');
-    xlim([.5 5.5]); box off; ylim([.45 .9]);
+    xlim([.5 5.5]); box off; ylim([.4 1]);
     xlabel('track quintile'); ylabel('Decoding success probability');
 end
 sgtitle('splitters are abundant across the track')
@@ -951,9 +957,10 @@ for ses=1:length(SuperRat)
         
         %%%%%%% FILTER UNITS HERE %%%%%%
         % right now its a place field and in region filter
-        inRegion=cellfun(@(a) contains(a,region{i},'IgnoreCase',true), {SuperRat(ses).units.area}) & ...
-        cell2mat(cellfun(@(a) any(a(1:2)), {SuperRat(ses).units.PFexist},'uniformOutput',false));
-
+        inRegion=cellfun(@(a) contains(a,region{i},'IgnoreCase',true), {SuperRat(ses).units.area}) & ...       
+        cell2mat(cellfun(@(a) any(a), {SuperRat(ses).units.FiresDuringRun}, 'UniformOutput',false));
+        %cell2mat(cellfun(@(a) any(a(1:2)), {SuperRat(ses).units.PFexist},'uniformOutput',false));
+        
         if sum(inRegion)>5
             for ile=1:length(runpos)
                 for ile2=1:length(runpos)
@@ -1009,10 +1016,10 @@ for i=1:2
     sp(i)=subplot(2,2,i);
     for ile=1:size(realProbMat{i},1)
         ho=errorbar((1:size(realProbMat{i},1))+ile*.05,nanmean(squeeze(realProbMat{i}(ile,:,:))),...
-            SEM(squeeze(realProbMat{i}(ile,:,:)),1),'.-','Color',linecolors(ile,:,i),'CapSize',0);
+            nanstd(squeeze(realProbMat{i}(ile,:,:)),1),'.-','Color',linecolors(ile,:,i),'CapSize',0);
         hold on;
-        ha=errorbar((1:size(realProbMat{i},1))+ile*.05,nanmean(squeeze(nullProbMat(ile,:,:))),...
-            SEM(squeeze(nullProbMat(ile,:,:)),1),'.-','Color',linecolors(end,:,i),'CapSize',0);
+        ha=errorbar((1:size(realProbMat{i},1))-.02+ile*.05,nanmean(squeeze(nullProbMat(ile,:,:))),...
+            nanstd(squeeze(nullProbMat(ile,:,:)),1),'.-','Color',linecolors(end,:,i),'CapSize',0);
         %[p,h]=signrank(realProbMat(ile,:)-nullProbMat(ile,:));
         %[p,h] = ranksum(realProbMat(ile,:), nullProbMat(ile,:));
        %if p<.05

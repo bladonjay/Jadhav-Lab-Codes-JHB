@@ -872,7 +872,7 @@ for i=1:length(region)
     
     for j=1:length(meanrate)
         if meanrate(j)>prctile(bootmeans{i}(:,j),99)
-            plot([j-.5 j+.5], [1 1]+.1*i,'color',mycolors(i,:),'LineWidth',5);
+            plot([j-.5 j+.5], [18 18]+.1*i,'color',mycolors(i,:),'LineWidth',5);
         end
     end
 end
