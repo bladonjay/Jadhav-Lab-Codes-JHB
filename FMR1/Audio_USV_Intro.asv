@@ -61,11 +61,7 @@ figure; imagesc(t,f,SmoothMat2(abs(s),[10 10],1));
 % 
 Calls = table();
 
-%chunksize=?
-% overlap = ?
-% cutoffs (HighCutoff LowCutoff)
-% ScoreCutoff
-%u = sum(hamming(wind).^2) % not sure what this does
+chunksize
 
 wind = round(wind * audio_info.SampleRate);
 noverlap = round(noverlap * audio_info.SampleRate);
