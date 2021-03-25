@@ -1,5 +1,13 @@
 %% generating latin cubes for random animal pairings
 
+% this bit still needs work, I need to make a sequential algorithm that
+% checks the followings:
+% 1. consec days dont share a first or last pair, or a first or last rat
+% too many times
+% 2. rats dont have the same partners in the same order more than 2 days in
+% a row
+
+%{
 ratnames= {'AH1','AH2','AH3','AH6'};
 ratairs={};
 iterator=1;
@@ -39,30 +47,77 @@ for i=1:6 % six perms for weeks
         end
     end
 end
-
+%}
 
 %% aggregating all the pairings...
 
-opts = delimitedTextImportOptions("NumVariables", 2);
-
-% Specify range and delimiter
-opts.DataLines = [2, Inf];
-opts.Delimiter = "#";
-
-% Specify column names and types
-opts.VariableNames = ["VarName1", "Var2"];
-opts.SelectedVariableNames = "VarName1";
-opts.VariableTypes = ["string", "string"];
-
-% Specify file level properties
-opts.ExtraColumnsRule = "ignore";
-opts.EmptyLineRule = "read";
-
-% Specify variable properties
-opts = setvaropts(opts, ["VarName1", "Var2"], "WhitespaceRule", "preserve");
-opts = setvaropts(opts, ["VarName1", "Var2"], "EmptyFieldRule", "auto");
-
-mydir=uigetdir;
+try
+    load SocialSessions.m
+catch
+    
+    opts = delimitedTextImportOptions("NumVariables", 2);
+    
+    % Specify range and delimiter
+    opts.DataLines = [2, Inf];
+    opts.Delimiter = "#";
+    
+    % Specify column names and types
+    opts.VariableNames = ["VarName1", "Var2"];
+    opts.SelectedVariableNames = "VarName1";
+    opts.VariableTypes = ["string", "string"];
+    
+    % Specify file level properties
+    opts.ExtraColumnsRule = "ignore";
+    opts.EmptyLineRule = "read";
+    
+    % Specify variable properties
+    opts = setvaropts(opts, ["VarName1", "Var2"], "WhitespaceRule", "preserve");
+    opts = setvaropts(opts, ["VarName1", "Var2"], "EmptyFieldRule", "auto");
+    
+    mydir=uigetdir;
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %%%%% go through and add metadata %%%%%%
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    GroupPrefix='20';
+    idlength=2;
+    
+    
+    filelist = dir(fullfile(mydir, '**\*.*'));  %get list of files and folders in any subfolder
+    okfiles=cellfun(@(a) contains(a,'stateScriptLog'),{filelist.name});
+    filelist = filelist(okfiles);
+    
+    % now get the rat and date
+    for i=1:length(filelist)
+        if ~contains(filelist(i).name,'test') && ~contains(filelist(i).name,'PV') && ...
+                ~contains(filelist(i).name,'XF') &&   ~contains(filelist(i).name,'AH')
+            sessIDX=strfind(filelist(i).name,'(');
+            datestr=filelist(i).name(1:sessIDX);
+            namestr=filelist(i).name(sessIDX:strfind(filelist(i).name,'.')-1);
+            nameIDX=strfind(filelist(i).name(sessIDX:end),'-');
+            filelist(i).rundate=filelist(i).folder(find(filelist(i).folder=='\',1,'last')+1:end);
+            Ratids=strfind(namestr,GroupPrefix);
+            filelist(i).ratnames{1}=namestr(Ratids(1):Ratids(1)+2);
+            filelist(i).ratnames{2}=namestr(Ratids(2):Ratids(2)+2);
+            filelist(i).datenum=datenum(filelist(i).rundate);
+            
+            filelist(i).sessnum=str2double(namestr(2:(find(namestr=='-',1,'first')-1)));
+        end
+    end
+    
+    % now sort, first by session, then by date then by rat, this will make rat
+    % the top sorting category
+    
+    % want it as a struct or a table?
+    filelist=filelist(cellfun(@(a) ~isempty(a), {filelist.sessnum}));
+    % we can interchange tables and structs easily
+    ratinfo=sortrows(struct2table(filelist),{'datenum','sessnum'});
+    
+    % now for ease here im going to put it into a struct
+    ratinfo=table2struct(ratinfo);
+    
+    
+end
 %%
 
 
@@ -86,35 +141,7 @@ mydir=uigetdir;
 % with buddy?
 % 2. does performance change across the day?
 
-GroupPrefix='AH';
-idlength=2;
-
-
-filelist = dir(fullfile(mydir, '**\*.*'));  %get list of files and folders in any subfolder
-okfiles=cellfun(@(a) contains(a,'stateScriptLog'),{filelist.name});
-filelist = filelist(okfiles);
-% now get the rat and date
-for i=1:length(filelist)
-    filelist(i).rundate=filelist(i).folder(find(filelist(i).folder=='\',1,'last')+1:end);
-    Ratids=strfind(filelist(i).name,GroupPrefix);
-    filelist(i).ratnames{1}=filelist(i).name(Ratids(1):Ratids(1)+2);
-    filelist(i).ratnames{2}=filelist(i).name(Ratids(2):Ratids(2)+2);
-    filelist(i).datenum=datenum(filelist(i).rundate);
-    sessIDX=strfind(filelist(i).name,'(');
-    filelist(i).sessnum=str2double(filelist(i).name(sessIDX+1));
-end
-
-% now sort, first by session, then by date then by rat, this will make rat
-% the top sorting category
-
-% want it as a struct or a table?
-
-% we can interchange tables and structs easily
-ratinfo=sortrows(struct2table(filelist),{'datenum','sessnum'});
-
-% now for ease here im going to put it into a struct
-ratinfo=table2struct(ratinfo);
-
+%%
 verbose=0;
 %%
 

@@ -14,8 +14,11 @@ opts = setvaropts(opts, "Filename", "WhitespaceRule", "preserve");
 opts = setvaropts(opts, ["TaskParadigm", "Filename"], "EmptyFieldRule", "auto");
 opts = setvaropts(opts, "Date", "InputFormat", "");
 
-% Import the data
-SocialTaskLedger = readtable("/Users/johnbladon/Dropbox (Personal)/Brandeis/Social Task Recording Ledger 2021-1-29.xlsx", opts, "UseExcel", false);
+% Import the datas
+
+dataloc=uigetfile();
+dataloc="E:/Dropbox (Personal)/Brandeis/Social Task Recording Ledger 2021-1-29.xlsx"
+SocialTaskLedger = readtable(dataloc, opts, "UseExcel", false);
 
 
 
@@ -64,12 +67,14 @@ signrank(mean(mixes,2,'omitnan'),ctrls)
 signrank(mean(mixes,2,'omitnan'),fxes)
 figure; subplot(1,2,1);
 plot([ctrls fxes]'); colororder(gca,parula(18));
-hold on; boxplot([ctrls fxes]);
+hold on; boxplot([ctrls fxes]); set(gca,'XTickLabel',{'CTRL','FX'});
+ylabel('Rewards per minute');
 %errorbar(1,nanmean(ctrls), nanstd(ctrls),'kx','CapSize',0);
 %errorbar(2,nanmean(fxes), nanstd(fxes),'kx','CapSize',0); xlim([.6 2.4]);
 subplot(1,2,2);
 plot(SmoothMat2([ctrls mean(mixes,2,'omitnan') fxes],[1,10],1),'*-');
 legend('Controls','Mixes','FX');
+ylabel('Rewards per minute');
 
 
 
