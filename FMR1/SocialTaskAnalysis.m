@@ -191,12 +191,12 @@ for i=1:length(ratinfo)
         ratinfo(i).ratsamples{rt}=table(myevents{rt}(:,1),myevents{rt}(:,2),...
             myevents{rt}(:,3),myevents{rt}(:,4),myevents{rt}(:,5),...
             myevents{rt}(:,6), myevents{rt}(:,7),'VariableNames',...
-            {'start','end','thiswell','lastwell','Reward','match?','Goal Well'});
+            {'start','end','thiswell','lastwell','Reward','match','Goal Well'});
     
         % now report
-        armtrans=myevents{rt}(diff(myevents{rt}(:,[3 4]),1,2)~=0,:);
+        ctrls=myevents{rt}(diff(myevents{rt}(:,[3 4]),1,2)~=0,:);
         fprintf('Today rat %s, %.2f%% arm transitions were to an occupied arm, and %.2f%% were rewarded \n',...
-            ratinfo(i).ratnames{rt}, nanmean(armtrans(:,6))*100,nanmean(armtrans(:,5))*100); % basically when the diff==0
+            ratinfo(i).ratnames{rt}, nanmean(ctrls(:,6))*100,nanmean(ctrls(:,5))*100); % basically when the diff==0
     
     end
 
@@ -294,7 +294,7 @@ for ra=1:length(allRatNames)
     RatAll(ra).myRaw=myRaw;
     RatAll(ra).hisRaw=hisRaw;
     
-    allMyEvents(allMyEvents.departure<allMyEvents.start-5,:)=[]; % kill when he left that well too long ago
+    allMyEvents(allMyEvents.departure<allMyEvents.start-2,:)=[]; % kill when he left that well too long ago
     % lets do a cumsum learning curve
     matches=allMyEvents.thiswell==allMyEvents.hiswell;
     [bmode,b05,b95,pmatrix,wintr] = CalcStateSpacePerformance(matches', .5,0);
@@ -470,4 +470,91 @@ sgtitle('Each rat alternates arms close in time with his partner');
 
 
 %%
-% f
+% howabout a number of wins per arm visits for each rat, and for each pair
+% type
+
+
+% looks like the animals strategy oscillates with who their partner is
+
+for i=1:4
+    plot(SmoothMat2(RatAll(i).myRaw.match,[1 250],100),'--','Color',myCmap(i,:));
+    hold on;
+    plot(SmoothMat2(RatAll(i).myRaw.Reward(:),[1 250],100),'-','Color',myCmap(i,:));
+end
+    
+
+%% howabout the efficiency of each session?
+
+% so i guess the question is this, per arm visit, are the control pairs
+% getting more rewards?
+
+% first quantify number of arm visits per animal
+ctrls=[]; fxpair=[]; combos=[];
+cumct=[1 1 1];
+for i=1:length(ratinfo)
+    ratinfo(i).ratsamples{1}.Properties.VariableNames{6} = 'match';
+    ratinfo(i).ratsamples{2}.Properties.VariableNames{6} = 'match';
+
+    if any(contains(ratinfo(i).ratnames,'201')) &&...
+            any(contains(ratinfo(i).ratnames,'204')) &&...
+            ratinfo(i).sessnum<7
+        % quantify # arm transitions for each rat
+        ctrls(cumct(1),1)=sum(diff(ratinfo(i).ratsamples{1}.thiswell)~=0);
+        ctrls(cumct(1),2)=sum(diff(ratinfo(i).ratsamples{2}.thiswell)~=0);
+        % and now the number of rewards
+        ctrls(cumct(1),3)=sum(ratinfo(i).ratsamples{2}.match);
+        cumct(1)=cumct(1)+1;
+    elseif any(contains(ratinfo(i).ratnames,'202')) &&...
+            any(contains(ratinfo(i).ratnames,'203')) && ...
+            ratinfo(i).sessnum<7
+        fxpair(cumct(2),1)=sum(diff(ratinfo(i).ratsamples{1}.thiswell)~=0);
+        fxpair(cumct(2),2)=sum(diff(ratinfo(i).ratsamples{2}.thiswell)~=0);
+        % and now the number of rewards
+        fxpair(cumct(2),3)=sum(ratinfo(i).ratsamples{2}.match);
+        cumct(2)=cumct(2)+1;
+    else
+        combos(cumct(3),1)=sum(diff(ratinfo(i).ratsamples{1}.thiswell)~=0);
+        combos(cumct(3),2)=sum(diff(ratinfo(i).ratsamples{2}.thiswell)~=0);
+        % and now the number of rewards
+        combos(cumct(3),3)=sum(ratinfo(i).ratsamples{2}.match);
+        cumct(3)=cumct(3)+1;
+    end
+end
+
+
+% wins per arm transition
+plot(ctrls(:,3)./sum(ctrls(:,1:2),2)); hold on;
+plot(fxpair(:,3)./sum(fxpair(:,1:2),2));
+%plot(combos(:,3)./sum(combos(:,1:2),2));
+
+
+% i wonder if their armtransitions per minute were higher.
+ctrls=[]; fxpair=[];
+cumct=[1 1];
+for i=1:length(ratinfo)
+    if any(contains(ratinfo(i).ratnames,'201')) &&...
+            any(contains(ratinfo(i).ratnames,'204')) &&...
+            ratinfo(i).sessnum<7
+        % quantify # arm transitions for each rat
+        ctrls(cumct(1),1)=ratinfo(i).ratsamples{1}.start(1);
+        ctrls(cumct(1),2)=ratinfo(i).ratsamples{1}.end(end);
+        % and now the number of rewards
+        ctrls(cumct(1),3)=sum(diff(ratinfo(i).ratsamples{1}.thiswell)~=0)+...
+            sum(diff(ratinfo(i).ratsamples{2}.thiswell)~=0);
+        cumct(1)=cumct(1)+1;
+    elseif any(contains(ratinfo(i).ratnames,'202')) &&...
+            any(contains(ratinfo(i).ratnames,'203')) && ...
+            ratinfo(i).sessnum<7
+        fxpair(cumct(2),1)=ratinfo(i).ratsamples{1}.start(1);
+        fxpair(cumct(2),2)=ratinfo(i).ratsamples{1}.end(end);
+        % and now the number of rewards
+        fxpair(cumct(2),3)=sum(diff(ratinfo(i).ratsamples{1}.thiswell)~=0)+...
+            sum(diff(ratinfo(i).ratsamples{2}.thiswell)~=0);
+        cumct(2)=cumct(2)+1;
+    end
+end
+
+plot(ctrls(:,3)./(ctrls(:,2)-ctrls(:,1))); hold on;
+plot(fxpair(:,3)./(fxpair(:,2)-fxpair(:,1)));
+
+
