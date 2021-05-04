@@ -514,7 +514,7 @@ end
 
 % first quantify number of arm visits per animal
 ctrls=[]; fxpair=[]; combos=[];
-ctrlsraw={}; fxpairraw={}; comboraw={};
+ctrlsraw={}; fxpairraw={}; combosraw={};
 
 [sessnums,ia,ic]=unique(cellfun(@(a) datenum(a), {ratinfo.rundate}));
 for i=1:length(sessnums)
@@ -550,17 +550,30 @@ for i=1:length(sessnums)
         combos(i,2,cumct)=sum(diff(daysess(k).ratsamples{2}.thiswell)~=0);
         % and now the number of rewards
         combos(i,3,cumct)=sum(daysess(k).ratsamples{2}.match);
-        fxpairraw{i,1,cumct}=daysess(k).ratsamples{1}.match(diff(daysess(k).ratsamples{1}.thiswell)~=0);
-        fxpairraw{i,2,cumct}=daysess(k).ratsamples{2}.match(diff(daysess(k).ratsamples{2}.thiswell)~=0);
+        combosraw{i,1,cumct}=daysess(k).ratsamples{1}.match(diff(daysess(k).ratsamples{1}.thiswell)~=0);
+        combosraw{i,2,cumct}=daysess(k).ratsamples{2}.match(diff(daysess(k).ratsamples{2}.thiswell)~=0);
         cumct=cumct+1;
     end
     end
 end
 
+
+% first get ctrls
+%ctrlsess=cellfun(@(a) any(a==1) && any(a==4), {ratinfo.ratnum});
+%ctrlbeh=cellfun(@(a) a(1), {ratinfo(ctrlsess).ratsamples})';
+%ctrlbeh(:,2)=cellfun(@(a) a(2), {ratinfo(ctrlsess).ratsamples})';
+
 ctrls([12 22],:)=[];
+ctrlsraw([12 22],:)=[];
+
 fxpair([12 22],:)=[];
+fxpairraw([12 22],:)=[];
+
 combos([12 22],:,:)=[];
+combosraw([12 22],:,:)=[];
+
 combomeans=nanmean(combos,3);
+
 figure;
 subplot(1,2,1);
 % %% arm transitions go to friends arm
@@ -572,8 +585,113 @@ title(sprintf('ranksum test p= %.2e',...
     ranksum(ctrls(:,3)./max(ctrls(:,1:2),[],2),fxpair(:,3)./max(fxpair(:,1:2),[],2))));
 xlabel('Session number');
 ylabel(sprintf('Proportion of arm transitions \n to peer-occupied arm'));
-legend('WT-WT pair','FX-FX pair','FX-WT pair');
+legend('Ctrl-Ctrl pair','FX-FX pair','FX-Ctrl pair');
+%% lets add error bars to those rates with a binomial distribution
+
+for i=1:length(ctrlsraw)
+    [ctrlsraw{i,3}(1), ctrlsraw{i,3}(2:3)] = binofit(sum(ctrlsraw{i,1})+sum(ctrlsraw{i,2}),length(ctrlsraw{i,1})+length(ctrlsraw{i,2}));
+    [fxpairraw{i,3}(1), fxpairraw{i,3}(2:3)] = binofit(sum(fxpairraw{i,1})+sum(fxpairraw{i,2}),length(fxpairraw{i,1})+length(fxpairraw{i,2}));
+    % combos is more complicated
+    combotots=sum(linearize(cellfun(@(a) sum(a), combosraw(i,:,:))));
+    combotots(2)=sum(linearize(cellfun(@(a) length(a), combosraw(i,:,:))));
+    [combostat(i,1), combostat(i,2:3)] = binofit(combotots(1),combotots(2));  
+end
+
+
+figure;
+subplot(1,2,1);
+myconf=cell2mat(ctrlsraw(:,3));
+errorbar(1:length(myconf), myconf(:,1), myconf(:,2)-myconf(:,1), myconf(:,3)-myconf(:,1))
+hold on;
+myconf=cell2mat(fxpairraw(:,3));
+errorbar(1:length(myconf), myconf(:,1), myconf(:,2)-myconf(:,1), myconf(:,3)-myconf(:,1))
+
+errorbar(1:length(combostat), combostat(:,1), combostat(:,2)-combostat(:,1), combostat(:,3)-combostat(:,1))
+
+xlabel('Session number');
+ylabel(sprintf('Proportion of arm transitions \n to peer-occupied arm'));
+legend('Ctrl-Ctrl pair','FX-FX pair','FX-Ctrl pair');
+
+subplot(1,2,2);
+% this is the bar graph with error bars
+[a,b]=binofit(sum(sum(cellfun(@(a) sum(a), ctrlsraw(:,1:2)))),sum(sum(cellfun(@(a) length(a), ctrlsraw(:,1:2)))));
+[a(2),b(2,:)]=binofit(sum(sum(cellfun(@(a) sum(a), fxpairraw(:,1:2)))),sum(sum(cellfun(@(a) length(a), fxpairraw(:,1:2)))));
+[a(3),b(3,:)]=binofit(sum(linearize(cellfun(@(a) sum(a), combosraw))),sum(linearize(cellfun(@(a) length(a), combosraw))));
+
+br=bar([1 3 2],a);
+hold on;
+mycolors=lines(3);
+br.FaceColor='flat';
+br.CData=mycolors([1 3 2],:);
+hold on;
+errorbar(1,a(1), b(1,1)-a(1), b(1,2)-a(1),'kx');
+errorbar(3,a(2), b(2,1)-a(2), b(2,2)-a(2),'kx');
+errorbar(2,a(3), b(3,1)-a(3), b(3,2)-a(3),'kx');
+set(gca,'XTick',[1 2 3],'XTickLabel',{'Ctrl-Ctrl','FX-Ctrl','FX-FX'});
+ylabel(sprintf('Proportion of arm transitions \n to peer-occupied arm'));
+xlabel('Animal Pairing')
+%%
+% now to use a patch instead
+
+
+for i=1:length(ctrlsraw)
+    [ctrlsraw{i,3}(1), ctrlsraw{i,3}(2:3)] = binofit(sum(ctrlsraw{i,1})+sum(ctrlsraw{i,2}),length(ctrlsraw{i,1})+length(ctrlsraw{i,2}));
+    [fxpairraw{i,3}(1), fxpairraw{i,3}(2:3)] = binofit(sum(fxpairraw{i,1})+sum(fxpairraw{i,2}),length(fxpairraw{i,1})+length(fxpairraw{i,2}));
+    % combos is more complicated
+    combotots=sum(linearize(cellfun(@(a) sum(a), combosraw(i,:,:))));
+    combotots(2)=sum(linearize(cellfun(@(a) length(a), combosraw(i,:,:))));
+    [combostat(i,1), combostat(i,2:3)] = binofit(combotots(1),combotots(2));  
+end
+
+
+figure;
+mycolors=lines(3);
+subplot(1,2,1);
+myconf=cell2mat(ctrlsraw(:,3));
+plot(1:length(myconf), myconf(:,1),'Color',mycolors(1,:));
+hold on;
+hp=patch([1:length(myconf) fliplr(1:length(myconf))]', [myconf(:,2); flipud(myconf(:,3))],...
+    mycolors(1,:),'FaceAlpha',.5,'EdgeColor','none');
+
+myconf=cell2mat(fxpairraw(:,3));
+plot(1:length(myconf), myconf(:,1),'Color',mycolors(2,:));
+hold on;
+hp(2)=patch([1:length(myconf) fliplr(1:length(myconf))]', [myconf(:,2); flipud(myconf(:,3))],...
+    mycolors(2,:),'FaceAlpha',.5,'EdgeColor','none');
+
+
+%errorbar(1:length(combostat), combostat(:,1), combostat(:,2)-combostat(:,1), combostat(:,3)-combostat(:,1))
+plot(1:length(combostat), combostat(:,1),'Color',mycolors(3,:));
+hold on;
+
+hp(3)=patch([1:length(combostat) fliplr(1:length(combostat))]', [combostat(:,2); flipud(combostat(:,3))],...
+    mycolors(3,:),'FaceAlpha',.5,'EdgeColor','none');
+
+xlabel('Session number');
+ylabel(sprintf('Proportion of arm transitions \n to peer-occupied arm'));
+legend(hp,'Ctrl-Ctrl pair','FX-FX pair','FX-Ctrl pair');
+
+subplot(1,2,2);
+% this is the bar graph with error bars
+[a,b]=binofit(sum(sum(cellfun(@(a) sum(a), ctrlsraw(:,1:2)))),sum(sum(cellfun(@(a) length(a), ctrlsraw(:,1:2)))));
+[a(2),b(2,:)]=binofit(sum(sum(cellfun(@(a) sum(a), fxpairraw(:,1:2)))),sum(sum(cellfun(@(a) length(a), fxpairraw(:,1:2)))));
+[a(3),b(3,:)]=binofit(sum(linearize(cellfun(@(a) sum(a), combosraw))),sum(linearize(cellfun(@(a) length(a), combosraw))));
+
+br=bar([1 3 2],a);
+hold on;
+
+br.FaceColor='flat';
+br.CData=mycolors([1 3 2],:);
+hold on;
+errorbar(1,a(1), b(1,1)-a(1), b(1,2)-a(1),'kx');
+errorbar(3,a(2), b(2,1)-a(2), b(2,2)-a(2),'kx');
+errorbar(2,a(3), b(3,1)-a(3), b(3,2)-a(3),'kx');
+set(gca,'XTick',[1 2 3],'XTickLabel',{'Ctrl-Ctrl','FX-Ctrl','FX-FX'});
+ylabel(sprintf('Proportion of arm transitions \n to peer-occupied arm'));
+xlabel('Animal Pairing')
+%%
 % i wonder if their armtransitions per minute were higher.
+
 ctrls=[]; fxpair=[];
 cumct=[1 1];
 for i=1:length(ratinfo)
@@ -611,8 +729,54 @@ legend('WT-WT pair','FX-FX pair');
 title(sprintf('ranksum test p= %.2e',...
     ranksum(ctrls(:,3)./max(ctrls(:,1:2),[],2),fxpair(:,3)./max(fxpair(:,1:2),[],2))));
 %%
+clear allruns;
+allruns.date=ratinfo(1).date;
+allruns.datenum=ratinfo(1).datenum;
 
-for i=1:length(ratinfo)
-    ratinfo(i).sessnum=str2double(ratinfo(i).runnum);
-    ratinfo(i).datenum=datenum(ratinfo(i).date);
+allruns.ratnum=ratinfo(1).ratnum(1);
+allruns.runnum=ratinfo(1).runnum;
+allruns.samples=ratinfo(1).ratsamples{1};
+allruns(2).date=ratinfo(1).date;
+allruns(2).ratnum=ratinfo(1).ratnum(2);
+allruns(2).runnum=ratinfo(1).runnum;
+allruns(2).samples=ratinfo(1).ratsamples{2};
+allruns(2).datenum=ratinfo(1).datenum;
+
+cumct=3;
+for i=2:length(ratinfo)
+    allruns(cumct).date=ratinfo(i).date;
+    allruns(cumct).ratnum=ratinfo(i).ratnum(1);
+    allruns(cumct).runnum=ratinfo(i).runnum;
+    allruns(cumct).samples=ratinfo(i).ratsamples{1};
+    allruns(cumct).datenum=ratinfo(i).datenum;
+    cumct=cumct+1;
+    allruns(cumct).date=ratinfo(i).date;
+    allruns(cumct).ratnum=ratinfo(i).ratnum(2);
+    allruns(cumct).runnum=ratinfo(i).runnum;
+    allruns(cumct).samples=ratinfo(i).ratsamples{2};
+    allruns(cumct).datenum=ratinfo(i).datenum;
+    cumct=cumct+1;
 end
+
+    
+    
+    
+    
+So I want to take each rat, and cat its data with 
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    

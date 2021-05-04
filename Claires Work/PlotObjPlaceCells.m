@@ -200,7 +200,7 @@ for ses=1:length(SuperRat)
             legend([p],'Left','Right'); %,legend(p,'Outbound','Inbound');
             oldlim=max(abs(get(gca,'Ylim'))); %ylim([-oldlim oldlim]);
             box off; 
-            %ylabel({'Rate, Hz';'Right Arm      Left Arm'});
+            xlabel({'Rate, Hz';'Right Arm      Left Arm'});
             ylabel('Rate, Hz');
         end
         

@@ -1,7 +1,7 @@
 %% ClaireWrapper
 
 % first build your dataset;
-load('E:\Claire Data\ClaireData22-Apr-2020.mat')
+%load('E:\Claire Data\ClaireData22-Apr-2020.mat')
 %% or to rebuild the dataset from scratch
 edit ClaireDataAggregator
 
@@ -29,7 +29,7 @@ SuperRat(~logical([SuperRat.longTrack]))=[];
 
 
 %%
-%load('E:\Claire Data\ClaireDataFull-LinPos-LongTrack-ObjCoding.mat')
+load('E:\Claire Data\ClaireDataFull-LinPos-LongTrack-ObjCoding.mat')
 
 % first parse pyrams and interneurons based on rate and burst index
 edit ParsePyrIN
