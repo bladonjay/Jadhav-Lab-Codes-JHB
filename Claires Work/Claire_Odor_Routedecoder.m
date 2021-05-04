@@ -341,6 +341,9 @@ linkaxes(get(gcf,'Children'),'y')
 % this uses a training set of odor spikes, and decodes left out odor trials
 % as well as run trials.  It may be a good idea to do the same leave one
 % out for this though...
+% this decodes the ACTUAL TRAJECTORY THE ANIMAL TAKES
+% this is not decoding the odor identity, in other words, if the rat gets
+% odor left, but goes right, the decoder tests it as a 'right' trial
 
 % quartiles or quintiles?
 % four

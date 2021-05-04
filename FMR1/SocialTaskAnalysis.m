@@ -84,37 +84,44 @@ catch
     
     
     filelist = dir(fullfile(mydir, '**\*.*'));  %get list of files and folders in any subfolder
+    %filelist=getAllFiles(mydir,'.stateScriptLog');
     okfiles=cellfun(@(a) contains(a,'stateScriptLog'),{filelist.name});
     filelist = filelist(okfiles);
     
     % now get the rat and date
     for i=1:length(filelist)
-        if ~contains(filelist(i).name,'test') && ~contains(filelist(i).name,'PV') && ...
-                ~contains(filelist(i).name,'XF') &&   ~contains(filelist(i).name,'AH')
+        try
             sessIDX=strfind(filelist(i).name,'(');
-            datestr=filelist(i).name(1:sessIDX);
+            datestr=filelist(i).name(4:sessIDX-1);
             namestr=filelist(i).name(sessIDX:strfind(filelist(i).name,'.')-1);
             nameIDX=strfind(filelist(i).name(sessIDX:end),'-');
-            filelist(i).rundate=filelist(i).folder(find(filelist(i).folder=='\',1,'last')+1:end);
-            Ratids=strfind(namestr,GroupPrefix);
-            filelist(i).ratnames{1}=namestr(Ratids(1):Ratids(1)+2);
-            filelist(i).ratnames{2}=namestr(Ratids(2):Ratids(2)+2);
-            filelist(i).datenum=datenum(filelist(i).rundate);
+            numIDx=isstrprop(namestr,'digit');
             
-            filelist(i).sessnum=str2double(namestr(2:(find(namestr=='-',1,'first')-1)));
+            %filelist(i).rundate=filelist(i).folder(find(filelist(i).folder=='\',1,'last')+1:end);
+            filelist(i).rundate=datestr;
+            filelist(i).datenum=datenum(datestr);
+            
+            filelist(i).runnum=namestr(find(numIDx,1,'first'));
+            
+            lastdigits=find(diff(numIDx)==-1);
+            
+            filelist(i).ratnum(1)=str2double(namestr(lastdigits(2)));
+            filelist(i).ratnum(2)=str2double(namestr(lastdigits(3)));
+            filelist(i).ratCohort=namestr(lastdigits(2)-2 : lastdigits(2)-1);
         end
+
     end
     
     % now sort, first by session, then by date then by rat, this will make rat
     % the top sorting category
     
     % want it as a struct or a table?
-    filelist=filelist(cellfun(@(a) ~isempty(a), {filelist.sessnum}));
+    filelist=filelist(cellfun(@(a) ~isempty(a), {filelist.ratnum}));
     % we can interchange tables and structs easily
-    ratinfo=sortrows(struct2table(filelist),{'datenum','sessnum'});
+    %ratinfo=sortrows(struct2table(filelist),{'datenum','sessnum'});
     
     % now for ease here im going to put it into a struct
-    ratinfo=table2struct(ratinfo);
+    %ratinfo=table2struct(ratinfo);
     
     
 end
@@ -142,13 +149,21 @@ end
 % 2. does performance change across the day?
 
 %%
-verbose=0;
+
+
+
 %%
 
+
+
+verbose=0;
+ratinfo=filelist;
+ratinfo=ratinfo(cellfun(@(a) ~contains(lower(a),'z'),{ratinfo.name}));
+%%
 for i=1:length(ratinfo)
     fprintf(' \n \n');
-    fprintf('Running  sess %d  with %s and %s \n',i,...
-        ratinfo(i).ratnames{1},ratinfo(i).ratnames{2});
+    fprintf('Running cohort %s sess %d  with %s%d and %s%d \n',ratinfo(i).ratCohort,i,...
+        ratinfo(i).ratCohort, ratinfo(i).ratnum(1), ratinfo(i).ratCohort, ratinfo(i).ratnum(2));
     DataFile = readtable(fullfile(ratinfo(i).folder,ratinfo(i).name), opts);
     % Convert to output type
     DataRaw = table2cell(DataFile);
@@ -195,11 +210,11 @@ for i=1:length(ratinfo)
     
         % now report
         ctrls=myevents{rt}(diff(myevents{rt}(:,[3 4]),1,2)~=0,:);
-        fprintf('Today rat %s, %.2f%% arm transitions were to an occupied arm, and %.2f%% were rewarded \n',...
-            ratinfo(i).ratnames{rt}, nanmean(ctrls(:,6))*100,nanmean(ctrls(:,5))*100); % basically when the diff==0
+        fprintf('Today rat %d, %.2f%% arm transitions were to an occupied arm, and %.2f%% were rewarded \n',...
+            ratinfo(i).ratnum(rt), nanmean(ctrls(:,6))*100,nanmean(ctrls(:,5))*100); % basically when the diff==0
     
     end
-
+    ratinfo(i).datenum=datenum(ratinfo(i).date);
 
 end
 
@@ -223,17 +238,19 @@ end
 % then for each of his transitions, we can fin
 
 rattable=struct2table(ratinfo);
-sessRats=cat(1,rattable.ratnames');
+sessRats=cat(1,rattable.ratnum');
 allRatNames=unique(sessRats(:));
 RatAll=struct('names',allRatNames);
 %ratTable=table(allRatNames,'VariableNames',{'Rat Name'});
 myCmap=lines(4);
-figure;
+
+doStateSpace=0;
+
 for ra=1:length(allRatNames)
     iterator=1;
     for ses=1:length(ratinfo)
-        ratmatch=cell2mat(cellfun(@(a) contains(a,allRatNames{ra}),...
-            ratinfo(ses).ratnames, 'UniformOutput', false));
+        
+        ratmatch=allRatNames(ra)==sessRats(:,ses);
         if any(ratmatch)
             myevents=ratinfo(ses).ratsamples{ratmatch};
             hisevents=ratinfo(ses).ratsamples{~ratmatch};
@@ -297,22 +314,24 @@ for ra=1:length(allRatNames)
     allMyEvents(allMyEvents.departure<allMyEvents.start-2,:)=[]; % kill when he left that well too long ago
     % lets do a cumsum learning curve
     matches=allMyEvents.thiswell==allMyEvents.hiswell;
-    [bmode,b05,b95,pmatrix,wintr] = CalcStateSpacePerformance(matches', .5,0);
-    %plot(cumsum(matches)./(1:height(allMyEvents))');
-    pmatrix(1:10)=nan;
-    wintr=find(pmatrix<.05,1,'first');
-    if ~isnan(wintr)
-        pl(5)=plot(1:wintr,bmode(1:wintr),':','color',myCmap(ra,:),'LineWidth',2);
-        hold on;
-        pl(ra)=plot(wintr:length(bmode),bmode(wintr:end),'-','color',myCmap(ra,:),'LineWidth',2);
-    else
-        pl(ra)=plot([0 0],[1 1],'-','color',myCmap(ra,:),'LineWidth',2);
-        plot(bmode,':','color',myCmap(ra,:),'LineWidth',2);
-    end
-    
-    
+    if doStateSpace
+        [bmode,b05,b95,pmatrix,wintr] = CalcStateSpacePerformance(matches', .5,0);
+        %plot(cumsum(matches)./(1:height(allMyEvents))');
+        pmatrix(1:10)=nan;
+        wintr=find(pmatrix<.05,1,'first');
+        if ~isnan(wintr)
+            pl(5)=plot(1:wintr,bmode(1:wintr),':','color',myCmap(ra,:),'LineWidth',2);
+            hold on;
+            pl(ra)=plot(wintr:length(bmode),bmode(wintr:end),'-','color',myCmap(ra,:),'LineWidth',2);
+        else
+            pl(ra)=plot([0 0],[1 1],'-','color',myCmap(ra,:),'LineWidth',2);
+            plot(bmode,':','color',myCmap(ra,:),'LineWidth',2);
+        end
+        
+        
         RatAll(ra).bmode=bmode;
-    RatAll(ra).pmatrix=pmatrix;
+        RatAll(ra).pmatrix=pmatrix;
+    end
     % now kill all where he leaves more than 2 seconds before we get there
 end
 
@@ -475,7 +494,7 @@ sgtitle('Each rat alternates arms close in time with his partner');
 
 
 % looks like the animals strategy oscillates with who their partner is
-
+figure;
 for i=1:4
     plot(SmoothMat2(RatAll(i).myRaw.match,[1 250],100),'--','Color',myCmap(i,:));
     hold on;
@@ -488,63 +507,89 @@ end
 % so i guess the question is this, per arm visit, are the control pairs
 % getting more rewards?
 
+
+% THIS IS QUICK AND DIRTY, AND ALSO CONSIDERS THE NUMBER OF ARM TRANSITIONS
+% A RAT DOES EVEN WHEN HIS PARTNER IS AT THE WELL HE IS DEPARTING
+
+
 % first quantify number of arm visits per animal
 ctrls=[]; fxpair=[]; combos=[];
-cumct=[1 1 1];
-for i=1:length(ratinfo)
-    ratinfo(i).ratsamples{1}.Properties.VariableNames{6} = 'match';
-    ratinfo(i).ratsamples{2}.Properties.VariableNames{6} = 'match';
+ctrlsraw={}; fxpairraw={}; comboraw={};
 
-    if any(contains(ratinfo(i).ratnames,'201')) &&...
-            any(contains(ratinfo(i).ratnames,'204')) &&...
-            ratinfo(i).sessnum<7
+[sessnums,ia,ic]=unique(cellfun(@(a) datenum(a), {ratinfo.rundate}));
+for i=1:length(sessnums)
+    daysess=ratinfo(ic==i);
+    cumct=1;
+    for k=1:length(daysess)       
+    daysess(k).ratsamples{1}.Properties.VariableNames{6} = 'match';
+    daysess(k).ratsamples{2}.Properties.VariableNames{6} = 'match';
+    if any(daysess(k).ratnum==1) &&...
+            any(daysess(k).ratnum==4) &&...
+            str2double(daysess(k).runnum)<7
         % quantify # arm transitions for each rat
-        ctrls(cumct(1),1)=sum(diff(ratinfo(i).ratsamples{1}.thiswell)~=0);
-        ctrls(cumct(1),2)=sum(diff(ratinfo(i).ratsamples{2}.thiswell)~=0);
+        ctrls(i,1)=sum(diff(daysess(k).ratsamples{1}.thiswell)~=0);
+        ctrls(i,2)=sum(diff(daysess(k).ratsamples{2}.thiswell)~=0);
+        % and now the number of matched samples
+        % its the same for each rat because both rats sample when its a
+        % match
+        ctrls(i,3)=sum(daysess(k).ratsamples{2}.match);
+        ctrlsraw{i,1}=daysess(k).ratsamples{1}.match(diff(daysess(k).ratsamples{1}.thiswell)~=0);
+        ctrlsraw{i,2}=daysess(k).ratsamples{2}.match(diff(daysess(k).ratsamples{2}.thiswell)~=0);
+    elseif any(daysess(k).ratnum==2) &&...
+            any(daysess(k).ratnum==3) && ...
+            str2double(daysess(k).runnum)<7
+        fxpair(i,1)=sum(diff(daysess(k).ratsamples{1}.thiswell)~=0);
+        fxpair(i,2)=sum(diff(daysess(k).ratsamples{2}.thiswell)~=0);
         % and now the number of rewards
-        ctrls(cumct(1),3)=sum(ratinfo(i).ratsamples{2}.match);
-        cumct(1)=cumct(1)+1;
-    elseif any(contains(ratinfo(i).ratnames,'202')) &&...
-            any(contains(ratinfo(i).ratnames,'203')) && ...
-            ratinfo(i).sessnum<7
-        fxpair(cumct(2),1)=sum(diff(ratinfo(i).ratsamples{1}.thiswell)~=0);
-        fxpair(cumct(2),2)=sum(diff(ratinfo(i).ratsamples{2}.thiswell)~=0);
+        fxpair(i,3)=sum(daysess(k).ratsamples{2}.match);
+        fxpairraw{i,1}=daysess(k).ratsamples{1}.match(diff(daysess(k).ratsamples{1}.thiswell)~=0);
+        fxpairraw{i,2}=daysess(k).ratsamples{2}.match(diff(daysess(k).ratsamples{2}.thiswell)~=0);
+
+    elseif str2double(daysess(k).runnum)<7
+        combos(i,1,cumct)=sum(diff(daysess(k).ratsamples{1}.thiswell)~=0);
+        combos(i,2,cumct)=sum(diff(daysess(k).ratsamples{2}.thiswell)~=0);
         % and now the number of rewards
-        fxpair(cumct(2),3)=sum(ratinfo(i).ratsamples{2}.match);
-        cumct(2)=cumct(2)+1;
-    else
-        combos(cumct(3),1)=sum(diff(ratinfo(i).ratsamples{1}.thiswell)~=0);
-        combos(cumct(3),2)=sum(diff(ratinfo(i).ratsamples{2}.thiswell)~=0);
-        % and now the number of rewards
-        combos(cumct(3),3)=sum(ratinfo(i).ratsamples{2}.match);
-        cumct(3)=cumct(3)+1;
+        combos(i,3,cumct)=sum(daysess(k).ratsamples{2}.match);
+        fxpairraw{i,1,cumct}=daysess(k).ratsamples{1}.match(diff(daysess(k).ratsamples{1}.thiswell)~=0);
+        fxpairraw{i,2,cumct}=daysess(k).ratsamples{2}.match(diff(daysess(k).ratsamples{2}.thiswell)~=0);
+        cumct=cumct+1;
+    end
     end
 end
 
+ctrls([12 22],:)=[];
+fxpair([12 22],:)=[];
+combos([12 22],:,:)=[];
+combomeans=nanmean(combos,3);
+figure;
+subplot(1,2,1);
+% %% arm transitions go to friends arm
+plot(ctrls(:,3)./mean(ctrls(:,1:2),2)); hold on;
+plot(fxpair(:,3)./mean(fxpair(:,1:2),2));
+plot(combomeans(:,3)./mean(combomeans(:,1:2),2));
 
-% wins per arm transition
-plot(ctrls(:,3)./sum(ctrls(:,1:2),2)); hold on;
-plot(fxpair(:,3)./sum(fxpair(:,1:2),2));
-%plot(combos(:,3)./sum(combos(:,1:2),2));
-
-
+title(sprintf('ranksum test p= %.2e',...
+    ranksum(ctrls(:,3)./max(ctrls(:,1:2),[],2),fxpair(:,3)./max(fxpair(:,1:2),[],2))));
+xlabel('Session number');
+ylabel(sprintf('Proportion of arm transitions \n to peer-occupied arm'));
+legend('WT-WT pair','FX-FX pair','FX-WT pair');
 % i wonder if their armtransitions per minute were higher.
 ctrls=[]; fxpair=[];
 cumct=[1 1];
 for i=1:length(ratinfo)
-    if any(contains(ratinfo(i).ratnames,'201')) &&...
-            any(contains(ratinfo(i).ratnames,'204')) &&...
-            ratinfo(i).sessnum<7
-        % quantify # arm transitions for each rat
+    if any(ratinfo(i).ratnum==1) &&...
+            any(ratinfo(i).ratnum==4) &&...
+            str2double(ratinfo(i).runnum)<7
+        % session start, session end
         ctrls(cumct(1),1)=ratinfo(i).ratsamples{1}.start(1);
         ctrls(cumct(1),2)=ratinfo(i).ratsamples{1}.end(end);
-        % and now the number of rewards
+        % and now the number of transitions that day
         ctrls(cumct(1),3)=sum(diff(ratinfo(i).ratsamples{1}.thiswell)~=0)+...
             sum(diff(ratinfo(i).ratsamples{2}.thiswell)~=0);
         cumct(1)=cumct(1)+1;
-    elseif any(contains(ratinfo(i).ratnames,'202')) &&...
-            any(contains(ratinfo(i).ratnames,'203')) && ...
-            ratinfo(i).sessnum<7
+    elseif any(ratinfo(i).ratnum==2) &&...
+            any(ratinfo(i).ratnum==3) && ...
+            str2double(ratinfo(i).runnum)<7
         fxpair(cumct(2),1)=ratinfo(i).ratsamples{1}.start(1);
         fxpair(cumct(2),2)=ratinfo(i).ratsamples{1}.end(end);
         % and now the number of rewards
@@ -554,7 +599,20 @@ for i=1:length(ratinfo)
     end
 end
 
-plot(ctrls(:,3)./(ctrls(:,2)-ctrls(:,1))); hold on;
-plot(fxpair(:,3)./(fxpair(:,2)-fxpair(:,1)));
+ctrls([12 17 23],:)=[];
+fxpair([12 17 23],:)=[];
+subplot(1,2,2);
+plot(ctrls(:,3)./(ctrls(:,2)-ctrls(:,1)).*60); hold on;
+plot(fxpair(:,3)./(fxpair(:,2)-fxpair(:,1)).*60);
+xlabel('Session number');
+ylabel('Number of arm transitions per minute');
+legend('WT-WT pair','FX-FX pair');
 
+title(sprintf('ranksum test p= %.2e',...
+    ranksum(ctrls(:,3)./max(ctrls(:,1:2),[],2),fxpair(:,3)./max(fxpair(:,1:2),[],2))));
+%%
 
+for i=1:length(ratinfo)
+    ratinfo(i).sessnum=str2double(ratinfo(i).runnum);
+    ratinfo(i).datenum=datenum(ratinfo(i).date);
+end
