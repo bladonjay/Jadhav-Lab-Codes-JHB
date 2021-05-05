@@ -237,23 +237,25 @@ end
 % goes in the first column, and its buddy in the peer column
 % then for each of his transitions, we can fin
 
-rattable=struct2table(ratinfo);
-sessRats=cat(1,rattable.ratnum');
-allRatNames=unique(sessRats(:));
-RatAll=struct('names',allRatNames);
+%% statespace performance by rat (it oscillates and is raelly dirty
+
+
+
 %ratTable=table(allRatNames,'VariableNames',{'Rat Name'});
 myCmap=lines(4);
 
 doStateSpace=0;
 
-for ra=1:length(allRatNames)
-    iterator=1;
+mypairs=[1 2; 4 3];
+
+for ra=1:2
+    itr=1;
     for ses=1:length(ratinfo)
         
-        ratmatch=allRatNames(ra)==sessRats(:,ses);
-        if any(ratmatch)
-            myevents=ratinfo(ses).ratsamples{ratmatch};
-            hisevents=ratinfo(ses).ratsamples{~ratmatch};
+        ratmatch=mypairs(:,ra)==ratinfo(ses).ratnum;
+        if sum(ratmatch(:))==2
+            myevents=ratinfo(ses).ratsamples{1};
+            hisevents=ratinfo(ses).ratsamples{2};
             
             % zero out everything to the start!
             firstevent=min([myevents.start; hisevents.start]);
@@ -262,10 +264,8 @@ for ra=1:length(allRatNames)
             hisevents.start=hisevents.start-firstevent;
             hisevents.end=hisevents.end-firstevent;
 
-            
-            
-            
-            if iterator==1, myRaw=myevents; hisRaw=hisevents;
+
+            if itr==1, myRaw=myevents; hisRaw=hisevents;
             else
                 if myevents.start(1)<myRaw.end(end)
                     lastevent=max([myRaw.end; hisRaw.end])+rand*10;
@@ -292,13 +292,13 @@ for ra=1:length(allRatNames)
                     myevents.departure(i)=hisevents.end(hiseventID);
                 end
             end
-            myevents.sess(:)=iterator;
-            if iterator==1 
+            myevents.sess(:)=itr;
+            if itr==1 
                 allMyEvents=myevents;
             else
                 allMyEvents=[allMyEvents; myevents];
             end
-            iterator=iterator+1;
+            itr=itr+1;
         end
     end
     
@@ -345,6 +345,39 @@ xlabel('Reward Visit Number');
 
 % the basis is that when given the choice, 2/4 of these animals chose the
 % arm their friend was at over the arm they were at
+%% statespace performance by pair of rats
+
+%{
+ratpairs=[1 4; 2 3];
+itr=[1 1];
+for i=length(ratinfo)
+    % first control pair
+    if any(ratinfo(i).ratnum==ratpairs(1)) && any(ratinfo(i).ratnum==ratpairs(1,2))
+        
+        allsamples{1}=ratinfo(i).ratsamples{1};
+        allsamples{2}=ratinfo(i).ratsamples{2};
+        
+        itr=2;
+        for k=1:2
+            while itr<=height(allsamples{k})
+                if allsamples{k}.start(itr)<allsamples{k}.end(itr-1)+5
+                    allsamples{k}.end(itr-1)=allsamples{k}.end(itr);
+                    allsamples{k}.Reward(itr-1)=allsamples{k}.Reward(itr) || allsamples{k}.Reward(itr-1);
+                    allsamples{k}.match(itr-1)=allsamples{k}.match(itr) || allsamples{k}.match(itr-1);
+                    allsamples{k}(itr,:)=[];
+                else
+                    itr=itr+1;
+                end
+            end
+        end
+        allevents=matchSocialSamples(allsamples{1},allsamples{2});
+        % now look at when the arms transition
+        entries=allevents(allevents.in1out0==1,:);
+        % for each entry we want to know if its a new well entry
+        % need to comb over
+
+%}
+
 
 %% next question...
 
@@ -532,6 +565,7 @@ for i=1:length(sessnums)
         % and now the number of matched samples
         % its the same for each rat because both rats sample when its a
         % match
+        % and the sum of the number of matched pokes
         ctrls(i,3)=sum(daysess(k).ratsamples{2}.match);
         ctrlsraw{i,1}=daysess(k).ratsamples{1}.match(diff(daysess(k).ratsamples{1}.thiswell)~=0);
         ctrlsraw{i,2}=daysess(k).ratsamples{2}.match(diff(daysess(k).ratsamples{2}.thiswell)~=0);
@@ -673,9 +707,9 @@ legend(hp,'Ctrl-Ctrl pair','FX-FX pair','FX-Ctrl pair');
 
 subplot(1,2,2);
 % this is the bar graph with error bars
-[a,b]=binofit(sum(sum(cellfun(@(a) sum(a), ctrlsraw(:,1:2)))),sum(sum(cellfun(@(a) length(a), ctrlsraw(:,1:2)))));
-[a(2),b(2,:)]=binofit(sum(sum(cellfun(@(a) sum(a), fxpairraw(:,1:2)))),sum(sum(cellfun(@(a) length(a), fxpairraw(:,1:2)))));
-[a(3),b(3,:)]=binofit(sum(linearize(cellfun(@(a) sum(a), combosraw))),sum(linearize(cellfun(@(a) length(a), combosraw))));
+[a,b]=binofit(sum(sum(cellfun(@(a) sum(a), ctrlsraw(10:end,1:2)))),sum(sum(cellfun(@(a) length(a), ctrlsraw(10:end,1:2)))));
+[a(2),b(2,:)]=binofit(sum(sum(cellfun(@(a) sum(a), fxpairraw(10:end,1:2)))),sum(sum(cellfun(@(a) length(a), fxpairraw(10:end,1:2)))));
+[a(3),b(3,:)]=binofit(sum(linearize(cellfun(@(a) sum(a), combosraw(10:end,:,:)))),sum(linearize(cellfun(@(a) length(a), combosraw(10:end,:,:)))));
 
 br=bar([1 3 2],a);
 hold on;
