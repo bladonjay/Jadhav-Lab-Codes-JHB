@@ -701,9 +701,11 @@ hold on;
 hp(3)=patch([1:length(combostat) fliplr(1:length(combostat))]', [combostat(:,2); flipud(combostat(:,3))],...
     mycolors(3,:),'FaceAlpha',.5,'EdgeColor','none');
 
-xlabel('Session number');
+xlabel('Behavior Day'); box off; xlim([0 21]);
 ylabel(sprintf('Proportion of arm transitions \n to peer-occupied arm'));
 legend(hp,'Ctrl-Ctrl pair','FX-FX pair','FX-Ctrl pair');
+legend('box','off');
+
 
 subplot(1,2,2);
 % this is the bar graph with error bars
