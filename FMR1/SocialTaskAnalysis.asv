@@ -673,8 +673,8 @@ for cohort=[1 3]
     %ctrlbeh(:,2)=cellfun(@(a) a(2), {ratinfo(ctrlsess).ratsamples})';
 
     
-    combomeans=nanmean(combosraw(:,:,1:4),3);
-    combosraw=combosraw(:,:,1:4);
+    combomeans=nanmean(combosraw(:,:,1:5),3);
+    
     figure;
     subplot(2,1,1);
     % %% arm transitions go to friends arm
@@ -685,27 +685,7 @@ for cohort=[1 3]
         ranksum(mean(ctrlsraw(:,1:2),2),mean(fxpairraw(:,1:2),2)),...
         ranksum(mean(ctrlsraw(:,1:2),2),mean(combomeans(:,1:2),2)),...
         ranksum(mean(combomeans(:,1:2),2),mean(fxpairraw(:,1:2),2))));
-    for i=1:length(ctrlsraw)
-    % binofit (wins tots, p0
-    [ctrlsraw(i,6), ctrlsraw(i,7:8)] = binofit(ctrlsraw(i,1)*ctrlsraw(i,3)+ctrlsraw(i,2)*ctrlsraw(i,4),...
-        ctrlsraw(i,3)+ctrlsraw(i,4),0.5);
-   [fxpairraw(i,6), fxpairraw(i,7:8)] = binofit(fxpairraw(i,1)*fxpairraw(i,3)+fxpairraw(i,2)*fxpairraw(i,4),...
-        fxpairraw(i,3)+fxpairraw(i,4),0.5);
-    % combos is more complicated
-   [combosraw(i,6), combosraw(i,7:8)] = binofit(round(mean(combosraw(i,1,:),3)*sum(combosraw(i,3,:),3))+...
-       round(mean(combosraw(i,2,:),3)*sum(combosraw(i,4,:),3)),...
-        round(sum(combosraw(i,3,:),3)+sum(combosraw(i,4,:),3)),0.5);
-end
-
-    hold on;
-    mycolors=lines(3);
     
-    patch([1:size(ctrlsraw,1) size(ctrlsraw,1):-1:1]',[ctrlsraw(:,7)' flipud(ctrlsraw(:,8))'],mycolors(1,:),...
-        'FaceAlpha',.5,'EdgeColor','none');
-    patch([1:size(fxpairraw,1) size(fxpairraw,1):-1:1]',[fxpairraw(:,7)' flipud(fxpairraw(:,8))'],mycolors(2,:),...
-        'FaceAlpha',.5,'EdgeColor','none');
-    patch([1:size(combosraw,1) size(combosraw,1):-1:1]',[combosraw(:,7)' flipud(combosraw(:,8))'],mycolors(3,:),...
-        'FaceAlpha',.5,'EdgeColor','none');
     
     xlabel('Session number');
     ylabel(sprintf('Proportion of arm transitions \n to peer-occupied arm'));
@@ -723,10 +703,37 @@ end
         ranksum(ctrlsraw(:,5),combomeans(:,5)),...
         ranksum(combomeans(:,5),fxpairraw(:,5))));
     
- 
+    for i=1:length(ctrlsraw)
+    % binofit (wins tots, p0
+    [ctrlsraw(i,6), ctrlsraw(i,7)] = binofit(ctrlsraw(i,1)*ctrlsdraw(i,3)+ctrlsraw(i,2)*ctrlsraw(i,4),...
+        ctrlsraw(i,3)+ctrlsraw(i,4),0.5);
+   [fxpairraw(i,6), fxpairraw(i,7)] = binofit(fxpairraw(i,1)*ctrlsdraw(i,3)+fxpairraw(i,2)*fxpairraw(i,4),...
+        fxpairraw(i,3)+fxpairraw(i,4),0.5);
+    % combos is more complicated
+   [combosraw(i,6), combosraw(i,7)] = binofit(round(mean(combosraw(i,1,:),3)*sum(combosraw(i,3,:),3))+...
+       round(mean(combosraw(i,2,:),3)*sum(combosraw(i,4,:),3)),...
+        sum(combosraw(i,3,:),3)+sum(combosraw(i,4,:),3),0.5);
+    end
+hold on;
+mycolors=lines(3);
+
+patch([1:size(ctrlsraw,1) size(ctrlsraw,1):-1:1]',[ctrlsraw(:,7); flipud(ctrlsraw(:,8))]',...
+    mycolors(:,1),'FaceAlpha',.5,'EdgeColor','none');
+    
 end
 %% lets add error bars to those rates with a binomial distribution
 
+for i=1:length(ctrlsraw)
+    % binofit (wins tots, p0
+    [ctrlsraw(i,6), ctrlsraw(i,7:8)] = binofit(ctrlsraw(i,1)*ctrlsraw(i,3)+ctrlsraw(i,2)*ctrlsraw(i,4),...
+        ctrlsraw(i,3)+ctrlsraw(i,4),0.5);
+   [fxpairraw(i,6), fxpairraw(i,7:8)] = binofit(fxpairraw(i,1)*fxpairraw(i,3)+fxpairraw(i,2)*fxpairraw(i,4),...
+        fxpairraw(i,3)+fxpairraw(i,4),0.5);
+    % combos is more complicated
+   [combosraw(i,6), combosraw(i,7:8)] = binofit(round(mean(combosraw(i,1,:),3)*sum(combosraw(i,3,:),3))+...
+       round(mean(combosraw(i,2,:),3)*sum(combosraw(i,4,:),3)),...
+        sum(combosraw(i,3,:),3)+sum(combosraw(i,4,:),3),0.5);
+end
 
 
 figure;
