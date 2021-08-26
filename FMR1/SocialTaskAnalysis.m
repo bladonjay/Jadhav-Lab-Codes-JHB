@@ -438,9 +438,13 @@ for i=length(ratinfo)
 
 
 % one thing to do would be to remove all arrivals immediately following a
-% reward, because then they;re locked to whenever the rats finish eating
+% reward, because then they're locked to whenever the rats finish eating
 figure;
+for cohort=[1 3]
+    RatAll=ratinfo([ratinfo.cohortnum]==cohort);
+    
 for ra=1:4
+    mysessions=RatAll([RatAll.ratnums]==ra);
     
     binsize=1/5; maxlag=120;
     timeshifts=(-maxlag:maxlag)*binsize;
@@ -487,7 +491,7 @@ for ra=1:4
     end
 end
 legend(b,'Real Data','95% CI');
-
+end
 figure;
 for ra=1:4
     % remove rewards
@@ -672,6 +676,7 @@ for cohort=[1 3]
     %ctrlbeh=cellfun(@(a) a(1), {ratinfo(ctrlsess).ratsamples})';
     %ctrlbeh(:,2)=cellfun(@(a) a(2), {ratinfo(ctrlsess).ratsamples})';
 
+   if cohort==1, combosraw(1:6,:,:)=[]; fxpairraw(1:6,:,:)=[]; ctrlsraw(1:6,:,:)=[]; end
     
     combomeans=nanmean(combosraw(:,:,1:4),3);
     combosraw=combosraw(:,:,1:4);
@@ -712,6 +717,7 @@ end
     legend('Ctrl-Ctrl pair','FX-FX pair','FX-Ctrl pair');
     
     subplot(2,1,2);
+    %{
     plot(ctrlsraw(:,5)); hold on;
     plot(fxpairraw(:,5));
     plot(combomeans(:,5));
@@ -722,7 +728,20 @@ end
         ranksum(ctrlsraw(:,5),fxpairraw(:,5)),...
         ranksum(ctrlsraw(:,5),combomeans(:,5)),...
         ranksum(combomeans(:,5),fxpairraw(:,5))));
-    
+    %}
+    barcolors=lines(3);
+    % a paired bar graph
+    meanvals=[mean(ctrlsraw(:,1:2),2) mean(combosraw(:,1:2),2) mean(fxpairraw(:,1:2),2)]-.5;
+    bp=bar([1 2 3],mean(meanvals),'FaceColor','flat','EdgeColor','none','FaceAlpha',.8); bp.CData=barcolors([1 3 2],:); 
+    hold on;
+    plot(repmat([1 2 3],size(ctrlsraw,1),1)',meanvals','k');
+    errorbar([1 2 3],mean(meanvals),SEM(meanvals,1),'k');
+    set(gca,'XAxisLocation','origin','YTick',[-.2:.1:.3],...
+        'YTickLabel',cellfun(@(a) num2str(a), mat2cell(.3:.1:.8,1,ones(6,1)),'UniformOutput',false));
+    box off;
+    set(gca,'XTick',[]);
+    if cohort==1, set(gca,'Ylim',[-.25 .35]); else, set(gca,'Ylim',[-.1 .2]); end
+    ylabel('Likelihood of transitioning to peer occupied arm'
  
 end
 %% lets add error bars to those rates with a binomial distribution
