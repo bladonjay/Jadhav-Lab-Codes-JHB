@@ -429,6 +429,11 @@ for i=length(ratinfo)
 % say 1-30 second lags, and then see if there are any peaks... then run
 % this same analysis after circshifting one.
 
+% lets turn the timestamps into ones and zeros, something like accumarray
+% each poke in each well in 200 msec bins say, concatenate them, and any
+% times between different wells, those are transitions and those are ones,
+% all others are zeros, nontransitions
+
 % the other question is whether this actually swaps from time to time...
 % maybe one animal leads and so theres a significant bump behind him, and
 % then sometimes he follows, so the bump is ahead of him.  It may be a good
@@ -439,44 +444,71 @@ for i=length(ratinfo)
 
 % one thing to do would be to remove all arrivals immediately following a
 % reward, because then they're locked to whenever the rats finish eating
-figure;
-for cohort=[1 3]
-    RatAll=ratinfo([ratinfo.cohortnum]==cohort);
+
+% lets just get the cc for each and every session
+
+for i=1: 10%length(ratinfo)
+    starttime=min([ratinfo(i).ratsamples{1}.start(1) ratinfo(i).ratsamples{2}.start(1)]);
+    ratinfo(i).ratsamples{1}.start=ratinfo(i).ratsamples{1}.start-starttime;
+    ratinfo(i).ratsamples{1}.end=ratinfo(i).ratsamples{1}.end-starttime;
+    ratinfo(i).ratsamples{2}.start=ratinfo(i).ratsamples{2}.start-starttime;
+    ratinfo(i).ratsamples{2}.end=ratinfo(i).ratsamples{2}.end-starttime;
     
-for ra=1:4
-    mysessions=RatAll([RatAll.ratnums]==ra);
-    
-    binsize=1/5; maxlag=120;
-    timeshifts=(-maxlag:maxlag)*binsize;
-    mytrans=RatAll(ra).myRaw(RatAll(ra).myRaw.thiswell~=RatAll(ra).myRaw.lastwell,:);
-    myarrivals=accumarray(round(mytrans.start./binsize)+1,1);
-    
-    histrans=RatAll(ra).hisRaw(RatAll(ra).hisRaw.thiswell~=RatAll(ra).hisRaw.lastwell,:);
-    hisarrivals=accumarray(round(histrans.start./binsize)+1,1);
+
     
     
-    if length(hisarrivals)<length(myarrivals)
-        hisarrivals((end+1):length(myarrivals))=0;
-    elseif length(hisarrivals)>length(myarrivals)
-        myarrivals(end:length(hisarrivals))=0;
+    figure;
+    % for this rat
+    binsize=1/4; maxlag=120; % in seconds
+    timeshifts=(-maxlag:binsize:maxlag);
+    
+    % first accum array each arm
+    fulllength=ceil([max(table2array(ratinfo(i).ratsamples{1}(end,1:2))) ...
+        max(table2array(ratinfo(i).ratsamples{2}(end,1:2)))]/binsize);
+    transmat=zeros(max(fulllength),2);
+    for ra=1:2
+        mytrans=ratinfo(i).ratsamples{ra};
+        % get all departure ts, multiply by binsize, add 1 so no zeros
+        %
+        departures=accumarray(round(mytrans.start(diff(mytrans.thiswell)~=0)/binsize)+1,1);
+        arrivals=accumarray(round(mytrans.start([0; diff(mytrans.thiswell)]~=0)/binsize)+1,1);
+        
+        for t=1:length(departures)-1
+            if departures(t)==1 && length(arrivals)>t
+                nextarrival=find(arrivals(t:end)==1,1,'first');
+                if ~isempty(nextarrival)
+                    transmat(t:t+nextarrival-1,ra)=1;
+                end
+            end
+        end
     end
-    myarrivals=SmoothMat2(myarrivals,[10 10],2);
-    hisarrivals=SmoothMat2(hisarrivals,[10 10],2);
     
+    myCmap=lines(4);
     % right direction means shift second input foreward
-    temp=xcorr(myarrivals,hisarrivals,maxlag);
-    subplot(2,2,ra);
+    temp=xcorr(transmat(:,1),transmat(:,2),maxlag/binsize);
+    %subplot(2,2,ra);
     b=bar(timeshifts,temp,1,'EdgeColor','none','FaceColor',myCmap(ra,:));
+
+    % right is first vector to the right, e.g. rat 1 past, rat 2 future.
+    % so if theres a dip in corr in rat 1 past and rat 2 future, that means
+    % after rat 2 moves, rat 1 moves.
     bootcorr=[];
     % now for a bootstrap
-    for i=1:200
-        myboot=circshift(myarrivals,randi(length(myarrivals)));
-        bootcorr(i,:)=xcorr(myboot,hisarrivals,maxlag);
+    for bt=1:200
+        myshift= max([randi(length(timeshifts)) maxlag*2/binsize]);
+        myboot=circshift(transmat(:,1),randi(length(timeshifts)));
+        bootcorr(bt,:)=xcorr(myboot,transmat(:,2),maxlag/binsize);
     end
     
     hold on;
-    b(2)=plot(timeshifts,prctile(bootcorr,5),'r');
-    plot(timeshifts,prctile(bootcorr,95),'r');
+    b(2)=plot(timeshifts,prctile(bootcorr,1),'k--');
+    plot(timeshifts,prctile(bootcorr,99),'k--');
+    
+end
+
+%%
+for i=1:10
+    for j=1:10
     ylim([min(prctile(bootcorr,5))*.8,max(prctile(bootcorr,95))*1.2]);
     plot([0 0],[0 max(temp)*1.2],'k');
     title(sprintf('Rat %d',ra));
@@ -587,8 +619,9 @@ end
 % best?
 
 genotypetable=table([1 4; 1 3; 1 2],[2 3; 2 4; 3 4], 'VariableNames',{'controls','fx'});
-
+figure;
 allcohorts=[];
+iterator=1;
 for cohort=[1 3]
     cohortinfo=ratinfo(cell2mat({ratinfo.cohortnum})==cohort);
     
@@ -672,37 +705,30 @@ for cohort=[1 3]
     end
 
     
-    % first get ctrls
-    %ctrlsess=cellfun(@(a) any(a==1) && any(a==4), {ratinfo.ratnum});
-    %ctrlbeh=cellfun(@(a) a(1), {ratinfo(ctrlsess).ratsamples})';
-    %ctrlbeh(:,2)=cellfun(@(a) a(2), {ratinfo(ctrlsess).ratsamples})';
 
    if cohort==1, combosraw(1:6,:,:)=[]; fxpairraw(1:6,:,:)=[]; ctrlsraw(1:6,:,:)=[]; end
     
     combomeans=nanmean(combosraw(:,:,1:4),3);
     combosraw=combosraw(:,:,1:4);
-    figure;
-    subplot(2,1,1);
-    % %% arm transitions go to friends arm
-    plot(mean(ctrlsraw(:,1:2),2)); hold on;
-    plot(mean(fxpairraw(:,1:2),2));
-    plot(mean(combomeans(:,1:2),2));
-    title(sprintf('cc-fxfx p=%.3e, cc-fxc p=%.3e, fxfx-fxc p=%.2e',...
-        ranksum(mean(ctrlsraw(:,1:2),2),mean(fxpairraw(:,1:2),2)),...
-        ranksum(mean(ctrlsraw(:,1:2),2),mean(combomeans(:,1:2),2)),...
-        ranksum(mean(combomeans(:,1:2),2),mean(fxpairraw(:,1:2),2))));
-    for i=1:length(ctrlsraw)
-    % binofit (wins tots, p0
-    [ctrlsraw(i,6), ctrlsraw(i,7:8)] = binofit(ctrlsraw(i,1)*ctrlsraw(i,3)+ctrlsraw(i,2)*ctrlsraw(i,4),...
-        ctrlsraw(i,3)+ctrlsraw(i,4),0.5);
-   [fxpairraw(i,6), fxpairraw(i,7:8)] = binofit(fxpairraw(i,1)*fxpairraw(i,3)+fxpairraw(i,2)*fxpairraw(i,4),...
-        fxpairraw(i,3)+fxpairraw(i,4),0.5);
-    % combos is more complicated
-   [combosraw(i,6), combosraw(i,7:8)] = binofit(round(mean(combosraw(i,1,:),3)*sum(combosraw(i,3,:),3))+...
-       round(mean(combosraw(i,2,:),3)*sum(combosraw(i,4,:),3)),...
-        round(sum(combosraw(i,3,:),3)+sum(combosraw(i,4,:),3)),0.5);
-end
 
+    subplot(2,2,iterator);
+    % %% arm transitions go to friends arm
+    
+    
+    for i=1:length(ctrlsraw)
+        % binofit (wins tots, p0
+        [ctrlsraw(i,6), ctrlsraw(i,7:8)] = binofit(ctrlsraw(i,1)*ctrlsraw(i,3)+ctrlsraw(i,2)*ctrlsraw(i,4),...
+            ctrlsraw(i,3)+ctrlsraw(i,4),0.5);
+        [fxpairraw(i,6), fxpairraw(i,7:8)] = binofit(fxpairraw(i,1)*fxpairraw(i,3)+fxpairraw(i,2)*fxpairraw(i,4),...
+            fxpairraw(i,3)+fxpairraw(i,4),0.5);
+        % combos is more complicated
+        [combosraw(i,6), combosraw(i,7:8)] = binofit(round(mean(combosraw(i,1,:),3)*sum(combosraw(i,3,:),3))+...
+            round(mean(combosraw(i,2,:),3)*sum(combosraw(i,4,:),3)),...
+            round(sum(combosraw(i,3,:),3)+sum(combosraw(i,4,:),3)),0.5);
+    end
+    plot(ctrlsraw(:,6)); hold on;
+    plot(fxpairraw(:,6));
+    plot(mean(combosraw(:,6),3));
     hold on;
     mycolors=lines(3);
     
@@ -717,7 +743,12 @@ end
     ylabel(sprintf('Likelihood of transitioning \n to peer-occupied arm'));
     legend('Ctrl-Ctrl pair','FX-FX pair','FX-Ctrl pair');
     box off
-    subplot(2,1,2);
+    title(sprintf('cc-fxfx p=%.3e, cc-fxc p=%.3e, \n fxfx-fxc p=%.2e',...
+        ranksum(mean(ctrlsraw(:,1:2),2),mean(fxpairraw(:,1:2),2)),...
+        ranksum(mean(ctrlsraw(:,1:2),2),mean(combomeans(:,1:2),2)),...
+        ranksum(mean(combomeans(:,1:2),2),mean(fxpairraw(:,1:2),2))));
+ 
+    % and this is total rewards per total arm transitions 
     %{
     plot(ctrlsraw(:,5)); hold on;
     plot(fxpairraw(:,5));
@@ -733,6 +764,9 @@ end
     barcolors=lines(3);
     % a paired bar graph
     meanvals=[mean(ctrlsraw(:,1:2),2) mean(combosraw(:,1:2),2) mean(fxpairraw(:,1:2),2)]-.5;
+    % for  bar plot on that cohort
+    %{    
+    subplot(2,1,2);
     bp=bar([1 2 3],mean(meanvals),'FaceColor','flat','EdgeColor','none','FaceAlpha',.8); bp.CData=barcolors([1 3 2],:); 
     hold on;
     plot(repmat([1 2 3],size(ctrlsraw,1),1)',meanvals','k');
@@ -743,23 +777,45 @@ end
     set(gca,'XTick',[]);
     if cohort==1, set(gca,'Ylim',[-.25 .35]); else, set(gca,'Ylim',[-.1 .2]); end
     ylabel(sprintf('Likelihood of transitioning \n to peer occupied arm'));
- 
+    %}
     
     allcohorts=[allcohorts; meanvals];
+    iterator=iterator+1;
 end
 
+subplot(2,4,[6 7]);
+%{
 grps=repmat(1:3,size(allcohorts,1),1);
-
-figure; boxScatterplot(allcohorts(:)+.5,grps)
+boxScatterplot(allcohorts(:)+.5,grps,'position',[1])
 hold on;
 plot(grps',allcohorts'+.5,'color',[.7 .7 .7]);
 plot([0.5 3.5],[.5 .5],'r');
-set(gca,'XTickLabel',{'FX-FX','FX-Ctrl','Ctrl-Ctrl'});
+set(gca,'XTickLabel',{'Ctrl-Ctrl','FX-Ctrl','FX-FX'});
 ylabel(sprintf('Likelihood of transitioning \n to peer-occupied arm'));
+
+%}
+bp=bar([1 2 3],mean(allcohorts),'FaceColor','flat','EdgeColor','none','FaceAlpha',.8); bp.CData=barcolors([1 3 2],:); 
+hold on;
+errorbar([1 2 3],mean(allcohorts),SEM(allcohorts,1),'k');
+tickvec=[-.2:.05:.3];
+set(gca,'XAxisLocation','origin','YTick',tickvec,...
+    'YTickLabel',cellfun(@(a) num2str(a), mat2cell(tickvec+.5,1,ones(length(tickvec),1)),...
+    'UniformOutput',false));
+box off;
+set(gca,'XTick',[]);
+ylabel(sprintf('Likelihood of transitioning \n to peer occupied arm'));
+xlabel('WT-WT     WT-FX     FX-FX');
+
+[a]=ranksum(allcohorts(:,1),allcohorts(:,2));
+a(2)=ranksum(allcohorts(:,1),allcohorts(:,3));
+a(3)=ranksum(allcohorts(:,2),allcohorts(:,3));
+title(sprintf('FX-FX vs FX-Ctrl p=%.2e, FX-FX vs Ctrl-Ctrl p=%.2e, \n FX-Ctrl vs Ctrl-Ctrl p=%.2e',...
+    a(3), a(2), a(1)));
 %% lets add error bars to those rates with a binomial distribution
 
 
-
+% this is actually done above
+%{
 figure;
 subplot(1,2,1);
 myconf=cell2mat(ctrlsraw(:,3));
@@ -792,7 +848,8 @@ errorbar(2,a(3), b(3,1)-a(3), b(3,2)-a(3),'kx');
 set(gca,'XTick',[1 2 3],'XTickLabel',{'Ctrl-Ctrl','FX-Ctrl','FX-FX'});
 ylabel(sprintf('Proportion of arm transitions \n to peer-occupied arm'));
 xlabel('Animal Pairing')
-%%
+
+
 % now to use a patch instead
 
 
@@ -853,6 +910,8 @@ errorbar(2,a(3), b(3,1)-a(3), b(3,2)-a(3),'kx');
 set(gca,'XTick',[1 2 3],'XTickLabel',{'Ctrl-Ctrl','FX-Ctrl','FX-FX'});
 ylabel(sprintf('Proportion of arm transitions \n to peer-occupied arm'));
 xlabel('Animal Pairing')
+
+%}
 %%
 % i wonder if their armtransitions per minute were higher.
 
@@ -924,9 +983,6 @@ end
 
     
     
-    
-    
-So I want to take each rat, and cat its data with 
     
     
     
