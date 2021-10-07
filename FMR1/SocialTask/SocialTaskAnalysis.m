@@ -1,4 +1,4 @@
-%% generating latin cubes for random animal pairings
+ %% generating latin cubes for random animal pairings
 
 % this bit still needs work, I need to make a sequential algorithm that
 % checks the followings:
@@ -159,24 +159,9 @@ end
 %%
 % set options for data import
 
-    opts = delimitedTextImportOptions("NumVariables", 2);
-    
-    % Specify range and delimiter
-    opts.DataLines = [2, Inf];
-    opts.Delimiter = "#";
-    
-    % Specify column names and types
-    opts.VariableNames = ["VarName1", "Var2"];
-    opts.SelectedVariableNames = "VarName1";
-    opts.VariableTypes = ["string", "string"];
-    
-    % Specify file level properties
-    opts.ExtraColumnsRule = "ignore";
-    opts.EmptyLineRule = "read";
-    
-    % Specify variable properties
-    opts = setvaropts(opts, ["VarName1", "Var2"], "WhitespaceRule", "preserve");
-    opts = setvaropts(opts, ["VarName1", "Var2"], "EmptyFieldRule", "auto");
+opts=setStateScriptOpts();
+
+   
     
 
 %%
@@ -447,16 +432,22 @@ for i=length(ratinfo)
 
 % lets just get the cc for each and every session
 
-for i=1: 10%length(ratinfo)
+% input parameters to the correlation and plotter
+binsize=1/4; maxlag=120; % in seconds
+timeshifts=(-maxlag:binsize:maxlag);
+plotIT=0;
+
+wb=waitbar(0);
+for i=1:length(ratinfo)
+    
+    % gather the last sample before and first after an arm transition
     starttime=min([ratinfo(i).ratsamples{1}.start(1) ratinfo(i).ratsamples{2}.start(1)]);
-    ratinfo(i).ratsamples{1}(:,
-    
-    
-    figure;
-    % for this rat
-    binsize=1/5; maxlag=120; % in seconds
-    timeshifts=(-maxlag:binsize:maxlag);
-    
+    ratinfo(i).ratsamples{1}.start=ratinfo(i).ratsamples{1}.start-starttime;
+    ratinfo(i).ratsamples{1}.end=ratinfo(i).ratsamples{1}.end-starttime;
+    ratinfo(i).ratsamples{2}.start=ratinfo(i).ratsamples{2}.start-starttime;
+    ratinfo(i).ratsamples{2}.end=ratinfo(i).ratsamples{2}.end-starttime;
+
+
     % first accum array each arm
     fulllength=ceil([max(table2array(ratinfo(i).ratsamples{1}(end,1:2))) ...
         max(table2array(ratinfo(i).ratsamples{2}(end,1:2)))]/binsize);
@@ -465,7 +456,7 @@ for i=1: 10%length(ratinfo)
         mytrans=ratinfo(i).ratsamples{ra};
         % get all departure ts, multiply by binsize, add 1 so no zeros
         %
-        departures=accumarray(round(mytrans.start(diff(mytrans.thiswell)~=0)/binsize)+1,1);
+        departures=accumarray(round(mytrans.end(diff(mytrans.thiswell)~=0)/binsize)+1,1);
         arrivals=accumarray(round(mytrans.start([0; diff(mytrans.thiswell)]~=0)/binsize)+1,1);
         
         for t=1:length(departures)-1
@@ -478,11 +469,16 @@ for i=1: 10%length(ratinfo)
         end
     end
     
+    if plotIT
+        figure; plot((1:size(transmat))*binsize,transmat(:,1));
+        hold on; plot((1:size(transmat))*binsize,transmat(:,2)+2); ylim([-1 4]);
+    end
     myCmap=lines(4);
     % right direction means shift second input foreward
-    temp=xcorr(transmat(:,1),transmat(:,2),maxlag/binsize);
+    samplecorr=xcorr(transmat(:,1),transmat(:,2),maxlag/binsize);
+    ratinfo(i).samplecorr=samplecorr;
     %subplot(2,2,ra);
-    b=bar(timeshifts,temp,1,'EdgeColor','none','FaceColor',myCmap(ra,:));
+    
 
     % right is first vector to the right, e.g. rat 1 past, rat 2 future.
     % so if theres a dip in corr in rat 1 past and rat 2 future, that means
@@ -490,92 +486,73 @@ for i=1: 10%length(ratinfo)
     bootcorr=[];
     % now for a bootstrap
     for bt=1:200
-        myshift= max([randi(length(timeshifts)) maxlag*2/binsize]);
+        myshift= max([randi(length(transmat)) maxlag*2/binsize]);
         myboot=circshift(transmat(:,1),randi(length(timeshifts)));
         bootcorr(bt,:)=xcorr(myboot,transmat(:,2),maxlag/binsize);
     end
-    
-    hold on;
-    b(2)=plot(timeshifts,prctile(bootcorr,5),'k--');
-    plot(timeshifts,prctile(bootcorr,95),'k--');
-    
-end
-    ylim([min(prctile(bootcorr,5))*.8,max(prctile(bootcorr,95))*1.2]);
-    plot([0 0],[0 max(temp)*1.2],'k');
-    title(sprintf('Rat %d',ra));
-    switch ra
-        case 1
-            ylabel('Correlation (au)');
-        case 3
-            xlabel(sprintf(' Leads Partner <--> Follows partner \n Temporal Offset in seconds'));
-            ylabel('Correlation (au)');
-        case 4
-            xlabel(sprintf(' Leads Partner <--> Follows partner \n Temporal Offset in seconds'));
+    ratinfo(i).bootcorr=[prctile(bootcorr,1)' prctile(bootcorr,99)'];
+    if plotIT==1
+        figure;
+        b=bar(timeshifts,samplecorr,1,'EdgeColor','none','FaceColor',myCmap(ra,:));
+        hold on;
+        b(2)=plot(timeshifts,prctile(bootcorr,1),'k--');
+        plot(timeshifts,prctile(bootcorr,99),'k--');
     end
+    waitbar(i/length(ratinfo),wb,'Running boots');
 end
-legend(b,'Real Data','95% CI');
-end
-figure;
-for ra=1:4
-    % remove rewards
-    noReward=RatAll(ra).data(2:end,:);
-    killtr=find(noReward.Reward==1)+1;
-    killtr=killtr(killtr<=(height(noReward)-2));
-    noReward(killtr,:)=[];
+close(wb);
+%%
+% so i want to see if the rats behave the same way with the same partners
+
+% lets just gather one pair, say 201 and 204, the controls
+cohort=3;
+mypair=[3 4];
+
+%figure;
+subplot(2,2,4); 
+
+
+thiscohort=ratinfo([ratinfo.cohortnum]==cohort);
+mysess=thiscohort(cellfun(@(a) a(1)==mypair(1) && a(2)==mypair(2), {thiscohort.ratnums}));
+flipsess=thiscohort(cellfun(@(a) a(1)==mypair(2) && a(2)==mypair(1), {thiscohort.ratnums}));
+
+
+allsess=[cell2mat({mysess.samplecorr})'; fliplr(cell2mat({flipsess.samplecorr})')];
     
-    % remove any zeros
-    killtr=noReward.start==0 | noReward.arrival==0;
-    noReward(killtr,:)=[];
-    
-    % accumarray
-    hisarrivals=accumarray(round(noReward.arrival),1);
-    myarrivals=accumarray(round(noReward.start),1);
-    
-    % match array lengths
-    if length(hisarrivals)<length(myarrivals)
-        hisarrivals((end+1):length(myarrivals))=0;
-    elseif length(hisarrivals)>length(myarrivals)
-        myarrivals(end:length(hisarrivals))=0;
+lownull=cell2mat(cellfun(@(a) a(:,1), {mysess.bootcorr},'UniformOutput',false))';
+highnull=cell2mat(cellfun(@(a) a(:,2), {mysess.bootcorr},'UniformOutput',false))';
+timeshifts=(-maxlag:binsize:maxlag);
+
+
+mp=plot(timeshifts,nanmean(allsess));
+% make my own boots here
+
+allboot=[];
+for i=1:100
+    bootshift=randi(length(timeshifts),size(allsess,1));
+    bootrows=nan(size(allsess));
+
+    for k=1:size(allsess,1)
+        bootrows(k,:)=circshift(allsess(k,:),bootshift(k));
     end
-    maxlag=120; % 2 minuites
-    
-    temp=xcorr(myarrivals,hisarrivals,maxlag);
-    subplot(2,2,ra);
-    bar(-maxlag:maxlag,temp,'FaceColor',myCmap(ra,:));
-    bootcorr=[];
-    % now for a bootstrap
-    for i=1:1000
-        myboot=circshift(myarrivals,randi(length(hisarrivals)));
-        bootcorr(i,:)=xcorr(myboot,hisarrivals,maxlag);
-    end
-    
-    hold on;
-    plot(-maxlag:maxlag,prctile(bootcorr,1),'r');
-    plot(-maxlag:maxlag,prctile(bootcorr,99),'r');
-    plot([0 0],[0 max(temp)*1.2],'k');
-    title(RatAll(ra).names);
-    switch ra
-        case 1
-            ylabel('Correlation (au)');
-        case 3
-            xlabel('Temporal Offset in seconds');
-            ylabel('Correlation (au)');
-        case 4
-            xlabel(sprintf(' Leads Partner <--> Follows partner \n Temporal Offset in seconds'));
-    end
-    axis tight
-end
-sgtitle('Each rat alternates arms close in time with his partner');
+    allboot(i,:)=nanmean(bootrows);
 end
 
+hold on;
+mp(2)=plot(timeshifts,prctile(allboot,99),'k--');
+plot(timeshifts,prctile(allboot,1),'k--');
+axis tight;
+title(sprintf('Cohort %d, Rats %d and %d',cohort, mypair(1), mypair(2)));
+xlabel(sprintf('Seconds offset \n Rat %d follows      Rat %d leads',mypair(1),mypair(1))); 
+ylabel(sprintf('Correlation in movement \n behavior between rats'));
+% it looks like their movement speed is anticorrelated...
+% this is true for all the animals, so lets just show the fx-fx guys and
+% the ctrl=ctrl pairs
 
 
-
-
-
-
-
-
+title('Cohort B, FX-FX pair');
+xlabel(sprintf('Rat 1 follows                Rat 1 leads \n Seconds offset in Behavior')); 
+legend(mp,'Real Data','Bootstrap 99% CI');
 
 
 
@@ -787,7 +764,7 @@ ylabel(sprintf('Likelihood of transitioning \n to peer-occupied arm'));
 %}
 bp=bar([1 2 3],mean(allcohorts),'FaceColor','flat','EdgeColor','none','FaceAlpha',.8); bp.CData=barcolors([1 3 2],:); 
 hold on;
-errorbar([1 2 3],mean(allcohorts),SEM(allcohorts,1),'k');
+errorbar([1 2 3],mean(allcohorts),SEM(allcohorts,1),'k.');
 tickvec=[-.2:.05:.3];
 set(gca,'XAxisLocation','origin','YTick',tickvec,...
     'YTickLabel',cellfun(@(a) num2str(a), mat2cell(tickvec+.5,1,ones(length(tickvec),1)),...

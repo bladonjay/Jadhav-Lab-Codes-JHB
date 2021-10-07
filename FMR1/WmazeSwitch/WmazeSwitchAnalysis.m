@@ -57,7 +57,7 @@ ratinfo=sortrows(struct2table(filelist),{'ratname','datenum','sessnum'});
 % now for ease here im going to put it into a struct
 ratinfo=table2struct(ratinfo);
 
-verbose=0;
+verbose=1;
 %%
 for i=1:length(ratinfo)
     fprintf(' \n \n');
@@ -354,3 +354,13 @@ errorbar(trialCrit,meanperfS2(trialCrit),critVar,...
 plot([0 500],[.5 .5],'k');
 xlabel('Trials in ''Switch'' Task');
 linkaxes(sp); box off;
+
+%% messing around here
+
+
+
+
+
+
+
+
