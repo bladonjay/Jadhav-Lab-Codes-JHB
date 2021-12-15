@@ -39,21 +39,21 @@ okfiles=cellfun(@(a) contains(a,'stateScriptLog'),{filelist.name});
 filelist = filelist(okfiles);
 % now get the rat and date
 for i=1:length(filelist)
-    filelist(i).rundate=filelist(i).folder(find(filelist(i).folder=='\',1,'last')+1:end);
-    filelist(i).ratname=filelist(i).name(strfind(filelist(i).name,'AH'):...
-        find(filelist(i).name=='_',1,'last')-1);
+    namesep=find(filelist(i).name=='_');
+    filelist(i).rundate=datenum(filelist(i).date);
+    filelist(i).ratname=filelist(i).name(namesep(1)+1:namesep(2)-1);
     filelist(i).sessnum=filelist(i).name(find(filelist(i).name=='_',1,'last')+1:...
         strfind(filelist(i).name,'.')-1);
-    filelist(i).datenum=datenum(filelist(i).rundate);
+    %filelist(i).datenum=datenum(filelist(i).rundate);
 end
 
 % now sort, first by session, then by date then by rat, this will make rat
 % the top sorting category
 
 
+ratinfo=filelist;
 % we can interchange tables and structs easily
 ratinfo=sortrows(struct2table(filelist),{'ratname','datenum','sessnum'});
-
 % now for ease here im going to put it into a struct
 ratinfo=table2struct(ratinfo);
 
@@ -61,7 +61,7 @@ verbose=1;
 %%
 for i=1:length(ratinfo)
     fprintf(' \n \n');
-    fprintf('Running  %s %s sess %s \n',ratinfo(i).rundate, ratinfo(i).ratname, num2str(ratinfo(i).sessnum));
+    fprintf('Running  %s %s %s \n',ratinfo(i).date, ratinfo(i).ratname, ratinfo(i).sessnum);
     DataFile = readtable(fullfile(ratinfo(i).folder,ratinfo(i).name), opts);
     % Convert to output type
     DataRaw = table2cell(DataFile);
@@ -92,30 +92,33 @@ for i=1:length(ratinfo)
     realevents(:,5)=[nan; realevents(1:end-1,3)]; % tack previous arm on to the end
     realevents=realevents(2:end,:); % remove first trial, it doesnt count!
     % vestigial, was for when we took return visits
-    armtrans=realevents;
+    armtrans=table(realevents(:,1),realevents(:,2),realevents(:,3),realevents(:,4),...
+        realevents(:,5),'VariableNames',{'departure','arrival','thisArm','isRewarded',...
+        'lastArm'});
     if verbose
         % make a huge plot here
         % on left y maybe a moving average of total success rate
         figure;
-        plot(movsum(armtrans(:,4),5)/5,'k');
+        plot(movsum(armtrans.isRewarded,5)/5,'k');
         hold on;
-        % inbound performance is what % of timees that he leaves an outer
+        % inbound performance is what % of times that he leaves an outer
         % arm does he go to the center arm. 
         % now rewards per each side
-        plot(cumsum(armtrans(:,4)==1 & armtrans(:,5)~=2)./cumsum(armtrans(:,5)~=2),'r'); % %%of leaving sides
+        plot(cumsum(armtrans.isRewarded==1 & armtrans.lastArm~=2)./cumsum(armtrans.lastArm~=2),'r'); % %%of leaving sides
         hold on;
-        %plot(cumsum(armtrans(:,4)==1 & armtrans(:,3)~=2)./cumsum(armtrans(:,3)~=2),'b'); % %%of entering sides
-        plot(cumsum(armtrans(:,4)==1 & armtrans(:,5)==2)./cumsum(armtrans(:,5)==2),'b'); % %%of entering sides
+        
+        plot(cumsum(armtrans.isRewarded==1 & armtrans.thisArm~=2)./cumsum(armtrans.thisArm~=2),'b'); % %%of entering sides
 
         % how to calculate a 5 trial moving average of the events? prob nan
         % out middles? and then fill in after?
-        plot([0 length(armtrans)],[.5 .5],'r--');
+        plot([0 height(armtrans)],[.5 .5],'r--');
         
-        plot((cumsum(armtrans(:,3)==3)-cumsum(armtrans(:,3)==1))./(1:size(armtrans,1))','m'); % side preference
-        legend({'Performance','Center performance','Side Performance','Side preference','chance'});
+        plot((cumsum(armtrans.thisArm==3)-cumsum(armtrans.thisArm==1))./cumsum(armtrans.thisArm~=2)+.5,'m'); % side preference
+        legend({'Performance window 5','Center performance cumsum','Side Performance cumsum','chance','cumsum Side preference'});
+        title(sprintf('Session \n %s %s %s',ratinfo(i).date, ratinfo(i).ratname, ratinfo(i).sessnum));
 
     end
-    myevents(:,end+1)=i; armtrans(:,end+1)=i;
+    myevents(:,end+1)=i; armtrans.session(:)=i;
     ratinfo(i).samples=myevents;
     ratinfo(i).armvisits=armtrans;
     eventtable=table(realevents(:,1),realevents(:,2),realevents(:,3),realevents(:,4),...
@@ -125,12 +128,12 @@ for i=1:length(ratinfo)
 
     % when he leaves a side arm
     fprintf('NOT including return visits, %.f%% of %d side arm departures correct \n',...
-      nanmean(armtrans(armtrans(:,5)~=2,4)==1)*100, sum(armtrans(:,5)~=2));
+      nanmean(armtrans.isRewarded(armtrans.lastArm~=2)==1)*100, sum(armtrans.lastArm~=2));
 
     % when he leaves the center arm
-    fprintf('NOT including return visits, %.f%% of %d central arm departures correct \n',...
-      nanmean(armtrans(armtrans(:,5)==2,4)==1)*100, sum(armtrans(:,5)==2));
-
+    fprintf('NOT including return visits, %.f%% of %d side arm approaches correct \n',...
+      nanmean(armtrans.isRewarded(armtrans.thisArm~=2)==1)*100, sum(armtrans.thisArm~=2));
+    ylim([0 1]);
 end
 
 %% and ask the date that the animals switched
