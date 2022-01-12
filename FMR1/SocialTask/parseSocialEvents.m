@@ -1,4 +1,4 @@
-function [rat1events, rat2events]=parseSocialEvents(ledger,debounce)
+function [rat1events, rat2events]=parseSocialEvents(dataRaw,debounce)
 % function [rat1events, rat2events, allevents]=parseSocialEvents(ledger)
 % splits the stream of events by rat and tracks what they and their partner
 % were doing for each sample/arm transition
@@ -13,6 +13,22 @@ function [rat1events, rat2events]=parseSocialEvents(ledger,debounce)
 6. was it a match
 7. if there was a reward arm assigned, this is its assignment
 %}
+
+% debounce is the lockout period for a second 'sample' once the first
+% sample has happened.  Sometimes the IRbeams are finicky and will trip
+% multiple times in a very short window.  This prevents that decently well
+
+cellData = table2cell(dataRaw);
+numIdx = cellfun(@(x) ~isempty(x{1}), cellData(:,1));
+rawEvents = cellData(numIdx,1);
+
+% convert to char and split out
+DataTips2=cellfun(@(a) char(a{1}), rawEvents, 'UniformOutput',false);
+DataAll=cellfun(@(a) a(1:find(a==' ',1,'first')), DataTips2,'UniformOutput',false);
+DataAll(:,2)=cellfun(@(a) a(find(a==' ',1,'first')+1:end), DataTips2,'UniformOutput',false);
+
+ledger=DataAll;
+
 
 if ~exist('debounce','var')
     debounce=0;

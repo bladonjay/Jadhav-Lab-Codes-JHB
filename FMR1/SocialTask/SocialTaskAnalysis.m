@@ -7,6 +7,16 @@
 % 2. rats dont have the same partners in the same order more than 2 days in
 % a row
 
+
+
+%
+%
+% for spike data use gatherMS_to_FFunits in parent folder
+%
+%
+
+edit gatherMS_to_FFunits.m
+
 %{
 ratnames= {'AH1','AH2','AH3','AH6'};
 ratairs={};
@@ -67,7 +77,7 @@ catch
     
     
     filelist = dir(fullfile(mydir, '**\*.*'));  %get list of files and folders in any subfolder
-    %filelist=getAllFiles(mydir,'.stateScriptLog');
+
     okfiles=cellfun(@(a) contains(a,'stateScriptLog'),{filelist.name});
     filelist = filelist(okfiles);
     
@@ -176,16 +186,7 @@ for i=1:length(ratinfo)
         ratinfo(i).cohortname, ratinfo(i).ratnums(1), ratinfo(i).cohortname, ratinfo(i).ratnums(2));
     DataFile = readtable(fullfile(ratinfo(i).folder,ratinfo(i).name), opts);
     % Convert to output type
-    DataRaw = table2cell(DataFile);
-    numIdx = cellfun(@(x) ~isempty(x{1}), DataRaw(:,1));
-    DataTips = DataRaw(numIdx,1);
     
-    % convert to char and split out
-    DataTips2=cellfun(@(a) char(a{1}), DataTips, 'UniformOutput',false);
-    DataAll=cellfun(@(a) a(1:find(a==' ',1,'first')), DataTips2,'UniformOutput',false);
-    DataAll(:,2)=cellfun(@(a) a(find(a==' ',1,'first')+1:end), DataTips2,'UniformOutput',false);
-    
-    ledger=DataAll;
     myevents={};
     % here we must swap for parseSocialEvents I think...
     % we split up into two sets of events, and we debounce repeated hits on
@@ -248,7 +249,7 @@ end
 % goes in the first column, and its buddy in the peer column
 % then for each of his transitions, we can fin
 
-%% statespace performance by rat (it oscillates and is raelly dirty
+%% statespace performance by rat (it oscillates and is really dirty
 
 
 
