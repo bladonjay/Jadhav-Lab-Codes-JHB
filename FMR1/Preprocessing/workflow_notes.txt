@@ -1,0 +1,40 @@
+                  _       __           __   ______             
+                 | |     / /___  _____/ /__/ __/ /___ _      __
+                 | | /| / / __ \/ ___/ //_/ /_/ / __ \ | /| / /
+                 | |/ |/ / /_/ / /  / ,< / __/ / /_/ / |/ |/ / 
+                 |__/|__/\____/_/  /_/|_/_/ /_/\____/|__/|__/  
+                                                               
+--------------------------------------------------------------------------------
+Installation:
+    - Get Mountainlab
+    - Set ML_TEMPORTARY_DIRECTORY in mountainlab.env to be on the same drive as data
+    - Install processors: qt-mountainview mountainlab mountainlab_pytools ml_ephys ml_ms4alg ml_ms3 ml_pyms
+    - Get franklab custom processors: 
+        - pyms.add_curation_tags
+        - pyms.anneal_segments
+
+- ms_rn_filesetup: load preprocess data and export mda if mda does not exist. delete EMG spikes and mda files 
+
+- Create results directory expDir/dataDir/Mountain/animID_day_date.mountain/
+- make subdir for each tetrode (tetList override): resDir/animID_dat_date.nt#/
+- make prv referencing orig mda: raw.mda.prv
+- make params file
+- filter_mask_whiten
+- sort_on_segs
+- Add curation tags?
+- export marks?
+- import to matlab FF
+
+
+Helper functions needed:
+- mkTree
+- create_prv
+- ml_run_process
+- import to matlab
+- compare_ms_to_matclust
+- setupMountainlab.sh
+    - install conda if missing
+    - install mountainlab
+    - create env file
+    - install processors
+    
