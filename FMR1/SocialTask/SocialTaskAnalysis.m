@@ -182,7 +182,7 @@ for i=1:length(ratinfo)
     % the same well (if the last end and the next start are within a
     % second, its the same sample
     debounce=1; % 1 second debounce...
-    [myevents{1},myevents{2}] = parseSocialEvents(ledger,debounce);
+    [myevents{1},myevents{2}] = parseSocialEvents(DataFile,debounce);
 
     if verbose
         % make a huge plot here
@@ -425,7 +425,7 @@ end
 
 genotypetable=table([1 4; 1 3; 1 2],[2 3; 2 4; 3 4], 'VariableNames',{'controls','fx'});
 figure;
-allcohorts=[];
+allcohorts=[]; rundates=[];
 iterator=1;
 for cohort=[1 3]
     cohortinfo=ratinfo(cell2mat({ratinfo.cohortnum})==cohort);
@@ -440,6 +440,7 @@ for cohort=[1 3]
     
     % get unique days, so you can get a day average
     [sessnums,ia,ic]=unique(cellfun(@(a) datenum(a), {cohortinfo.datenum}));
+    rundates=[rundates; [datestr(sessnums) ones(length(sessnums),1)*cohort]];
     for i=1:length(sessnums)
         daysess=cohortinfo(ic==i);
         cumct=1;
@@ -511,7 +512,7 @@ for cohort=[1 3]
 
     
 
-   if cohort==1, combosraw(1:6,:,:)=[]; fxpairraw(1:6,:,:)=[]; ctrlsraw(1:6,:,:)=[]; end
+   %if cohort==1, combosraw(1:6,:,:)=[]; fxpairraw(1:6,:,:)=[]; ctrlsraw(1:6,:,:)=[]; end
     
     combomeans=nanmean(combosraw(:,:,1:4),3);
     combosraw=combosraw(:,:,1:4);
@@ -543,7 +544,8 @@ for cohort=[1 3]
         'FaceAlpha',.5,'EdgeColor','none');
     patch([1:size(combosraw,1) size(combosraw,1):-1:1]',[combosraw(:,7)' flipud(combosraw(:,8))'],mycolors(3,:),...
         'FaceAlpha',.5,'EdgeColor','none');
-    
+    hold on;
+    plot([7 7],[.2 .9],'k');
     xlabel('Session number');
     ylabel(sprintf('Likelihood of transitioning \n to peer-occupied arm'));
     legend('Ctrl-Ctrl pair','FX-FX pair','FX-Ctrl pair');
@@ -599,9 +601,13 @@ set(gca,'XTickLabel',{'Ctrl-Ctrl','FX-Ctrl','FX-FX'});
 ylabel(sprintf('Likelihood of transitioning \n to peer-occupied arm'));
 
 %}
-bp=bar([1 2 3],mean(allcohorts),'FaceColor','flat','EdgeColor','none','FaceAlpha',.8); bp.CData=barcolors([1 3 2],:); 
+% scrub early sessions...
+critcohorts=allcohorts; % criterion days
+critcohorts([1:7 21:30],:)=[];
+
+bp=bar([1 2 3],mean(critcohorts),'FaceColor','flat','EdgeColor','none','FaceAlpha',.8); bp.CData=barcolors([1 3 2],:); 
 hold on;
-errorbar([1 2 3],mean(allcohorts),SEM(allcohorts,1),'k.');
+errorbar([1 2 3],mean(critcohorts),SEM(critcohorts,1),'k.');
 tickvec=[-.2:.05:.3];
 set(gca,'XAxisLocation','origin','YTick',tickvec,...
     'YTickLabel',cellfun(@(a) num2str(a), mat2cell(tickvec+.5,1,ones(length(tickvec),1)),...
@@ -611,9 +617,9 @@ set(gca,'XTick',[]);
 ylabel(sprintf('Likelihood of transitioning \n to peer occupied arm'));
 xlabel('WT-WT     WT-FX     FX-FX');
 
-[a]=ranksum(allcohorts(:,1),allcohorts(:,2));
-a(2)=ranksum(allcohorts(:,1),allcohorts(:,3));
-a(3)=ranksum(allcohorts(:,2),allcohorts(:,3));
+[a]=ranksum(critcohorts(:,1),critcohorts(:,2));
+a(2)=ranksum(critcohorts(:,1),critcohorts(:,3));
+a(3)=ranksum(critcohorts(:,2),critcohorts(:,3));
 title(sprintf('FX-FX vs FX-Ctrl p=%.2e, FX-FX vs Ctrl-Ctrl p=%.2e, \n FX-Ctrl vs Ctrl-Ctrl p=%.2e',...
     a(3), a(2), a(1)));
 %% lets add error bars to those rates with a binomial distribution
@@ -723,8 +729,8 @@ xlabel('Animal Pairing')
 firsthit=[]; fxpair=[];
 cumct=[1 1];
 for i=1:length(ratinfo)
-    if any(ratinfo(i).ratnum==1) &&...
-            any(ratinfo(i).ratnum==4) &&...
+    if any(ratinfo(i).ratnums==1) &&...
+            any(ratinfo(i).ratnums==4) &&...
             str2double(ratinfo(i).runnum)<7
         % session start, session end
         firsthit(cumct(1),1)=ratinfo(i).ratsamples{1}.start(1);
@@ -733,8 +739,8 @@ for i=1:length(ratinfo)
         firsthit(cumct(1),3)=sum(diff(ratinfo(i).ratsamples{1}.thiswell)~=0)+...
             sum(diff(ratinfo(i).ratsamples{2}.thiswell)~=0);
         cumct(1)=cumct(1)+1;
-    elseif any(ratinfo(i).ratnum==2) &&...
-            any(ratinfo(i).ratnum==3) && ...
+    elseif any(ratinfo(i).ratnums==2) &&...
+            any(ratinfo(i).ratnums==3) && ...
             str2double(ratinfo(i).runnum)<7
         fxpair(cumct(2),1)=ratinfo(i).ratsamples{1}.start(1);
         fxpair(cumct(2),2)=ratinfo(i).ratsamples{1}.end(end);

@@ -94,12 +94,12 @@ for i=1:length(ratinfo)
     % after rat 2 moves, rat 1 moves.
     bootcorr=[];
     % now for a bootstrap
-    for bt=1:200
+    for bt=1:100
         myshift= max([randi(length(transmat)) maxlag*2/binsize]);
         myboot=circshift(transmat(:,1),randi(length(timeshifts)));
         bootcorr(bt,:)=xcorr(myboot,transmat(:,2),maxlag/binsize);
     end
-    ratinfo(i).bootcorr=[prctile(bootcorr,1)' prctile(bootcorr,99)'];
+    ratinfo(i).bootcorr=bootcorr;
     if plotIT==1
         figure;
         b=bar(timeshifts,samplecorr,1,'EdgeColor','none','FaceColor',myCmap(ra,:));
@@ -123,40 +123,49 @@ close(wb);
 cohort=[1 1 3 3];
 mypair=[1 4;  2 3; 1 3; 2 4];
 mytitle={'c1, ctrl-ctrl','c1 fx-fx','c3 ctrl-crtl','c3 fx-fx'};
+dayThresh=[738203 738203 738322 738322];
 %figure;
 for i=1:4
 subplot(2,2,i); 
 
 
-thiscohort=ratinfo([ratinfo.cohortnum]==cohort(i));
+thiscohort=ratinfo([ratinfo.cohortnum]==cohort(i) & [ratinfo.datenum]<dayThresh(i));
 mysess=thiscohort(cellfun(@(a) a(1)==mypair(i,1) && a(2)==mypair(i,2), {thiscohort.ratnums}));
 flipsess=thiscohort(cellfun(@(a) a(1)==mypair(i,2) && a(2)==mypair(i,1), {thiscohort.ratnums}));
 
 
 allsess=[cell2mat({mysess.samplecorr})'; fliplr(cell2mat({flipsess.samplecorr})')];
     
+bootpool=cell2mat({mysess.bootcorr}'); % this is the raw values, we need to average to get a reasonable boot
+
+allboot=[];
+for boot=1:200
+    bootorder=randperm(size(bootpool,1));
+    allboot(boot,:)=mean(bootpool(bootorder>=size(allsess,1),:)); % e.g. pull the same number of rando sessions as the real data
+end
+
 lownull=cell2mat(cellfun(@(a) a(:,1), {mysess.bootcorr},'UniformOutput',false))';
 highnull=cell2mat(cellfun(@(a) a(:,2), {mysess.bootcorr},'UniformOutput',false))';
 timeshifts=(-maxlag:binsize:maxlag);
 
 
 mp=plot(timeshifts,nanmean(allsess));
-% make my own boots here
 
-allboot=[];
-for bt=1:100
-    bootshift=randi(length(timeshifts),size(allsess,1));
-    bootrows=nan(size(allsess));
 
-    for k=1:size(allsess,1)
-        bootrows(k,:)=circshift(allsess(k,:),bootshift(k));
-    end
-    allboot(bt,:)=nanmean(bootrows);
-end
+% a weak bootstrap but may indicate a little
+% allboot=[];
+% for bt=1:200
+%     bootshift=randi(length(timeshifts),size(allsess,1));
+%     bootrows=nan(size(allsess));
+%     for k=1:size(allsess,1)
+%         bootrows(k,:)=circshift(allsess(k,:),bootshift(k));
+%     end
+%     allboot(bt,:)=nanmean(bootrows);
+% end
 
 hold on;
-mp(2)=plot(timeshifts,prctile(allboot,99),'k--');
-plot(timeshifts,prctile(allboot,1),'k--');
+mp(2)=plot(timeshifts,prctile(allboot,95,1),'k--');
+plot(timeshifts,prctile(allboot,1,1),'k--');
 axis tight;
 title(mytitle{i});
 %xlabel(sprintf('Seconds offset \n Rat %d follows      Rat %d leads',mypair(1),mypair(1))); 
