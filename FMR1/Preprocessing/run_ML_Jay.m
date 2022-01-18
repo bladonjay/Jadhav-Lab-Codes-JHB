@@ -28,7 +28,12 @@ eval(['! /home/jadhav/SpikeGadgets/exportLFP' recstring outstring]);])
 %%
 
 
-% justins code
+% justins code to run a whole animal.
+%{
+this function starts with mda_util
+
+
+%}
 
 % Run mda_util, returns list of tetrode results directories
     
@@ -81,6 +86,7 @@ outstring=[' -output ' outname ' -outputdirectory ' outdir];
 
 eval(['! /home/jadhav/SpikeGadgets/exporttime' recstring outstring]);
 eval(['! /home/jadhav/SpikeGadgets/exportmda' recstring outstring]);
+eval(['! /home/jadhav/SpikeGadgets/exportLFP' recstring outstring]);
 
 
 

@@ -31,10 +31,12 @@ function ml_process_animal(animID,rawDir,varargin)
     % this is the data directory, it will be rootdir/animalID_direct just
     % beside your animal directory (rootdir/animalID)
     dataDir = [fileparts(rawDir) filesep animID '_direct'];
+    
+    % assign variables
     sessionNums = [];
     tet_list = [];
     mask_artifacts = 1;
-
+    % overwrite if variables were in varargin
     assignVars(varargin);
 
     dayDirs = dir(rawDir);
@@ -47,6 +49,7 @@ function ml_process_animal(animID,rawDir,varargin)
             % [two numbers] _ [many following numbers]
             % this parses day field into two numbers, and date into whatever
             % follows
+            % pull day numbers and date without rat name
             pat = '(?<day>[0-9]{2})_(?<date>\d*)';
             parsed = regexp(dayDirs(k).name,pat,'names');
             if isempty(parsed)
@@ -61,9 +64,8 @@ function ml_process_animal(animID,rawDir,varargin)
     dayDirs(daysToProcess<0) = [];
     daysToProcess(daysToProcess<0) = [];
 
-    % TODO: fix this, not restricting days properly
-    % this is supposed to determine whether the days you entered match up
-    % to the days that are parsed from the filefolder names
+    % remove days we're not processing (and those that we dont have data
+    % for)
     if ~isempty(sessionNums)
         missing = setdiff(sessionNums,daysToProcess);
         [rmvDays,rmv] = setdiff(daysToProcess,sessionNums);
