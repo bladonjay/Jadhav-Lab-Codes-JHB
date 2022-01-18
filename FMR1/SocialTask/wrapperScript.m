@@ -11,11 +11,15 @@ towards details
 The general outline of data preprocessing:
 
 1. organize your files and folders in a very specific manner
+        some of this is in run_ML_Jay
 
 2. extract spike data from one DAY of data across recording epochs using
 MountainSort
+    This is in run_ML_Jay
+    This is validated with JHB_neural_data_preprocessing
 
 3. extract position data from videos via DeepLabCut
+    DeepLabCut can be run from matlab scripting but i need to build it...
 
 4. extract event data from the DIO's or the statescript ledger using
 probably custom code
@@ -37,6 +41,15 @@ probably custom code
 %           
 %   XFB3_direct (Processed data)
 %       
+%% 2. extract spike data, LFP from one day of data
+cd 'E:\GithubCodeRepositories\Jadhav-Lab-Codes\FMR1\Preprocessing'
+edit run_ML_Jay.m
+
+cd 'E:\GithubCodeRepositories\Jadhav-Lab-Codes\FMR1'
+edit JHB_neural_data_preprocessing
+
+
+
 
 
 %% parsing behavioral data

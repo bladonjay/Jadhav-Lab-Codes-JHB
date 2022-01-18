@@ -19,9 +19,10 @@ outdir=fileparts(recfiles(1).folder);
 outstring=[' -output ' outname ' -outputdirectory ' outdir];
 %eval(['! /home/jadhav/SpikeGadgets/exportmda' ' -rec ' fullfile(recfiles(myorder==1).folder,recfiles(myorder==1).name) outstring]);
 
-
+% you must cd into your spikegadgets directory or add to path!!!!!!!!
 eval(['! /home/jadhav/SpikeGadgets/exporttime' recstring outstring]);
 eval(['! /home/jadhav/SpikeGadgets/exportmda' recstring outstring]);
+eval(['! /home/jadhav/SpikeGadgets/exportLFP' recstring outstring]);])
 
 
 %%

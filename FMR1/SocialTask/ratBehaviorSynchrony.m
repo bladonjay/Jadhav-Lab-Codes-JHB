@@ -41,7 +41,7 @@ reward, because then they're locked to whenever the rats finish eating
 % lets just get the cc for each and every session
 
 % input parameters to the correlation and plotter
-binsize=1/4; maxlag=120; % in seconds
+binsize=.2; maxlag=60; % in seconds
 timeshifts=(-maxlag:binsize:maxlag);
 plotIT=0;
 
@@ -50,24 +50,31 @@ wb=waitbar(0);
 for i=1:length(ratinfo)
     
     % gather the last sample before and first after an arm transition
+
+
+% lock rat 1 samples to sess start
     sessStart=min([ratinfo(i).ratsamples{1}.start(1) ratinfo(i).ratsamples{2}.start(1)]);
-    % lock rat 1 samples to sess start
+    
     ratinfo(i).ratsamples{1}.start=ratinfo(i).ratsamples{1}.start-sessStart;
     ratinfo(i).ratsamples{1}.end=ratinfo(i).ratsamples{1}.end-sessStart;
     ratinfo(i).ratsamples{2}.start=ratinfo(i).ratsamples{2}.start-sessStart;
     ratinfo(i).ratsamples{2}.end=ratinfo(i).ratsamples{2}.end-sessStart;
 
 
-    % first accum array each arm
-    fulllength=ceil([max(table2array(ratinfo(i).ratsamples{1}(end,1:2))) ...
-        max(table2array(ratinfo(i).ratsamples{2}(end,1:2)))]/binsize);
+    % gather the last sample any animal made
+    % actually second last, because sometimes the tech triggers the wire
+    fulllength=ceil([max(table2array(ratinfo(i).ratsamples{1}(end-1,1:2))) ...
+        max(table2array(ratinfo(i).ratsamples{2}(end-1,1:2)))]/binsize);
     transmat=zeros(max(fulllength),2);
     for ra=1:2
         mytrans=ratinfo(i).ratsamples{ra};
         % get all departure ts, multiply by binsize, add 1 so no zeros
         departures=accumarray(round(mytrans.end(diff(mytrans.thiswell)~=0)/binsize)+1,1);
+        % key on this line is that you lead with a zero because its the
+        % following arrival that is the new stop
         arrivals=accumarray(round(mytrans.start([0; diff(mytrans.thiswell)]~=0)/binsize)+1,1);
-        
+        % fill in from departure to arrival (could probbaly use cumcount
+        % instead here)
         for t=1:length(departures)-1
             if departures(t)==1 && length(arrivals)>t
                 nextarrival=find(arrivals(t:end)==1,1,'first');
@@ -95,8 +102,9 @@ for i=1:length(ratinfo)
     bootcorr=[];
     % now for a bootstrap
     for bt=1:100
-        myshift= max([randi(length(transmat)) maxlag*2/binsize]);
-        myboot=circshift(transmat(:,1),randi(length(timeshifts)));
+        myshift= max([randi(length(transmat)-maxlag*2/binsize) maxlag*2/binsize]);
+        %myboot=circshift(transmat(:,1),randi(length(timeshifts)));
+        myboot=circshift(transmat(:,1),myshift);
         bootcorr(bt,:)=xcorr(myboot,transmat(:,2),maxlag/binsize);
     end
     ratinfo(i).bootcorr=bootcorr;
@@ -121,27 +129,28 @@ close(wb);
 
 % lets just gather one pair, say 201 and 204, the controls
 cohort=[1 1 3 3];
-mypair=[1 4;  2 3; 1 3; 2 4];
-mytitle={'c1, ctrl-ctrl','c1 fx-fx','c3 ctrl-crtl','c3 fx-fx'};
-dayThresh=[738203 738203 738322 738322];
+mypair=[1 4;  2 3; 1 3; 2 4]; % rats 1,4 ctrl in c1, rats 1,3 ctrl in c3
+mytitle={'c1 ctrl-ctrl','c1 fx-fx','c3 ctrl-crtl','c3 fx-fx'};
+dayThresh=[738203 738203 738328 738328]; % only use later sessions when they are at asymptotic performance
 %figure;
 for i=1:4
 subplot(2,2,i); 
 
 
-thiscohort=ratinfo([ratinfo.cohortnum]==cohort(i) & [ratinfo.datenum]<dayThresh(i));
+thiscohort=ratinfo([ratinfo.cohortnum]==cohort(i)); % & [ratinfo.datenum]>dayThresh(i));
 mysess=thiscohort(cellfun(@(a) a(1)==mypair(i,1) && a(2)==mypair(i,2), {thiscohort.ratnums}));
 flipsess=thiscohort(cellfun(@(a) a(1)==mypair(i,2) && a(2)==mypair(i,1), {thiscohort.ratnums}));
 
-
+% average all the sessions
 allsess=[cell2mat({mysess.samplecorr})'; fliplr(cell2mat({flipsess.samplecorr})')];
     
-bootpool=cell2mat({mysess.bootcorr}'); % this is the raw values, we need to average to get a reasonable boot
+bootpool=[{mysess.bootcorr} {flipsess.bootcorr}]; % this is the raw values, we need to average to get a reasonable boot
 
 allboot=[];
-for boot=1:200
-    bootorder=randperm(size(bootpool,1));
-    allboot(boot,:)=mean(bootpool(bootorder>=size(allsess,1),:)); % e.g. pull the same number of rando sessions as the real data
+% e.g. pull the same number of rando sessions as the real data but do it
+% 600 times
+for boot=1:600
+    allboot(boot,:)=mean(cell2mat(cellfun(@(a) a(randi(100),:), bootpool, 'UniformOutput', false)')); 
 end
 
 lownull=cell2mat(cellfun(@(a) a(:,1), {mysess.bootcorr},'UniformOutput',false))';
@@ -165,8 +174,8 @@ mp=plot(timeshifts,nanmean(allsess));
 
 hold on;
 mp(2)=plot(timeshifts,prctile(allboot,95,1),'k--');
-plot(timeshifts,prctile(allboot,1,1),'k--');
-axis tight;
+plot(timeshifts,prctile(allboot,5,1),'k--');
+%axis tight;
 title(mytitle{i});
 %xlabel(sprintf('Seconds offset \n Rat %d follows      Rat %d leads',mypair(1),mypair(1))); 
 ylabel(sprintf('Correlation in movement \n behavior between rats'));

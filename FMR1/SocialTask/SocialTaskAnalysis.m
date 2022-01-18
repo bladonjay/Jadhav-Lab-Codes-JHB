@@ -63,7 +63,7 @@ end
 % first get your excel doc
 
 try
-    load SocialSessions.m
+    load SocialCohorts1-3.m
 catch
     
     mydir=uigetdir;
@@ -155,14 +155,10 @@ end
 
 %%
 % set options for data import and only import data we want
-
+if ~isfield(ratinfo,'ratsamples')
 fileList=fileList(okfiles==1);
 %fileList=fileList(sum([fileList.cohortnum]==[1; 3])'>0); % right now its all but you'll want to pull only certain groups
 opts=setStateScriptOpts();
-
-%%
-
-
 
 verbose=0;
 ratinfo=fileList;
@@ -218,29 +214,30 @@ for i=1:length(ratinfo)
     end
 
 end
-
+end
 
 %% okay lets really analyze some of these questions
-
-% first, i want to see whether the animals actually tend to go to an
-% occupied arm more often than a random one
+%{
+first, i want to see whether the animals actually tend to go to an
+occupied arm more often than a random one
     
-% to do this, we will need to restrict analyses to times when the other rat
-% is at one of the other two arms, and then our rat has a choice between a
-% and b.
+to do this, we will need to restrict analyses to times when the other rat
+is at one of the other two arms, and then our rat has a choice between a
+and b.
 
-% need to get for each arm transition, the most recent arm the other rat
-% occupied, and when he got there and when/if he left.
+need to get for each arm transition, the most recent arm the other rat
+occupied, and when he got there and when/if he left.
 
 
-% so lets try one rat here
-% for each session, gather if this rat is the rat, if it is, then its id
-% goes in the first column, and its buddy in the peer column
-% then for each of his transitions, we can fin
-
+so lets try one rat here
+for each session, gather if this rat is the rat, if it is, then its id
+goes in the first column, and its buddy in the peer column
+then for each of his transitions, we can fin
+%}
 %% statespace performance by rat (it oscillates and is really dirty
 
-
+% this needs a lot of work
+%{
 
 %ratTable=table(allRatNames,'VariableNames',{'Rat Name'});
 myCmap=lines(4);
@@ -382,7 +379,7 @@ for i=length(ratinfo)
 
 %}
 
-
+%}
 %% next question...
 
 % howabout their efficiency, does it get better?  what is baseline
@@ -571,9 +568,9 @@ for cohort=[1 3]
     barcolors=lines(3);
     % a paired bar graph
     meanvals=[mean(ctrlsraw(:,1:2),2) mean(combosraw(:,1:2),2) mean(fxpairraw(:,1:2),2)]-.5;
-    % for  bar plot on that cohort
+    % for  bar plot on that cohort instead of aggregated
     %{    
-    subplot(2,1,2);
+    subplot(2,2,iterator+2);
     bp=bar([1 2 3],mean(meanvals),'FaceColor','flat','EdgeColor','none','FaceAlpha',.8); bp.CData=barcolors([1 3 2],:); 
     hold on;
     plot(repmat([1 2 3],size(ctrlsraw,1),1)',meanvals','k');
