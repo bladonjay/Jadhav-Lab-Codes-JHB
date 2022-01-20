@@ -22,7 +22,7 @@ outstring=[' -output ' outname ' -outputdirectory ' outdir];
 % you must cd into your spikegadgets directory or add to path!!!!!!!!
 eval(['! /home/jadhav/SpikeGadgets/exporttime' recstring outstring]);
 eval(['! /home/jadhav/SpikeGadgets/exportmda' recstring outstring]);
-eval(['! /home/jadhav/SpikeGadgets/exportLFP' recstring outstring]);])
+eval(['! /home/jadhav/SpikeGadgets/exportLFP' recstring outstring]);
 
 
 %%

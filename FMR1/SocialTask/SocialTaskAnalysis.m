@@ -417,6 +417,8 @@ end
 
 %% howabout the efficiency of each session?
 
+
+
 % so i guess the question is this, per arm visit, are the control pairs
 % best?
 
@@ -430,10 +432,10 @@ for cohort=[1 3]
     % first quantify number of arm visits per animal
     firsthit=[]; fxpair=[]; combos=[];
     
-    
-    ctrlsraw=[]; %table('Size',[5,1],;
-    fxpairraw=[];
-    combosraw=[];
+    varnames={'perfA','perfB','totA','totB','totMatches','totRewards'};
+    ctrlsraw=table([],[],[],[],[],[],'VariableNames',varnames);
+    fxpairraw=ctrlsraw;
+    combosraw=table([],[],[],[],[],[],'VariableNames',varnames);
     
     % get unique days, so you can get a day average
     [sessnums,ia,ic]=unique(cellfun(@(a) datenum(a), {cohortinfo.datenum}));
@@ -460,13 +462,16 @@ for cohort=[1 3]
                     wins=daysess(k).ratsamples{rt}.thiswell~=daysess(k).ratsamples{rt}.lastwell & ...
                         daysess(k).ratsamples{rt}.hiswell==daysess(k).ratsamples{rt}.thiswell;
                     % % of candidates are wins
-                    ctrlsraw(i,rt)=sum(wins)/sum(candidates); % get performance rate
-                    ctrlsraw(i,rt+2)=sum(candidates); % get total moves
+                    ctrlsraw{i,rt}=sum(wins)/sum(candidates); % get performance rate
+                    ctrlsraw{i,rt+2}=sum(candidates); % get total moves
                     %ctrlsraw.rat1tries(i)=sum(candidates);
                     %ctrlsraw.rat1wins(i)=sum(wins);
                 end
                 % rews / tot trans
-                ctrlsraw(i,5)=sum(daysess(k).ratsamples{rt}.match)/sum(ctrlsraw(i,3:4)); % get rewards per total moves
+                ctrlsraw{i,5}=sum(daysess(k).ratsamples{rt}.match)/sum(ctrlsraw{i,3:4}); % get matches per total moves
+                ctrlsraw{i,6}=sum(daysess(k).ratsamples{rt}.Reward)/sum(ctrlsraw{i,3:4}); % get matches per total moves
+                
+                
             % fx only
             elseif ~any(intersect(genotypetable.controls(cohort,:),daysess(k).ratnums)) && ...
                     str2double(daysess(k).runnum)<7
@@ -481,11 +486,13 @@ for cohort=[1 3]
                     wins=daysess(k).ratsamples{rt}.thiswell~=daysess(k).ratsamples{rt}.lastwell & ...
                         daysess(k).ratsamples{rt}.hiswell==daysess(k).ratsamples{rt}.thiswell;
                     % % of candidates are wins
-                    fxpairraw(i,rt)=sum(wins)/sum(candidates); % get performance rate
-                    fxpairraw(i,rt+2)=sum(candidates); % get total moves
+                    fxpairraw{i,rt}=sum(wins)/sum(candidates); % get performance rate
+                    fxpairraw{i,rt+2}=sum(candidates); % get total moves
                 end
                 % rews / tot trans
-                fxpairraw(i,5)=sum(daysess(k).ratsamples{rt}.match)/sum(fxpairraw(i,3:4)); % get rewards per total moves
+                fxpairraw{i,5}=sum(daysess(k).ratsamples{rt}.match)/sum(fxpairraw{i,3:4}); % get rewards per total moves
+                fxpairraw{i,6}=sum(daysess(k).ratsamples{rt}.Reward)/sum(fxpairraw{i,3:4}); % get rewards per total moves
+
             elseif str2double(daysess(k).runnum)<7
                 for rt=1:2
                     % my last well ~= my current well and my last well ~=
@@ -497,11 +504,13 @@ for cohort=[1 3]
                     wins=daysess(k).ratsamples{rt}.thiswell~=daysess(k).ratsamples{rt}.lastwell & ...
                         daysess(k).ratsamples{rt}.hiswell==daysess(k).ratsamples{rt}.thiswell;
                     % % of candidates are wins
-                    combosraw(i,rt,cumct)=sum(wins)/sum(candidates); % get performance rate
-                    combosraw(i,rt+2,cumct)=sum(candidates); % get total moves
+                    combosraw.(varnames{rt})(i,cumct)=sum(wins)/sum(candidates); % get performance rate
+                    combosraw.(varnames{rt+2})(i,cumct)=sum(candidates); % get total moves
                 end
                 % rews / tot trans
-                combosraw(i,5,cumct)=sum(daysess(k).ratsamples{rt}.match)/sum(combosraw(i,3:4,cumct)); % get rewards per total moves
+                combosraw.totMatches(i,cumct)=sum(daysess(k).ratsamples{rt}.match)/(combosraw{i,3}(cumct)+combosraw{i,4}(cumct)); % get rewards per total moves
+                combosraw.totRewards(i,cumct)=sum(daysess(k).ratsamples{rt}.Reward)/(combosraw{i,3}(cumct)+combosraw{i,4}(cumct)); % get rewards per total moves
+
                 cumct=cumct+1;
             end
         end
@@ -509,7 +518,7 @@ for cohort=[1 3]
 
     
 
-   %if cohort==1, combosraw(1:6,:,:)=[]; fxpairraw(1:6,:,:)=[]; ctrlsraw(1:6,:,:)=[]; end
+   
     
     combomeans=nanmean(combosraw(:,:,1:4),3);
     combosraw=combosraw(:,:,1:4);
@@ -517,7 +526,7 @@ for cohort=[1 3]
     subplot(2,2,iterator);
     % %% arm transitions go to friends arm
     
-    
+    % lets fit these data to a binomial probability distribution
     for i=1:length(ctrlsraw)
         % binofit (wins tots, p0
         [ctrlsraw(i,6), ctrlsraw(i,7:8)] = binofit(ctrlsraw(i,1)*ctrlsraw(i,3)+ctrlsraw(i,2)*ctrlsraw(i,4),...
@@ -600,7 +609,7 @@ ylabel(sprintf('Likelihood of transitioning \n to peer-occupied arm'));
 %}
 % scrub early sessions...
 critcohorts=allcohorts; % criterion days
-critcohorts([1:7 21:30],:)=[];
+critcohorts([1:9 21:32],:)=[];
 
 bp=bar([1 2 3],mean(critcohorts),'FaceColor','flat','EdgeColor','none','FaceAlpha',.8); bp.CData=barcolors([1 3 2],:); 
 hold on;
@@ -620,7 +629,7 @@ a(3)=ranksum(critcohorts(:,2),critcohorts(:,3));
 title(sprintf('FX-FX vs FX-Ctrl p=%.2e, FX-FX vs Ctrl-Ctrl p=%.2e, \n FX-Ctrl vs Ctrl-Ctrl p=%.2e',...
     a(3), a(2), a(1)));
 %% lets add error bars to those rates with a binomial distribution
-
+ 
 
 % this is actually done above
 %{

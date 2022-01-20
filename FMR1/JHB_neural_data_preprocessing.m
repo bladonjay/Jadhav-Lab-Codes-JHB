@@ -9,9 +9,17 @@
 %% load spike data
 
 load('J:\My Drive\Work\XFB3_04_210827_spikes.mat')
+load('D:\My Drive\Work\XFB3_04_210827_spikes.mat')
+
 units=units([units.noise_overlap]<.015 & [units.isolation]>.95); % only take well isolated units
 
 %% load LFP data
+
+addpath(genpath('C:\Users\Jadhavlab\Documents\gitRepos\TrodesFullPackage\Trodes_2-2-3_Windows64'));
+[lfpRaw]=readTrodesExtractedDataFile('F:\SocialData\Neural\XFB3\03_20210827\XFB3_03_20210827.LFP\XFB3_03_20210827.LFP_nt9ch1.dat');
+rmpath(genpath('C:\Users\Jadhavlab\Documents\gitRepos\TrodesFullPackage\Trodes_2-2-3_Windows64'));
+
+
 addpath('E:\GithubCodeRepositories\Trodes_2-2-3_Windows64\Resources\TrodesToMatlab')
 [lfpRaw]=readTrodesExtractedDataFile('J:\My Drive\Work\XFB3_03_20210827.LFP_nt9ch1.dat');
 rmpath('E:\GithubCodeRepositories\Trodes_2-2-3_Windows64\Resources\TrodesToMatlab');

@@ -149,7 +149,7 @@ bootpool=[{mysess.bootcorr} {flipsess.bootcorr}]; % this is the raw values, we n
 allboot=[];
 % e.g. pull the same number of rando sessions as the real data but do it
 % 600 times
-for boot=1:600
+for boot=1:1000
     allboot(boot,:)=mean(cell2mat(cellfun(@(a) a(randi(100),:), bootpool, 'UniformOutput', false)')); 
 end
 
