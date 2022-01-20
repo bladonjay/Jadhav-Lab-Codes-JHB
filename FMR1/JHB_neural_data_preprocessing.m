@@ -29,7 +29,7 @@ lfpData.samprate=lfpData.sampRate;
 lfpData.realTime=lfpData.rawTime/lfpData.sampRate; % i think its 1.5khz...
 
 tet9=lfpData;
-tet39=lfpData;
+%tet39=lfpData;
 
 
 %% make sure we are seeing spikes, ripples, theta
@@ -44,7 +44,7 @@ tet39=lfpData;
 figure; 
 sp=subplot(3,1,1);
 imagesc(t+lfpData.starttime,w,SmoothMat2(zscore(log(abs(s)),1,2),[10 10])); set(gca,'ydir','normal');
-box off; ylabel('Frequency, Hz'), 
+box off; ylabel('Frequency, Hz'); set(gca,'XTick',[])
 
 sp(2)=subplot(6,1,3);
 % first theta power
@@ -59,7 +59,7 @@ legend('Theta (5-12 Hz)','Ripple (150-200 hz)')
 %}
 
 plot(tet9.realTime,tet9.data);
-
+box off; axis off;
 sp(3)=subplot(6,1,4);
 plot(tet9.realTime,zscore(thetaAmp)); hold on;
 plot(tet9.realTime,zscore(smoothdata(ripEEG.data(:,3),20)),'k')
