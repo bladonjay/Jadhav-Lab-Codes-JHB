@@ -517,38 +517,38 @@ for cohort=[1 3]
     end
 
     
-
-   
-    
-    combomeans=nanmean(combosraw(:,:,1:4),3);
-    combosraw=combosraw(:,:,1:4);
-
-    subplot(2,2,iterator);
-    % %% arm transitions go to friends arm
-    
-    % lets fit these data to a binomial probability distribution
-    for i=1:length(ctrlsraw)
-        % binofit (wins tots, p0
-        [ctrlsraw(i,6), ctrlsraw(i,7:8)] = binofit(ctrlsraw(i,1)*ctrlsraw(i,3)+ctrlsraw(i,2)*ctrlsraw(i,4),...
-            ctrlsraw(i,3)+ctrlsraw(i,4),0.5);
-        [fxpairraw(i,6), fxpairraw(i,7:8)] = binofit(fxpairraw(i,1)*fxpairraw(i,3)+fxpairraw(i,2)*fxpairraw(i,4),...
-            fxpairraw(i,3)+fxpairraw(i,4),0.5);
-        % combos is more complicated
-        [combosraw(i,6), combosraw(i,7:8)] = binofit(round(mean(combosraw(i,1,:),3)*sum(combosraw(i,3,:),3))+...
-            round(mean(combosraw(i,2,:),3)*sum(combosraw(i,4,:),3)),...
-            round(sum(combosraw(i,3,:),3)+sum(combosraw(i,4,:),3)),0.5);
+    myvars=combosraw.Properties.VariableNames;
+    combomeans=table;
+    for i=1:length(myvars)
+        combomeans.(myvars{i})=mean(combosraw.(myvars{i}),2);
     end
-    plot(ctrlsraw(:,6)); hold on;
-    plot(fxpairraw(:,6));
-    plot(mean(combosraw(:,6),3));
+
+    
+    
+    
+    subplot(2,2,iterator);
+    % arm transitions go to friends arm
+    %{
+    % lets fit these data to a binomial probability distribution
+    % binofit (wins tots, p0
+    [ctrlsraw.binomean, ctrlsraw.binoBounds] = binofit(ctrlsraw.perfA.*ctrlsraw.totA+ctrlsraw.perfB.*ctrlsraw.totB,...
+        ctrlsraw.totA+ctrlsraw.totB,0.5);
+    [fxpairraw.binomean, fxpairraw.binoBounds] = binofit(fxpairraw.perfA.*fxpairraw.totA+fxpairraw.perfB.*fxpairraw.totB,...
+        fxpairraw.totA+fxpairraw.totB,0.5);
+    % combos is more complicated
+    [combosraw.binomean, combosraw.binoBounds] = binofit(round(combomeans.perfA.*combomeans.totA+combomeans.perfB.*combomeans.totB),...
+        round(combomeans.totA+combomeans.totB),0.5);
+    
+    
+    plot(ctrlsraw.binomean); hold on; plot(fxpairraw.binomean); plot(mean(combosraw.binomean,3));
     hold on;
     mycolors=lines(3);
     
-    patch([1:size(ctrlsraw,1) size(ctrlsraw,1):-1:1]',[ctrlsraw(:,7)' flipud(ctrlsraw(:,8))'],mycolors(1,:),...
+    patch([1:size(ctrlsraw,1) size(ctrlsraw,1):-1:1]',[ctrlsraw.binoBounds(:,1)' flipud(ctrlsraw.binoBounds(:,2))'],mycolors(1,:),...
         'FaceAlpha',.5,'EdgeColor','none');
-    patch([1:size(fxpairraw,1) size(fxpairraw,1):-1:1]',[fxpairraw(:,7)' flipud(fxpairraw(:,8))'],mycolors(2,:),...
+    patch([1:size(fxpairraw,1) size(fxpairraw,1):-1:1]',[fxpairraw.binoBounds(:,1)' flipud(fxpairraw.binoBounds(:,2))'],mycolors(2,:),...
         'FaceAlpha',.5,'EdgeColor','none');
-    patch([1:size(combosraw,1) size(combosraw,1):-1:1]',[combosraw(:,7)' flipud(combosraw(:,8))'],mycolors(3,:),...
+    patch([1:size(combosraw,1) size(combosraw,1):-1:1]',[combosraw.binoBounds(:,1)' flipud(combosraw.binoBounds(:,2))'],mycolors(3,:),...
         'FaceAlpha',.5,'EdgeColor','none');
     hold on;
     plot([7 7],[.2 .9],'k');
@@ -557,26 +557,74 @@ for cohort=[1 3]
     legend('Ctrl-Ctrl pair','FX-FX pair','FX-Ctrl pair');
     box off
     title(sprintf('cc-fxfx p=%.3e, cc-fxc p=%.3e, \n fxfx-fxc p=%.2e',...
-        ranksum(mean(ctrlsraw(:,1:2),2),mean(fxpairraw(:,1:2),2)),...
-        ranksum(mean(ctrlsraw(:,1:2),2),mean(combomeans(:,1:2),2)),...
-        ranksum(mean(combomeans(:,1:2),2),mean(fxpairraw(:,1:2),2))));
+        ranksum(mean(ctrlsraw{:,1:2},2),mean(fxpairraw{:,1:2},2)),...
+        ranksum(mean(ctrlsraw{:,1:2},2),mean(combomeans{:,1:2},2)),...
+        ranksum(mean(combomeans{:,1:2},2),mean(fxpairraw{:,1:2},2))));
  
-    % and this is total rewards per total arm transitions 
-    %{
-    plot(ctrlsraw(:,5)); hold on;
-    plot(fxpairraw(:,5));
-    plot(combomeans(:,5));
-    xlabel('Session number');
-    ylabel(sprintf('Proportion of arm transitions \n to total rewards'));
-    legend('Ctrl-Ctrl pair','FX-FX pair','FX-Ctrl pair');
-    title(sprintf('cc-fxfx p=%.3e, cc-fxc p=%.3e, fxfx-fxc p=%.2e',...
-        ranksum(ctrlsraw(:,5),fxpairraw(:,5)),...
-        ranksum(ctrlsraw(:,5),combomeans(:,5)),...
-        ranksum(combomeans(:,5),fxpairraw(:,5))));
-    %}
-    barcolors=lines(3);
+    
+        barcolors=lines(3);
     % a paired bar graph
-    meanvals=[mean(ctrlsraw(:,1:2),2) mean(combosraw(:,1:2),2) mean(fxpairraw(:,1:2),2)]-.5;
+    meanvals=[mean(ctrlsraw{:,1:2},2) mean(combomeans{:,1:2},2) mean(fxpairraw{:,1:2},2)]-.5;
+    
+    
+    
+    %}
+    
+    
+    % and this is total rewards per total arm transitions 
+    
+    % cohort 1 had a wonky day on the 11th day
+    if cohort==1 && height(ctrlsraw)==23
+        ctrlsraw([11 21 22 23],:)=[]; fxpairraw([11 21 22 23],:)=[]; combomeans([11 21 22 23],:)=[];
+    end
+    plot((ctrlsraw.totMatches)); hold on;
+    plot((fxpairraw.totMatches));
+    plot((combomeans.totMatches));
+    % lets fit these data to a binomial probability distribution
+    % binofit (wins tots, p0
+    [ctrlsraw.binomean, ctrlsraw.binoBounds] = binofit(round(ctrlsraw.totMatches.*(ctrlsraw.totA+ctrlsraw.totB)),...
+        ctrlsraw.totA+ctrlsraw.totB,0.5);
+    [fxpairraw.binomean, fxpairraw.binoBounds] = binofit(round(fxpairraw.totMatches.*(fxpairraw.totA+fxpairraw.totB)),...
+        fxpairraw.totA+fxpairraw.totB,0.5);
+    % combos is more complicated
+    [combomeans.binomean, combomeans.binoBounds] = binofit(round(combomeans.totMatches.*(combomeans.totA+combomeans.totB)),...
+        round(combomeans.totA+combomeans.totB),0.5);
+    
+    
+    plot(ctrlsraw.binomean); hold on; plot(fxpairraw.binomean); plot(mean(combomeans.binomean,3));
+    hold on;
+    mycolors=lines(3);
+    
+    patch([1:size(ctrlsraw,1) size(ctrlsraw,1):-1:1]',[ctrlsraw.binoBounds(:,1)' flipud(ctrlsraw.binoBounds(:,2))'],mycolors(1,:),...
+        'FaceAlpha',.5,'EdgeColor','none');
+    patch([1:size(fxpairraw,1) size(fxpairraw,1):-1:1]',[fxpairraw.binoBounds(:,1)' flipud(fxpairraw.binoBounds(:,2))'],mycolors(2,:),...
+        'FaceAlpha',.5,'EdgeColor','none');
+    patch([1:size(combomeans,1) size(combomeans,1):-1:1]',[combomeans.binoBounds(:,1)' flipud(combomeans.binoBounds(:,2))'],mycolors(3,:),...
+        'FaceAlpha',.5,'EdgeColor','none');
+    hold on;
+    plot([7 7],[.2 .9],'k');
+    xlabel('Session number');
+    ylabel(sprintf('Total Matched Pokes \n over \n Total Arm Transitions'));
+    legend('Ctrl-Ctrl pair','FX-FX pair','FX-Ctrl pair');
+    box off
+    title(sprintf('cc-fxfx p=%.3e, cc-fxc p=%.3e, \n fxfx-fxc p=%.2e',...
+        ranksum(mean(ctrlsraw{:,1:2},2),mean(fxpairraw{:,1:2},2)),...
+        ranksum(mean(ctrlsraw{:,1:2},2),mean(combomeans{:,1:2},2)),...
+        ranksum(mean(combomeans{:,1:2},2),mean(fxpairraw{:,1:2},2))));
+ 
+     meanvals=[ctrlsraw.totMatches combomeans.totMatches fxpairraw.totMatches ]-.5;
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %%%%%% bar graph now %%%%%%%%%%%%%
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
+    
+
+    
+    
+    
+    
+    
     % for  bar plot on that cohort instead of aggregated
     %{    
     subplot(2,2,iterator+2);
@@ -613,7 +661,7 @@ critcohorts([1:9 21:32],:)=[];
 
 bp=bar([1 2 3],mean(critcohorts),'FaceColor','flat','EdgeColor','none','FaceAlpha',.8); bp.CData=barcolors([1 3 2],:); 
 hold on;
-errorbar([1 2 3],mean(critcohorts),SEM(critcohorts,1),'k.');
+errorbar([1 2 3],mean(critcohorts),std(critcohorts,1),'k.');
 tickvec=[-.2:.05:.3];
 set(gca,'XAxisLocation','origin','YTick',tickvec,...
     'YTickLabel',cellfun(@(a) num2str(a), mat2cell(tickvec+.5,1,ones(length(tickvec),1)),...
@@ -731,35 +779,40 @@ xlabel('Animal Pairing')
 %}
 %%
 % i wonder if their armtransitions per minute were higher.
+genotypetable=table([1 4; 1 3; 1 2],[2 3; 2 4; 3 4], 'VariableNames',{'controls','fx'});
 
+for k=[1 3]
 firsthit=[]; fxpair=[];
 cumct=[1 1];
-for i=1:length(ratinfo)
-    if any(ratinfo(i).ratnums==1) &&...
-            any(ratinfo(i).ratnums==4) &&...
-            str2double(ratinfo(i).runnum)<7
+
+    cohortinfo=ratinfo(cell2mat({ratinfo.cohortnum})==k);
+
+for i=1:length(cohortinfo)
+    if any(cohortinfo(i).ratnums==1) &&...
+            any(cohortinfo(i).ratnums==4) &&...
+            str2double(cohortinfo(i).runnum)<7
         % session start, session end
-        firsthit(cumct(1),1)=ratinfo(i).ratsamples{1}.start(1);
-        firsthit(cumct(1),2)=ratinfo(i).ratsamples{1}.end(end);
+        firsthit(cumct(1),1)=cohortinfo(i).ratsamples{1}.start(1);
+        firsthit(cumct(1),2)=cohortinfo(i).ratsamples{1}.end(end);
         % and now the number of transitions that day
-        firsthit(cumct(1),3)=sum(diff(ratinfo(i).ratsamples{1}.thiswell)~=0)+...
-            sum(diff(ratinfo(i).ratsamples{2}.thiswell)~=0);
+        firsthit(cumct(1),3)=sum(diff(cohortinfo(i).ratsamples{1}.thiswell)~=0)+...
+            sum(diff(cohortinfo(i).ratsamples{2}.thiswell)~=0);
         cumct(1)=cumct(1)+1;
-    elseif any(ratinfo(i).ratnums==2) &&...
-            any(ratinfo(i).ratnums==3) && ...
-            str2double(ratinfo(i).runnum)<7
-        fxpair(cumct(2),1)=ratinfo(i).ratsamples{1}.start(1);
-        fxpair(cumct(2),2)=ratinfo(i).ratsamples{1}.end(end);
+    elseif any(cohortinfo(i).ratnums==2) &&...
+            any(cohortinfo(i).ratnums==3) && ...
+            str2double(cohortinfo(i).runnum)<7
+        fxpair(cumct(2),1)=cohortinfo(i).ratsamples{1}.start(1);
+        fxpair(cumct(2),2)=cohortinfo(i).ratsamples{1}.end(end);
         % and now the number of rewards
-        fxpair(cumct(2),3)=sum(diff(ratinfo(i).ratsamples{1}.thiswell)~=0)+...
-            sum(diff(ratinfo(i).ratsamples{2}.thiswell)~=0);
+        fxpair(cumct(2),3)=sum(diff(cohortinfo(i).ratsamples{1}.thiswell)~=0)+...
+            sum(diff(cohortinfo(i).ratsamples{2}.thiswell)~=0);
         cumct(2)=cumct(2)+1;
     end
 end
 
 firsthit([12 17 23],:)=[];
 fxpair([12 17 23],:)=[];
-subplot(1,2,2);
+subplot(2,2,k);
 plot(firsthit(:,3)./(firsthit(:,2)-firsthit(:,1)).*60); hold on;
 plot(fxpair(:,3)./(fxpair(:,2)-fxpair(:,1)).*60);
 xlabel('Session number');
@@ -768,6 +821,7 @@ legend('WT-WT pair','FX-FX pair');
 
 title(sprintf('ranksum test p= %.2e',...
     ranksum(firsthit(:,3)./max(firsthit(:,1:2),[],2),fxpair(:,3)./max(fxpair(:,1:2),[],2))));
+end
 %%
 clear allruns;
 allruns.date=ratinfo(1).date;

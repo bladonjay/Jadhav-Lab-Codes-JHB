@@ -10,7 +10,7 @@ if mod(numel(varargin),2) ~= 0
     error('There must be an even number of inputs. assignVars(''variable'',value,...)');
 end
 
-for i=1:2:numel(varargin)-1,
+for i=1:2:numel(varargin)-1
     if ischar(varargin{i})
         assignin('caller',varargin{i},varargin{i+1});
     else
