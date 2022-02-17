@@ -91,7 +91,10 @@ for ses=1:length(SuperRat)
     % first grab the tuning curves during the one second delay
     % mat is 1 start, 2 end 3 left right 4 correct incorrect and 5 epoch
     fulltrialmat=[trialdata.sniffstart trialdata.sniffend trialdata.leftright10 trialdata.CorrIncorr10 trialdata.EpochInds(:,2)];
-    trialcorrect=fulltrialmat(:,4)==1 & ismember(fulltrialmat(:,5),SuperRat(ses).RunEpochs);
+    % trials have to be in an analyzed block, have to be correct, and have
+    % to be >.5 seconds
+    trialcorrect=fulltrialmat(:,4)==1 & ismember(fulltrialmat(:,5),SuperRat(ses).RunEpochs) & ...
+        (fulltrialmat(:,2)-fulltrialmat(:,1))>.5;
     trialmat=fulltrialmat(trialcorrect,:); % only take correct trials
     
 
@@ -100,57 +103,74 @@ for ses=1:length(SuperRat)
     try, SuperRat(ses).units=rmfield(SuperRat(ses).units,'OdorSelective'); end
     try, SuperRat(ses).units=rmfield(SuperRat(ses).units,'OdorMeans'); end
     try, SuperRat(ses).units=rmfield(SuperRat(ses).units,'OdorResponsive'); end
-    
+    try, SuperRat(ses).units=rmfield(SuperRat(ses).units,'taskResponsive'); end
+   
     for i=1:length(SuperRat(ses).units)
-        % first grab all the events and spikes
-        [~,spkevs,~,trspks]=event_spikes(SuperRat(ses).units(i).ts(:,1),...
-            trialmat(:,1),0,trialmat(:,2)-trialmat(:,1));
-        % remove trials from blocks where the cell has fewer spikes than
-        % trials
-        spknums=cellfun(@(a) length(a), trspks);
-        spikesperblock=accumarray(trialmat(:,5),spknums);
-        trialsperblock=accumarray(trialmat(:,5),1);
-        %find those inds and remove them
-        keepblocktrials=sum(find(spikesperblock>trialsperblock/2)'==trialmat(:,5),2)>0;
-        mytrialmat=trialmat(keepblocktrials,:);
-        myspkevs=spkevs(keepblocktrials);
+        if useblocks
+            % first grab all the events and spikes
+            [~,spkevs,~,trspks]=event_spikes(SuperRat(ses).units(i).ts(:,1),...
+                trialmat(:,1),0,trialmat(:,2)-trialmat(:,1));
+            % remove trials from blocks where the cell has fewer spikes than
+            % trials (I dont think she does this)
+            
+            spknums=cellfun(@(a) length(a), trspks);
+            spikesperblock=accumarray(trialmat(:,5),spknums);
+            trialsperblock=accumarray(trialmat(:,5),1);
+            %find those inds and remove them
+            keepblocktrials=sum(find(spikesperblock>trialsperblock/2)'==trialmat(:,5),2)>0;
+            mytrialmat=trialmat(keepblocktrials,:);
+            myspkevs=spkevs(keepblocktrials);
+        else
+            mytrialmat=trialmat;
+            [spikets,myspkevs]=event_spikes(SuperRat(ses).units(i).ts(:,1),...
+                trialmat(:,1),0,trialmat(:,2)-trialmat(:,1));
+            % if the cell spikes less than once per trial, ditch
+            if length(spikets)<length(mytrialmat)
+                mytrialmat=[];
+            end
+        end
         % preallocate
-        pokeresponse=nan(2,4); rlmeans=zeros(1,2); Selectivitydata=nan(1,4);
+        odorResponse=nan(2,4); rlmeans=zeros(1,2); Selectivitydata=nan(1,4);
+        taskResponsive=nan(1,3); % before, after, pval of signrank
         if ~isempty(mytrialmat) % cell has to have more spikes than there were trials
             % now split out by odor
             odorid=mytrialmat(:,3);
             % get the spike rate vectors
             [totalspikes,spkevs,~,spikeinds]=event_spikes(SuperRat(ses).units(i).ts(:,1),...
-                mytrialmat(:,1),0,mytrialmat(:,2)-mytrialmat(:,1));
+                mytrialmat(:,1),0,mytrialmat(:,2)-mytrialmat(:,1)); % 0 to at least .5 secs
             [~,prespkevs]=event_spikes(SuperRat(ses).units(i).ts(:,1),...
-                mytrialmat(:,1)-(mytrialmat(:,2)-mytrialmat(:,1)),0,mytrialmat(:,2)-mytrialmat(:,1));
+                mytrialmat(:,1),mytrialmat(:,2)-mytrialmat(:,1),0); % matching at least -.5 to 0
             
-            spkcts=cellfun(@(a) length(a), spikeinds);
-
+            % this is
+            taskResponsive=[nanmean(spkevs) nanmean(prespkevs) signrank(spkevs,prespkevs)];
+            
             % get the mean rates for each
             % LR10 left first, right second
             rlmeans=nanmean(spkevs(odorid==1)); % and this is spikes per second
-            rlmeans(1,2)=nanmean(spkevs(odorid==0));
+            rlmeans(2)=nanmean(spkevs(odorid==0));
             % and an effect size just to see
-            Selectivitydata=abs(diff(fliplr(rlmeans)))/sum(rlmeans); % flip cause i want - if 2 is larger
+            Selectivitydata=diff(rlmeans)/sum(rlmeans); % flip cause i want - if 2 is larger
             % and selectivity index
-            [~,Selectivitydata(1,2)]=SelectivityIndex(spkevs,mytrialmat(:,3),bootct); % 500 boots
-            Selectivitydata(1,3)=Selectivitydata(2) <= 0.05 & ~isnan(Selectivitydata(1)); % how many boots
-            Selectivitydata(1,4)=dprime(spkevs(mytrialmat(:,3)==1),spkevs(mytrialmat(:,3)==0));
+            [~,Selectivitydata(2)]=SelectivityIndex(spkevs,mytrialmat(:,3),bootct); % 500 boots
+            Selectivitydata(3)=Selectivitydata(2) <= 0.05 & ~isnan(Selectivitydata(1)); % boolean
+            Selectivitydata(4)=dprime(spkevs(mytrialmat(:,3)==1),spkevs(mytrialmat(:,3)==0)); % and a dprime
             
             % sign rank for each odor separately, then take the best
             % answer
             for r=1:2
-                pokeresponse((3-r),1)=nanmean(spkevs(odorid==(2-r))); % what is the sampling rate
-                pokeresponse((3-r),2)=nanmean(spkevs(odorid==(2-r))-prespkevs(odorid==(2-r))); % + if elevated, - if depressed
-                pokeresponse((3-r),3)=dprime(spkevs(odorid==(2-r)),prespkevs(odorid==(2-r))); % want to know if its consistent (normalized effect size)
-                pokeresponse((3-r),4)=signrank(spkevs(odorid==(2-r)),prespkevs(odorid==(2-r))); % is it significant
+                odorResponse((3-r),1)=nanmean(spkevs(odorid==(2-r))); % what is the sampling rate ( this is right left tho not left right)
+                odorResponse((3-r),2)=nanmean(spkevs(odorid==(2-r))-prespkevs(odorid==(2-r))); % + if elevated, - if depressed
+                odorResponse((3-r),3)=dprime(spkevs(odorid==(2-r)),prespkevs(odorid==(2-r))); % want to know if its consistent (normalized effect size)
+                odorResponse((3-r),4)=signrank(spkevs(odorid==(2-r)),prespkevs(odorid==(2-r))); % is it significant
             end
+            % need to tabulate overall responsivity, not just for each
+            % individually
         end
-        SuperRat(ses).units(i).OdorResponsive=pokeresponse;
-        SuperRat(ses).units(i).OdorRates=[myspkevs' mytrialmat(:,3)];
-        SuperRat(ses).units(i).OdorMeans=rlmeans; % upload to the struct
-        SuperRat(ses).units(i).OdorSelective=Selectivitydata;
+        SuperRat(ses).units(i).taskResponsive=taskResponsive;
+        SuperRat(ses).units(i).OdorResponsive=odorResponse;
+        SuperRat(ses).units(i).OdorRates=[myspkevs trialmat(:,3)];
+        SuperRat(ses).units(i).OdorMeans=rlmeans'; % upload to the struct
+        SuperRat(ses).units(i).OdorSelective=Selectivitydata';
         
         waitbar(i/length(SuperRat(ses).units),wb,sprintf('Running unit %d',i));
     end

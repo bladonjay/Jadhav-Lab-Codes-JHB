@@ -105,11 +105,17 @@ updateintv = max(floor(vid.NumFrames/100),1);
 % go frame by frame
 for ii = 1:vid.NumFrames
     % Read the frame
-    frame = read(vid,ii);
+    frame = gpuArray(read(vid,ii));
     
     % Apply image filter
-    frame2=imlocalbrighten(im2double(frame),.8,'AlphaBlend',true);
-    writeVideo(ovid,frame2);
+    newim=nan(size(frame));
+    for k=1:3
+        linim=double(linearize(frame(:,:,k)));
+        immean=mean(linim); imdev=std(linim);
+        imcutoff=immean+3*imdev;
+        newim(:,:,k)=imadjust(frame(:,:,k),[0 imcutoff/256]);
+    end
+    writeVideo(ovid,uint8(gather(newim)));
     
     if(mod(ii,updateintv)==0)
         if(ishandle(h))
@@ -121,3 +127,19 @@ end
 close(ovid);
 close(h);
 end
+
+
+
+myim=gpuArray(frame);
+figure;
+subplot(1,2,1); image(frame);
+newim=nan(size(frame));
+for k=1:3
+    linim=double(linearize(myim(:,:,k)));
+    immean=mean(linim); imdev=std(linim);
+    imcutoff=immean+3*imdev;
+    newim(:,:,k)=imadjust(myim(:,:,k),[0 imcutoff/256]);
+end
+subplot(1,2,2); image(uint8(newim));
+
+    

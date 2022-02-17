@@ -51,8 +51,18 @@ edit PlotObjPlaceCells
 edit SummaryObjPlaceInteractions
 
 edit Claire_Odor_Routedecoder
-%%
+%%  This is the beta coherence datast
 
+load('G:\Claire Data\ClaireData22-Apr-2020.mat')
+betaDir='E:\ClaireData';
+
+edit ClaireBetaAnalysis
+
+% 
+% rr analysis just has 
+edit ClaireRRAnalysis
+
+edit ClaireCrossCoherence
 
 %% now to analyze these data
 % one fun question is whether odor representations are replayed with goal
@@ -64,7 +74,8 @@ edit ClaireRippleAnalysis
 clearvars -except SuperRat
 
 
-%%
+
+%% More notes
 %{
 notes for splitter:
 wenbo did a correlation type scoring across the two linearize trajectories
