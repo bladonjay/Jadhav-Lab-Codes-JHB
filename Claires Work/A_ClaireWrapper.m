@@ -77,6 +77,23 @@ clearvars -except SuperRat
 
 %% More notes
 %{
+
+The main question is this:
+do interneurons have higher beta coherence during correct trials?
+% there are far fewer error trials
+
+for eeg data
+Just pull the eeg from the tetrode with the most cells in that day and use
+that
+
+also use the nonreferenced
+
+* we'll use coheren
+
+%}
+%%
+
+%{
 notes for splitter:
 wenbo did a correlation type scoring across the two linearize trajectories
 One thing yu can do is run an xcorr between the two rate maps.  The other
