@@ -74,7 +74,7 @@ PlacePriorL=cell2mat(cellfun(@(a) a(1,:), {SuperRat(ses).units.LinPlaceFields},'
 PlacePriorR=cell2mat(cellfun(@(a) a(2,:), {SuperRat(ses).units.LinPlaceFields},'UniformOutput',false)');
 
 % now just our units
-HPCunits=contains({SuperRat(ses).units.area},'CA1') & contains({SuperRat(ses).units.type},'pyr') & ...
+HPCunits=contains({SuperRat(ses).units.area},'PFC') & contains({SuperRat(ses).units.type},'pyr') & ...
     (sum(PlacePriorL,2)>0 | sum(PlacePriorR,2)>0);
 % object prior (right and left) need to get odor ids tho
 ObjPrior=cell2mat({SuperRat(ses).units.OdorRates});

@@ -39,8 +39,7 @@ load('E:\Claire Data\ClaireDataFull-LinPos-LongTrack-ObjCoding.mat')
 edit ParsePyrIN
 
 % to plot some place fields out use this:
-edit ClaireQuickPlacePlot % i dont htink this went into the paper
-
+edit ClaireQuickPlacePlot
 % plot linearized place fields
 edit PlotLinTrajectories
 % calculate them for the ripple decoding and to crossref with obj coding
@@ -58,9 +57,7 @@ edit SummaryObjPlaceInteractions
 edit Claire_Odor_Routedecoder
 %%  This is the beta coherence datast
 
-%load('G:\Claire Data\ClaireData22-Apr-2020.mat')
-load('G:\Claire Data\ClaireData30-03-2022.mat')
-
+load('G:\Claire Data\ClaireData22-Apr-2020.mat')
 betaDir='E:\ClaireData';
 
 edit addTetInfo % get the info from tets (especially for ob tets)
@@ -94,23 +91,6 @@ clearvars -except SuperRat
 
 
 %% More notes
-%{
-
-The main question is this:
-do interneurons have higher beta coherence during correct trials?
-% there are far fewer error trials
-
-for eeg data
-Just pull the eeg from the tetrode with the most cells in that day and use
-that
-
-also use the nonreferenced
-
-* we'll use coheren
-
-%}
-%%
-
 %{
 notes for splitter:
 wenbo did a correlation type scoring across the two linearize trajectories
@@ -163,14 +143,7 @@ especially in the ob
 %{
 notes for cell-cell interactions
 1. cells have strong oscillations in their cross correlograms
-2. some are tightly locked, others less
-3. cell pairs are either locked ot beta or rr, generally its the prefrontal
-cell that dictates which rhythm (all their ccgrams are that rhythm
-4. it kindof appears that for rr CA1 leads, and for beta, PFC leads...
-unclear.
-
-5.  it also looks like for beta cells, their best peak is either within 0.005 sec,
-or a whole beta cycle away, like 0.035 msec.
+2. some are tightly loc
 
 %{
 glm code

@@ -1039,7 +1039,7 @@ LECspectam=cwt(zscore(LECdata),bases,wname); % the spectrogram for ALLLLL
 %
 %
 % replicating claires beta coherence onset analysis
-% the reviewers didnt like that 
+% the re
 %
 %
 %

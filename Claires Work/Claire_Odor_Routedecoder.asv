@@ -1123,8 +1123,8 @@ end
 % this is not decoding the odor identity, in other words, if the rat gets
 % odor left, but goes right, the decoder tests it as a 'right' trial
 
-% i'll have to figure out how best to do this, but probably each trial,
-% iteratively 
+% quartiles or quintiles?
+% four
 
 
 % a quick wrapper

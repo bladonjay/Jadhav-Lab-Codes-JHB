@@ -163,6 +163,10 @@ for ses=1:length(SuperRat)
                 odorResponse((3-r),3)=dprime(spkevs(odorid==(2-r)),prespkevs(odorid==(2-r))); % want to know if its consistent (normalized effect size)
                 odorResponse((3-r),4)=signrank(spkevs(odorid==(2-r)),prespkevs(odorid==(2-r))); % is it significant
             end
+             odorResponse(3,1)=nanmean(spkevs(odorid==(2-r))); % what is the sampling rate ( this is right left tho not left right)
+                odorResponse(3,2)=nanmean(spkevs-prespkevs); % + if elevated, - if depressed
+                odorResponse(3,3)=dprime(spkevs,prespkevs); % want to know if its consistent (normalized effect size)
+                odorResponse(3,4)=signrank(spkevs,prespkevs); % is it significant
             % need to tabulate overall responsivity, not just for each
             % individually
         end
@@ -403,6 +407,48 @@ for i=1:length(clairedata.selectivePFC)
 end
 
 
+%% there is a discrepancy basically and i dont remember how we reconsiled it....
+
+
+
+
+
+%% here is my total number of pyrams and INS that are responsive and selective
+varTypes=repmat({'double'},1,7);
+responseTable=table('size',[2 7],'VariableTypes',varTypes,'VariableNames',{'allTot','pyrTot','pyrResp','pyrSel','inTot','inResp','inSel'},...
+    'RowNames',{'PFC','CA1'});
+
+regions={'PFC','CA1'};
+for i=1:length(SuperRat)
+    for j=1:2
+        mycells=SuperRat(i).units(contains({SuperRat(i).units.area},regions{j}));
+        responseTable.allTot(j)=responseTable.allTot(j)+length(mycells);
+        
+        mycells=SuperRat(i).units(contains({SuperRat(i).units.area},regions{j}) &...
+            contains({SuperRat(i).units.type},'pyr'));
+        responseTable.pyrTot(j)=responseTable.pyrTot(j)+length(mycells);
+        responseTable.pyrResp(j)=responseTable.pyrResp(j)+sum(cellfun(@(a) any(a(:,4)<.05), {mycells.OdorResponsive}));
+        responseTable.pyrSel(j)=responseTable.pyrTot(j)+sum(cellfun(@(a) a(4)<.05, {mycells.OdorSelective}));
+        
+        mycells=SuperRat(i).units(contains({SuperRat(i).units.area},regions{j}) &...
+            contains({SuperRat(i).units.type},'in'));
+        responseTable.inTot(j)=responseTable.inTot(j)+length(mycells);
+        responseTable.inResp(j)=responseTable.inResp(j)+sum(cellfun(@(a) any(a(:,4)<.05), {mycells.OdorResponsive}));
+        responseTable.inSel(j)=responseTable.inTot(j)+sum(cellfun(@(a) a(4)<.05, {mycells.OdorSelective}));
+    end
+end
+
+openvar('responseTable');
+
+
+%% can we plot this out for correct and incorrect trials?
+% repeat claires figure 3f and j
+% first get new raw rates for all the cells, all trials over .5 secs
+% then recalculate SI for each by downsampling or bootstrapping
+
+% calculate absolute SI for coders in correct
+% could calculate dprime for c and I to see if the code is shittier for
+% incorrect trials
 
 
 
