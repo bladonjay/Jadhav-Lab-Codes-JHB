@@ -417,7 +417,8 @@ for i=1:length(SuperRat)
 end
 
 
-%% to get the designated tetrode:
+%% to get the designated tetrode: UNNECESSARY NOW
+%{
  % there will be one dCA1 tetrode designated for the LFP
  
  for i=1:length(SuperRat)
@@ -461,7 +462,7 @@ for i=1:length(SuperRat)
     SuperRat(i).LFP.filename=eegFname;
     fprintf('sess %d done in %.2f mins \n',i,toc/60);
 end
-
+%}
 
 
 

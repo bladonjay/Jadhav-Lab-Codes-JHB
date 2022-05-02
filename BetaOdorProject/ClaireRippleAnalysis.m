@@ -44,7 +44,7 @@ General outline:
 1. pick session
 2. pick a ripple
 3. make sure there are spikes in that ripple
-3. parse ripple into 100ms timebins
+3. parse ripple into 25ms timebins
 4. for each hippocampal pyram, calculate the probability of each object, and of each
 position
 5. multiply products for each position together, and for each object

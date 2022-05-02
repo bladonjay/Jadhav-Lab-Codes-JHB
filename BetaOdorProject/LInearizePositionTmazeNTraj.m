@@ -292,10 +292,7 @@ for ses=1:length(SuperRat)
     SuperRat(ses).AllLinCoords=myCoords;
 end
 %% this is where we distill all the trajectories into the most likely traj
-% the problem here is that returns arent going to be the same as outs for
-% one rat... i guess i'll have to figure that out later
 verbose=0;
-
 for i=1:length(SuperRat)
     % this will asssign each trajectory based on origin and destination
     trajinds=[3 1; 3 2; 1 3; 2 3];

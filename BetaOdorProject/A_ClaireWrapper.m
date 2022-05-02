@@ -9,18 +9,35 @@
 %% or to rebuild the dataset from scratch
 edit ClaireDataAggregator
 
-%% or load the dataset like this:
-% this dataset contains 
-
-
+%% this builds the trajectories (old version)
 % now you can linearize the positional data
 % as currently is 2-10-2020 this will ask you to redraw cs39 over again
 % this is because this is a partial long track, remember no 90* angles on
 % your tracks!
+
 edit LinearizePositionTmaze
+
+
+%% This is the new version with all four trajectories (2 in, 2 outbound)
+% algorithm:
+% 1. draw a typical trajectory for each of the 4 run types
+% 2. for each run (space between wells) gather the rats distance along and
+% distance from each trajectory
+% 3. make sure that the odor port entries match which trajectory we think
+% the rat took (the start port and end port should match whichever
+% trajectory the rats position remained closest to.
+% 4. Save those data
+
+% data that are produced:
+% allLinCoords (this contains all the linearized trajectories in a struct)
+% rows: ts, x,y,origin, destination, epoch#, velocity, out left, out right,
+% in left, in right
 
 % the 4 traj is better if your runs are all wonky (like for short tracks)
 edit LinearizePositionTmazeNTraj
+
+
+
 % some helpful fx for that:
  
 % - one is getcoord_Tmaze, this lets you draw the trajectories, or at
@@ -28,7 +45,7 @@ edit LinearizePositionTmazeNTraj
 %%  if you've already made linearized position data
 
 %load('E:\Claire Data\ClaireDataFull-LinPos-LongTrack.mat');
-% removes short sessions
+% removes short arm sessions
 SuperRat(~logical([SuperRat.longTrack]))=[];
 
 
@@ -43,7 +60,8 @@ edit ClaireQuickPlacePlot % i dont htink this went into the paper
 
 % plot linearized place fields
 edit PlotLinTrajectories
-% calculate them for the ripple decoding and to crossref with obj coding
+
+
 edit CalcLinTrajectories %
 % get object coding
 edit Object_selectivity
@@ -59,7 +77,7 @@ edit Claire_Odor_Routedecoder
 %%  This is the beta coherence datast
 
 %load('G:\Claire Data\ClaireData22-Apr-2020.mat')
-load('G:\Claire Data\ClaireData30-03-2022.mat')
+%load('G:\Claire Data\ClaireData30-03-2022.mat')
 
 betaDir='E:\ClaireData';
 
@@ -238,4 +256,4 @@ runstop=runstart+find(rundata(runstart:end,8)>55,1,'first');
 plot(rundata(runstart:runstop,2),rundata(runstart:runstop,3));
 title(sprintf('odorID=%d, corrincorr=%d',odorinfo(trial,2),odorinfo(trial,3)));
 end
-
+%}
