@@ -412,27 +412,80 @@ edit ratBehaviorSynchrony
 
 for i=1:length(ratinfo)
     for tr=1:height(ratinfo(i).ratsamples{1}) % for each trial
-        % find his last well poke
+        % for rat 1 find rat 2s last well poke
         hislastpoke=find(ratinfo(i).ratsamples{2}.start<ratinfo(i).ratsamples{1}.start(tr),1,'last');
         if ~isempty(hislastpoke)
             ratinfo(i).ratsamples{1}.hiswell(tr)=ratinfo(i).ratsamples{2}.thiswell(hislastpoke);
+            ratinfo(i).ratsamples{1}.hiswelltime(tr)=ratinfo(i).ratsamples{2}.end(hislastpoke)-ratinfo(i).ratsamples{1}.start(tr);
         else
             ratinfo(i).ratsamples{1}.hiswell(tr)=nan;
+            ratinfo(i).ratsamples{1}.hiswelltime(tr)=nan;
+
         end
     end
-    
+    % now do the opposite for rat 2
     for tr=1:height(ratinfo(i).ratsamples{2})
         hislastpoke=find(ratinfo(i).ratsamples{1}.start<ratinfo(i).ratsamples{2}.start(tr),1,'last');
         if ~isempty(hislastpoke)
             ratinfo(i).ratsamples{2}.hiswell(tr)=ratinfo(i).ratsamples{1}.thiswell(hislastpoke);
+            ratinfo(i).ratsamples{2}.hiswelltime(tr)=ratinfo(i).ratsamples{1}.end(hislastpoke)-ratinfo(i).ratsamples{2}.start(tr);
+
         else
             ratinfo(i).ratsamples{2}.hiswell(tr)=nan;
+            ratinfo(i).ratsamples{2}.hiswelltime(tr)=nan;
         end
     end
     
 end
 
+%%
+% for each session and rat... build up some info
+for i=1:length(ratinfo)
+    % what we want is to first distil this into transitions
+    % should we only try cadidates which the former rat was actually
+    % recently at a well?
+    for j=1:2
+        transitions=ratinfo(i).ratsamples{j}(ratinfo(i).ratsamples{j}.thiswell~=ratinfo(i).ratsamples{j}.lastwell,:);
+        transitions.match=transitions.thiswell==transitions.hiswell;
+        ratinfo(i).transitions(j)=height(transitions);
+        ratinfo(i).firsttoleave(j)=sum(transitions.lastwell==transitions.hiswell);
+        ratinfo(i).candidates(j)=sum(transitions.lastwell~=transitions.hiswell & transitions.hiswelltime>-5);
+        ratinfo(i).matches(j)=sum(transitions.thiswell==transitions.hiswell & transitions.hiswelltime>-5);
+    end
+    ratinfo(i).runnum=str2double(ratinfo(i).runnum);
+end
+%% this uses the above table
+% we can plot this out for a few rats here
+% lets just scatter some stats for a given rat by session
+
+genotypetable=table([1 4; 1 2; 3 4],[2 3; 3 4; 1 2], 'VariableNames',{'controls','fx'});
+figure;
+cohort=3; rat=2;
+
+thisrat=ratinfo(cellfun(@(a) a==cohort, {ratinfo.cohortnum}) & cellfun(@(a) any(a==rat), {ratinfo.ratnums}));
+
+ratstats=table('Size',[1,5], 'VariableTypes', repmat({'double'},1,5), 'VariableNames',...
+    {'tot','firsts','cans','wins','session'});
+[~,~,sessid]=unique(cell2mat({thisrat.datenum}));
+for i=1:length(thisrat)
+    mypos=find(thisrat(i).ratnums==rat);
+    ratstats.tot(i)=thisrat(i).transitions(mypos);
+    ratstats.firsts(i)=thisrat(i).firsttoleave(mypos);
+    ratstats.cans(i)=thisrat(i).candidates(mypos);
+    ratstats.wins(i)=thisrat(i).matches(mypos);
+    ratstats.session(i)=sessid(i);
+    ratstats.runnum(i)=thisrat(i).runnum;
+
+    if ratstats.runnum(i)>6
+        ratstats.session(i)=ratstats.session(i)+.5;
+    end
+end
+    
+scatter(ratstats.tot,ratstats.wins./ratstats.cans)
+
+
 %% howabout the efficiency of each session?
+% this is calculated over all samples
 
 
 runtots=0;
@@ -470,7 +523,7 @@ for cohort=[1 2 3]
             
             % controls (no fx?) only one sess
             if ~any(intersect(genotypetable.fx(cohort,:),daysess(k).ratnums)) && ...
-                    str2double(daysess(k).runnum)<7
+                    daysess(k).runnum<7
                 % quantify # arm transitions for each rat
                 for rt=1:2
                     % my last well ~= my current well and my last well ~=
@@ -488,13 +541,13 @@ for cohort=[1 2 3]
                     %ctrlsraw.rat1wins(i)=sum(wins);
                 end
                 % rews / tot trans
-                ctrlsraw{i,5}=sum(daysess(k).ratsamples{rt}.match)/sum(ctrlsraw{i,3:4}); % get matches per total moves
-                ctrlsraw{i,6}=sum(daysess(k).ratsamples{rt}.Reward)/sum(ctrlsraw{i,3:4}); % get Rewards per total moves
+                %ctrlsraw{i,5}=sum(daysess(k).ratsamples{rt}.match)/sum(ctrlsraw{i,3:4}); % get matches per total moves
+                %ctrlsraw{i,6}=sum(daysess(k).ratsamples{rt}.Reward)/sum(ctrlsraw{i,3:4}); % get Rewards per total moves
                 
                 
             % fx only
             elseif ~any(intersect(genotypetable.controls(cohort,:),daysess(k).ratnums)) && ...
-                    str2double(daysess(k).runnum)<7
+                    daysess(k).runnum<7
                 % quantify # arm transitions for each rat
                 for rt=1:2
                     % my last well ~= my current well and my last well ~=
@@ -510,10 +563,10 @@ for cohort=[1 2 3]
                     fxpairraw{i,rt+2}=sum(candidates); % get total moves
                 end
                 % rews / tot trans
-                fxpairraw{i,5}=sum(daysess(k).ratsamples{rt}.match)/sum(fxpairraw{i,3:4}); % get matches per total moves
-                fxpairraw{i,6}=sum(daysess(k).ratsamples{rt}.Reward)/sum(fxpairraw{i,3:4}); % get rewards per total moves
+                %fxpairraw{i,5}=sum(daysess(k).ratsamples{rt}.match)/sum(fxpairraw{i,3:4}); % get matches per total moves
+                %fxpairraw{i,6}=sum(daysess(k).ratsamples{rt}.Reward)/sum(fxpairraw{i,3:4}); % get rewards per total moves
 
-            elseif str2double(daysess(k).runnum)<7
+            elseif daysess(k).runnum<7
                 for rt=1:2
                     % my last well ~= my current well and my last well ~=
                     % his current well
@@ -801,7 +854,7 @@ xlabel('Animal Pairing')
 %}
 %%
 % i wonder if their armtransitions per minute were higher.
-genotypetable=table([1 4; 1 2; 1 2; 2 3],[2 3; 3 4; 3 4; 1 4], 'VariableNames',{'controls','fx'});
+genotypetable=table([1 4; 1 2; 3 4; 2 3],[2 3; 3 4; 1 2; 1 4], 'VariableNames',{'controls','fx'});
 genotable={'ctrl','fx','fx','ctrl';...
     'ctrl','fx','ctrl','fx';...
     'ctrl','ctrl','fx','fx';...
@@ -942,7 +995,7 @@ biases=[];
 cumct=1;
 for i=1:length(ratinfo)
     for j=1:2
-        if any(ratinfo(i).cohortnum==[1 3 4])
+        if any(ratinfo(i).cohortnum==[1 2 3])
             biasnames{cumct}=sprintf('%s%d', ratinfo(i).cohortname,ratinfo(i).ratnums(j));
             biasgeno{cumct}=sprintf('%s%d%s', ratinfo(i).cohortname,ratinfo(i).ratnums(j),ratinfo(i).genotypes{j});
             biases(cumct,1)=ratinfo(i).armbias(j);
