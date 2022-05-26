@@ -61,9 +61,12 @@ end
 
 %% aggregating all the pairings...
 % first get your excel doc
+load('G:\SocialData\Behavior only\SocialCohorts1-3.mat')
 
 try
-    load SocialCohorts1-3.m
+    %load SocialCohorts1-3.m
+    load('G:\SocialData\Behavior only\SocialCohorts1-3.mat')
+
 catch
     
     mydir=uigetdir;
@@ -72,7 +75,7 @@ catch
     %%%%% go through and add metadata %%%%%%
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % 201-202,  XFZ 1-2, XFB1-XFB2
-    GroupPrefix={'20','XFB','XFZ','XFE'};
+    GroupPrefix={'20','XFB','XFZ','XFE','XFG'};
 
     
     
@@ -109,20 +112,26 @@ catch
                     fileList(i).ratnames={namestr(namestart+3),namestr(namestart+7)};
                     fileList(i).ratnums=[str2num(namestr(namestart+3)) str2num(namestr(namestart+7))];
                 elseif strcmpi(namestr(namestart+1:namestart+3),'XFB')
-                    fileList(i).cohortnum=3;
+                    fileList(i).cohortnum=2;
                     fileList(i).cohortname='XFB';
                     fileList(i).ratnames={namestr(namestart+4), namestr(namestart+9)};
                     fileList(i).ratnums=[str2num(namestr(namestart+4)) str2num(namestr(namestart+9))];
                 elseif strcmpi(namestr(namestart+1:namestart+3),'XFZ')
                     %6 and 8?
-                    fileList(i).cohortnum=2;
+                    fileList(i).cohortnum=4;
                     fileList(i).cohortname='XFZ';
                     fileList(i).ratnames={namestr(namestart+6), namestr(namestart+8)};
                     fileList(i).ratnums=[str2num(namestr(namestart+6)) str2num(namestr(namestart+8))];
                 elseif strcmpi(namestr(namestart+1:namestart+3),'XFE')
                     %6 and 8?
-                    fileList(i).cohortnum=4;
+                    fileList(i).cohortnum=5;
                     fileList(i).cohortname='XFE';
+                    fileList(i).ratnames={namestr(namestart+4), namestr(namestart+9)};
+                    fileList(i).ratnums=[str2num(namestr(namestart+4)) str2num(namestr(namestart+9))];
+                elseif strcmpi(namestr(namestart+1:namestart+3),'XFG')
+                    %6 and 8?
+                    fileList(i).cohortnum=3;
+                    fileList(i).cohortname='XFG';
                     fileList(i).ratnames={namestr(namestart+4), namestr(namestart+9)};
                     fileList(i).ratnums=[str2num(namestr(namestart+4)) str2num(namestr(namestart+9))];
                 else
@@ -402,7 +411,8 @@ edit ratBehaviorSynchrony
 % for each session, keep track of your peers well at all times:
 
 for i=1:length(ratinfo)
-    for tr=1:height(ratinfo(i).ratsamples{1})
+    for tr=1:height(ratinfo(i).ratsamples{1}) % for each trial
+        % find his last well poke
         hislastpoke=find(ratinfo(i).ratsamples{2}.start<ratinfo(i).ratsamples{1}.start(tr),1,'last');
         if ~isempty(hislastpoke)
             ratinfo(i).ratsamples{1}.hiswell(tr)=ratinfo(i).ratsamples{2}.thiswell(hislastpoke);
@@ -425,18 +435,18 @@ end
 %% howabout the efficiency of each session?
 
 
-runtots=1;
+runtots=0;
 % so i guess the question is this, per arm visit, are the control pairs
 % best?
 % cohort 1 (20x) 1 and 4 are controls
-% cohort 2 (XFZ) 1 and 3 are controls
-% cohort 3 (XFB) 1 and 2 are controls
-% cohort 4 (XFE) 1 and 3 are fx
-genotypetable=table([1 4; 1 3; 1 2; 2 3],[2 3; 2 4; 3 4; 1 4], 'VariableNames',{'controls','fx'});
+% cohort 2 (XFB) 1 and 2 are controls
+% cohort 3 (XFG) 1 and 2 are controls
+
+genotypetable=table([1 4; 1 2; 3 4],[2 3; 3 4; 1 2], 'VariableNames',{'controls','fx'});
 figure;
 allcohorts=[]; rundates=[];
 iterator=1;
-for cohort=[1 3 4]
+for cohort=[1 2 3]
     cohortinfo=ratinfo(cell2mat({ratinfo.cohortnum})==cohort);
     
     % first quantify number of arm visits per animal
@@ -671,7 +681,7 @@ ylabel(sprintf('Likelihood of transitioning \n to peer-occupied arm'));
 critcohorts=allcohorts; % criterion days
 critcohorts([1:9 21:32],:)=[];
 
-bp=bar([1 2 3],mean(critcohorts),'FaceColor','flat','EdgeColor','none','FaceAlpha',.8); bp.CData=barcolors([1 3 2],:); 
+bp=bar([1 2 3],mean(critcohorts),'FaceColor','flat','EdgeColor','none','FaceAlpha',.8); bp.CData=mycolors([1 3 2],:); 
 hold on;
 errorbar([1 2 3],mean(critcohorts),std(critcohorts,1),'k.');
 tickvec=[-.2:.05:.3];
@@ -791,7 +801,7 @@ xlabel('Animal Pairing')
 %}
 %%
 % i wonder if their armtransitions per minute were higher.
-genotypetable=table([1 4; 1 3; 1 2; 2 3],[2 3; 2 4; 3 4; 1 4], 'VariableNames',{'controls','fx'});
+genotypetable=table([1 4; 1 2; 1 2; 2 3],[2 3; 3 4; 3 4; 1 4], 'VariableNames',{'controls','fx'});
 genotable={'ctrl','fx','fx','ctrl';...
     'ctrl','fx','ctrl','fx';...
     'ctrl','ctrl','fx','fx';...
@@ -804,7 +814,7 @@ for i=1:length(ratinfo)
    
 end
 
-for k=[1 3 4]
+for k=[1 2 3]
 firsthit=[]; fxpair=[];
 cumct=[1 1];
 

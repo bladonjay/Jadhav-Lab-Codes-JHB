@@ -29,221 +29,73 @@ Claires algorithm:
 
 
 %}
-
-% set region parameters here!!
-regions={'PFC','CA1'};
-colors=[rgbcolormap('DarkAquamarine'); rgbcolormap('LightCoral')];
-
-
-%% what does RR look like anyways
-
-temp=load('E:\ClaireData\CS31_direct\EEG\CS31resp02-04-20');
-
-load('respfilter');
-
-%% Initial code block to index the file from which I'll pullRR data
-
-% load eeg data,generate a contiuous datastream (raw)
-%if ~isfield(SuperRat,'CA1beta')
-
-% the gist is pull the eeg from whichever tetrode has the most cells in
-% each region
-% the alternative is to pull whichver tetrode has task responsive cells in
-% each region
-
-for i=1:length(SuperRat)
-    
-    % need to use a local beta metric
-    regions=unique({SuperRat(i).units(~contains({SuperRat(i).units.tag},'mua')).area});
-    for j=1:length(regions)
-        % get units in that area that arent MUA
-        %myunits=find(contains({SuperRat(i).units.area},regions{j}) & ...
-        %    ~contains({SuperRat(i).units.tag},'mua'));
-        myunits=find(contains({SuperRat(i).units.area},regions{j}));
-        [~,LFPtet]=max(accumarray([SuperRat(i).units(myunits).tet]',1));
-        % generate filename here
-        ratname=sprintf('%s_direct',SuperRat(i).name);
-        lfpdir='EEG';
-        allLFPfiles=dir(fullfile('E:\ClaireData',ratname,lfpdir));
-        
-        % get lfp files from this tetrode and today
-        sessname=sprintf('%seeg%02d',SuperRat(i).name,SuperRat(i).daynum);
-        todayfiles=contains({allLFPfiles.name},sessname);
-        mytet=sprintf('%02d.mat',LFPtet);
-        tetfiles=contains({allLFPfiles.name},mytet);
-        loadfiles=allLFPfiles(todayfiles & tetfiles);
-        % sort the files in ascending order
-        [~,index] = sortrows({loadfiles.name}.'); loadfiles = loadfiles(index); clear index
-        contdata=[];
-        clear lfpData
-        for k=1:length(loadfiles)
-            lfpBit=load(fullfile(loadfiles(k).folder,loadfiles(k).name));
-            tempstruct=lfpBit.eeg{SuperRat(i).daynum}{k}{LFPtet};
-            tempstruct.tet=LFPtet; tempstruct.filename=loadfiles(k).name;
-            lfpData(k)=tempstruct;
-            filtered=filtereeg2(tempstruct,respfilter);
-            % generate continuous data (ts, amp, instaphase, envelope)
-            contdata=[contdata; (tempstruct.starttime:(1/tempstruct.samprate):tempstruct.endtime)' double(filtered.data)];
-        end
-        % now filter those data!
-        clear tempstruct;
-        
-        
-        % save struct out
-        SuperRat(i).([regions{j} lfpdir])=lfpData;
-        % save continuous phase data out
-        SuperRat(i).([regions{j} 'resp'])=sortrows(contdata,1); % sort epochs by time!
-    end
-    fprintf('session number %d, animal %s day %d done\n',i,SuperRat(i).name,SuperRat(i).daynum);
-    
-end
-
+regions={'PFC','CA1','OB'};
+colors=[rgbcolormap('DarkAquamarine'); rgbcolormap('LightCoral'); rgbcolormap('DarkOrange')];
+rhythmcolors=[rgbcolormap('navy'); rgbcolormap('DeepPink')];
 
 %end
 %% now run the stats on the cells
+
+%
+
 for i=1:length(SuperRat)
     myclock=tic;
     snifftimes=[SuperRat(i).trialdata.sniffstart SuperRat(i).trialdata.sniffend];
+    trialCorr=SuperRat(i).trialdata.CorrIncorr10;
+    
     for j=1:length(SuperRat(i).units)
-        myspikes=EpochCoords(SuperRat(i).units(j).ts(:,1),snifftimes);
-        [a,b,c]=event_spikes(SuperRat(i).units(j).ts(:,1),snifftimes(:,1),0,snifftimes(:,2)-snifftimes(:,1));
+        myspikes=EpochCoords(SuperRat(i).units(j).ts(:,1),snifftimes(trialCorr==1,:));
+
         for k=1:length(regions)
             myLFP=SuperRat(i).([regions{k} 'resp']);
             % insert here case if no viable LFP
+            SuperRat(i).units(j).respmean(k)=nan;
+            SuperRat(i).units(j).respMVL(k)=nan;
+            SuperRat(i).units(j).respOstat(k)=nan;
+            SuperRat(i).units(j).respRstat(k)=nan;
+            
             if length(myspikes)>5 && ~isempty(myLFP)
                 
                 % if there are enough spikes to analyze, get the mean
                 % phase, the mvl, the r test and O test
                 phasesCorr=interp1(myLFP(:,1),myLFP(:,3),myspikes,'nearest');
-                SuperRat(i).units(j).betamean(k)=circ_mean(phasesCorr);
-                SuperRat(i).units(j).betaMVL(k)=circ_r(phasesCorr);
-                SuperRat(i).units(j).betaOstat(k)=circ_otest(phasesCorr);
-                SuperRat(i).units(j).betaRstat(k)=circ_rtest(phasesCorr);
+                SuperRat(i).units(j).respmean(k)=circ_mean(phasesCorr);
+                SuperRat(i).units(j).respMVL(k)=circ_r(phasesCorr);
+                SuperRat(i).units(j).respOstat(k)=circ_otest(phasesCorr);
+                SuperRat(i).units(j).respRstat(k)=circ_rtest(phasesCorr);
 
                 % plot it out???
-                
-                if SuperRat(i).units(j).betaRstat(k)<.01
-                    figure; ha=histogram([phasesCorr; phasesCorr+pi*2],linspace(-pi,pi*3,10+ceil(sqrt(length(phasesCorr)))),...
-                        'Normalization','probability');
-                    set(ha,'LineStyle','none','FaceColor',colors(k,:));
-                    set(gca,'XTick',[pi.*[-1:4]],'XTickLabel',{'-2\pi','','0','','2\pi'});
-                    ylabel('Probability of Spike'); xlabel('Beta Phase'); box off;
-                     title(sprintf(' %s cell in %s, lfp %s \n n=%.f, mean %.2f, mvl=%.2f, p=%.2e',...
-                        SuperRat(i).units(j).type, SuperRat(i).units(j).area, regions{k}, length(phasesCorr),...
-                        SuperRat(i).units(j).betamean(k),SuperRat(i).units(j).betaMVL(k),SuperRat(i).units(j).betaRstat(k)));
-                    figure;
-                    scatter(repmat(c,2,1),[phasesCorr; phasesCorr+pi*2]);
-                    box off;
-                end
-                
-                continue; % skip the nanning out of data
+%                 
+%                 if SuperRat(i).units(j).respRstat(k)<.01
+%                     figure; ha=histogram([phasesCorr; phasesCorr+pi*2],linspace(-pi,pi*3,10+ceil(sqrt(length(phasesCorr)))),...
+%                         'Normalization','probability');
+%                     set(ha,'LineStyle','none','FaceColor',colors(k,:));
+%                     set(gca,'XTick',[pi.*[-1:4]],'XTickLabel',{'-2\pi','','0','','2\pi'});
+%                     ylabel('Probability of Spike'); xlabel('Beta Phase'); box off;
+%                      title(sprintf(' %s cell in %s, lfp %s \n n=%.f, mean %.2f, mvl=%.2f, p=%.2e',...
+%                         SuperRat(i).units(j).type, SuperRat(i).units(j).area, regions{k}, length(phasesCorr),...
+%                         SuperRat(i).units(j).respmean(k),SuperRat(i).units(j).respMVL(k),SuperRat(i).units(j).respRstat(k)));
+%                     figure;
+%                     scatter(repmat(c,2,1),[phasesCorr; phasesCorr+pi*2]);
+%                     box off;
+%                 end
             end
-            SuperRat(i).units(j).betamean(k)=nan;
-            SuperRat(i).units(j).betaMVL(k)=nan;
-            SuperRat(i).units(j).betaOstat(k)=nan;
-            SuperRat(i).units(j).betaRstat(k)=nan;
         end
     end
-    
-    lockedunits=sum( [SuperRat(i).units.betaRstat]<0.05); % p value MUST BE BONFERONNI CORRECTED
-    fprintf('sess %d done, found %d locked units in %.2f seconds \n', i, lockedunits, toc(myclock));
 end
+
 
 %%
-% now replicate claires analyses:
 
-% first, she shows a few beta locked cells....
-% This is a lenient threshold, so lets tabulate cells
-
-allcount=table([0;0],[0;0],[0;0],[0;0],'VariableNames',{'PFCtot','PFClocked','CA1tot','CA1locked'});
-%contains({SuperRat(i).units.type},'in') & ...
-
-for i=1:length(SuperRat)
-    for j=1:length(regions)
-        mycells=SuperRat(i).units(contains({SuperRat(i).units.area},regions{j}) &...
-            cellfun(@(a) any(a(:,4)<.05), {SuperRat(i).units.OdorResponsive}));
-        for k=1:length(regions)
-            allcount.([regions{j} 'tot'])(k)=allcount.([regions{j} 'tot'])(k)+length(mycells);
-            allcount.([regions{j} 'locked'])(k)=allcount.([regions{j} 'locked'])(k)+sum(cellfun(@(a) a(k),{mycells.betaRstat})<.05);
-        end
-    end
-end
- openvar('allcount')
+%
+%
+%
+%  Correct vs incorrect
+%
+%
+%
 
 
-%% 
-% Panel C:
-% mean phase of all task responsive neuron
-% task responsive is odor responsive (last row in odorresponsive)
-
-betatable=table({[];[]},{[];[]},{[];[]},{[];[]},'VariableNames',{'PFCmean','PFCmvl','CA1mean','CA1mvl'},...
-    'RowNames',{'PFCbeta','CA1beta'});
-pcrit=.05;
-
-for i=1:length(SuperRat)
-    for loc=1:length(regions) % for cell location
-        % pull all cells in a location
-        cellpool=SuperRat(i).units(contains({SuperRat(i).units.area},regions{loc}));
-        % for LFP location
-        if ~isempty(cellpool)
-            for betaloc=1:length(regions)
-                % get all task responsive cells
-                betap=cellfun(@(a) any(a(:,4)<pcrit),{cellpool.OdorResponsive});
-                
-                
-                % get all cells with significant locking
-                %betap=cellfun(@(a) a(betaloc),{cellpool.betaRstat});
-                betatable.([regions{loc} 'mean']){betaloc}=[betatable.([regions{loc} 'mean']){betaloc}...
-                    cellfun(@(a) a(betaloc),{cellpool(betap).betamean})];
-                betatable.([regions{loc} 'mvl']){betaloc}=[betatable.([regions{loc} 'mvl']){betaloc}...
-                    cellfun(@(a) a(betaloc),{cellpool(betap).betaMVL})];
-            end
-        end
-    end
-end
-
-% for each cell location and for each tetrode location
-
-for i=1:2
-    for k=1:2
-        subplot(2,2,(i-1)*2+k);
-        betavals=cell2mat(betatable.([regions{k} 'mean'])(i));
-        p=polarhistogram(betavals(~isnan(betavals)),12,'Normalization','pdf');
-          title(sprintf('Cells %s, beta %s',regions{k},regions{i}));
-        set(p,'LineStyle','none','FaceColor',colors(k,:));       
-        hold on;
-        [rho]=circ_mean(betavals(~isnan(betavals)));
-        [mvl]=circ_r(betavals(~isnan(betavals)));
-        PolarArrow(rho,mvl,[],colors(i,:).*.6);
-        
-    end
-end
-
-%% my panel c looks way different from hers
-
-% panel E.
-
-% can only do Beta here
-
-
-allcount=table(0,0,0,0,'VariableNames',{'PFCtot','PFClocked','CA1tot','CA1locked'});
-pcrit=.05;
-
-for i=1:length(SuperRat)
-    for j=1:length(regions)
-        mycells=SuperRat(i).units(contains({SuperRat(i).units.area},regions{j}) &...
-            cellfun(@(a) any(a(:,4)<.05), {SuperRat(i).units.OdorResponsive}));
-        
-        allcount.([regions{j} 'tot'])=allcount.([regions{j} 'tot'])+length(mycells);
-        coders=cellfun(@(a) any(a<=pcrit),{mycells.betaRstat});
-        allcount.([regions{j} 'locked'])=allcount.([regions{j} 'locked'])+sum(coders);
-    end
-end
-figure;
-bar([ allcount.CA1locked/allcount.CA1tot allcount.PFClocked/allcount.PFCtot]);
-set(gca,'XTickLabel',{'CA1','PFC'});
-ylabel('Percent Beta Coherent'); xlabel('Cell & Beta source');
-ylim([0 1]);
 
 %% now measuring the strength of this modulation.
 
@@ -278,7 +130,7 @@ for i=1:length(SuperRat)
         [~,~,~,~,myspikes]=event_spikes(SuperRat(i).units(j).ts(:,1),snifftimes(:,1),0,snifftimes(:,2)-snifftimes(:,1));
         
         for k=1:length(regions)
-            myLFP=SuperRat(i).([regions{k} 'beta']);
+            myLFP=SuperRat(i).([regions{k} 'resp']);
             % insert here case if no viable LFP
             Cspikes=cell2mat(myspikes(trialCorr==1)');
             Ispikes=cell2mat(myspikes(trialCorr~=1)');
@@ -286,8 +138,8 @@ for i=1:length(SuperRat)
             minspkct=round(min([length(Cspikes) length(Ispikes)]));
             
             if minspkct>10 && ~isempty(myLFP)
-                Cphases=interp1(myLFP(:,1),myLFP(:,3)/10000,Cspikes,'nearest');
-                Iphases=interp1(myLFP(:,1),myLFP(:,3)/10000,Ispikes,'nearest');
+                Cphases=interp1(myLFP(:,1),myLFP(:,3),Cspikes,'nearest');
+                Iphases=interp1(myLFP(:,1),myLFP(:,3),Ispikes,'nearest');
 
                 % there are two thinning procedures I can use- one- thin spikes
                 % regardless of trial, or 2 thin trials and therefore spikes
@@ -300,15 +152,11 @@ for i=1:length(SuperRat)
                     bootI(boot)=circ_r(datasample(Iphases,minspkct,'Replace',false));
                 end
                 % get a z value of the single one vs the multiple
-                if length(unique(bootC))<length(unique(bootI))
-                    SuperRat(i).units(j).BetaPhaseDprime(k,:)=[mean(bootC,'omitnan') mean(bootI,'omitnan')...
-                        (mean(bootC)-mean(bootI))/std(bootI)];
-                else
-                    SuperRat(i).units(j).BetaPhaseDprime(k,:)=[mean(bootC,'omitnan') mean(bootI,'omitnan')...
-                        (mean(bootC)-mean(bootI))/std(bootC)];
-                end
+                
+                    SuperRat(i).units(j).respPhaseDprime(k,:)=[mean(bootC,'omitnan') mean(bootI,'omitnan')...
+                        (mean(bootC)-mean(bootI))/std(unique([bootI bootC]))]; % workaround for repeats!
             else
-                SuperRat(i).units(j).BetaPhaseDprime(k,:)=[nan nan nan];
+                SuperRat(i).units(j).respPhaseDprime(k,:)=[nan nan nan];
             end
             
             % nan out our variables here
@@ -332,7 +180,134 @@ end
 %
 %
 %
+% what we want to plot is...
+% 1. the % change in coherence across cells from correct to incorrect-
+% something like signed difference over sum (to adjust for overall
+% coherence)
+% 2. the %% of cells whose coherence significantly chagnes in one direction
 
+
+% I think the result is likely that ca1 INS change their coherence the
+% most, and that this is caused by PFC top-down connections that then bias
+% the behavior of the animal.  So the question is can we even see the
+% mechanism by which the bottom up interaction occurs?
+%% how many coherent cells in each region?
+% now replicate claires analyses:
+% local coherence and remote (cell in region 1, lfp region2)
+
+% first, she shows a few beta locked cells....
+% This is a lenient threshold, so lets tabulate cells
+regions={'PFC','CA1'};
+allcount=table([0;0],[0;0],[0;0],[0;0],'VariableNames',{'PFCtot','PFClocked','CA1tot','CA1locked'});
+%contains({SuperRat(i).units.type},'in') & ...
+
+for i=1:length(SuperRat)
+    for j=1:length(regions)
+        mycells=SuperRat(i).units(contains({SuperRat(i).units.area},regions{j}) &...
+            cellfun(@(a) any(a(:,4)<.05), {SuperRat(i).units.OdorResponsive}));
+        for k=1:length(regions)
+            allcount.([regions{j} 'tot'])(k)=allcount.([regions{j} 'tot'])(k)+length(mycells);
+            allcount.([regions{j} 'locked'])(k)=allcount.([regions{j} 'locked'])(k)+sum(cellfun(@(a) a(k),{mycells.respRstat})<.05);
+        end
+    end
+end
+openvar('allcount')
+%% for pyrams vs ins
+regions={'PFC','CA1'};
+types={'pyr','in'};
+allcount=table([0;0],[0;0],[0;0],[0;0],'VariableNames',{'PFCtot','PFClocked','CA1tot','CA1locked'});
+%contains({SuperRat(i).units.type},'in') & ...
+for i=1:length(SuperRat)
+    for j=1:length(regions)
+        for k=1:length(types)
+        mycells=SuperRat(i).units(contains({SuperRat(i).units.area},regions{j}) &...
+            cellfun(@(a) any(a(:,4)<.05), {SuperRat(i).units.OdorResponsive}) &...
+            contains({SuperRat(i).units.type},types{k}));
+       
+            allcount.([regions{j} 'tot'])(k)=allcount.([regions{j} 'tot'])(k)+length(mycells);
+            allcount.([regions{j} 'locked'])(k)=allcount.([regions{j} 'locked'])(k)+sum(cellfun(@(a) a(k),{mycells.respRstat})<.05);
+        end
+    end
+end
+openvar('allcount')
+
+%% 
+% Panel C:
+% mean phase of all task responsive neuron
+% task responsive is odor responsive (last row in odorresponsive)
+
+betatable=table({[];[]},{[];[]},{[];[]},{[];[]},'VariableNames',{'PFCmean','PFCmvl','CA1mean','CA1mvl'},...
+    'RowNames',{'PFCbeta','CA1beta'});
+pcrit=.05;
+for k=1:2
+
+for i=1:length(SuperRat)
+    for loc=1:length(regions) % for cell location
+        % pull all cells in a location
+        cellpool=SuperRat(i).units(contains({SuperRat(i).units.area},regions{loc}) & ...
+            contains({SuperRat(i).units.type},types{k}));
+        % for LFP location
+        if ~isempty(cellpool)
+            for betaloc=1:length(regions)
+                % get all task responsive cells
+                betap=cellfun(@(a) any(a(:,4)<pcrit),{cellpool.OdorResponsive});
+                
+                
+                % get all cells with significant locking
+                %betap=cellfun(@(a) a(betaloc),{cellpool.betaRstat});
+                betatable.([regions{loc} 'mean']){betaloc}=[betatable.([regions{loc} 'mean']){betaloc}...
+                    cellfun(@(a) a(betaloc),{cellpool(betap).betamean})];
+                betatable.([regions{loc} 'mvl']){betaloc}=[betatable.([regions{loc} 'mvl']){betaloc}...
+                    cellfun(@(a) a(betaloc),{cellpool(betap).betaMVL})];
+            end
+        end
+    end
+end
+
+% for each cell location and for each tetrode location
+figure;
+for i=1:2
+    for j=1:2
+        subplot(2,2,(i-1)*2+j);
+        betavals=cell2mat(betatable.([regions{j} 'mean'])(i));
+        p=polarhistogram(betavals(~isnan(betavals)),12,'Normalization','pdf');
+        [pval]=circ_rtest(betavals);
+        title(sprintf('Cells %s, beta %s \n p=%.2e',regions{j},regions{i}));
+        set(p,'LineStyle','none','FaceColor',colors(j,:));       
+        hold on;
+        [rho]=circ_mean(betavals(~isnan(betavals)));
+        [mvl]=circ_r(betavals(~isnan(betavals)));
+        PolarArrow(rho,mvl,[],colors(i,:).*.6);
+        
+    end
+end
+sgtitle(sprintf('%s',types{k}));
+end
+%% my panel c looks way different from hers
+
+% panel E.
+
+% can only do Beta here
+
+
+allcount=table(0,0,0,0,'VariableNames',{'PFCtot','PFClocked','CA1tot','CA1locked'});
+pcrit=.05;
+
+for i=1:length(SuperRat)
+    for j=1:length(regions)
+        mycells=SuperRat(i).units(contains({SuperRat(i).units.area},regions{j}) &...
+            cellfun(@(a) any(a(:,4)<.05), {SuperRat(i).units.OdorResponsive}));
+        
+        allcount.([regions{j} 'tot'])=allcount.([regions{j} 'tot'])+length(mycells);
+        coders=cellfun(@(a) any(a<=pcrit),{mycells.betaRstat});
+        allcount.([regions{j} 'locked'])=allcount.([regions{j} 'locked'])+sum(coders);
+    end
+end
+figure;
+bar([ allcount.CA1locked/allcount.CA1tot allcount.PFClocked/allcount.PFCtot]);
+set(gca,'XTickLabel',{'PFC','CA1'});
+ylabel('Percent Beta Coherent'); xlabel('Cell & Beta source');
+ylim([0 1]);
 %% This is for all task responsive cells
 
 %figure; subplot(2,1,1); histogram(bootC); subplot(2,1,2); histogram(bootI);
@@ -352,7 +327,7 @@ for i=1:length(SuperRat)
             contains({SuperRat(i).units.type},celltype));
         if ~isempty(mycells)
         for k=1:length(regions)
-            sessvals=cell2mat(cellfun(@(a) a(k,:), {mycells.BetaPhaseDprime},'UniformOutput',0)');
+            sessvals=cell2mat(cellfun(@(a) a(k,:), {mycells.betaPhaseDprime},'UniformOutput',0)');
             allcount.([regions{j} 'vals']){k}=[allcount.([regions{j} 'vals']){k} ; sessvals(:,1:2)];
             allcount.([regions{j} 'dprimes']){k}=[allcount.([regions{j} 'dprimes']){k}; sessvals(:,1)-sessvals(:,2)];
         end

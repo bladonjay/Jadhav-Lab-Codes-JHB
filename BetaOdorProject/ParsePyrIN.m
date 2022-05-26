@@ -10,7 +10,7 @@
 % mean rate, the burst probability, the burst index, and the theta index
 verbose=0;
 
-for ses= 1:length(SuperRat)
+for ses = 1:length(SuperRat)
     tic
     tracking=SuperRat(ses).tracking.data(:,1);
     elapsed=diff(tracking);
@@ -26,7 +26,7 @@ for ses= 1:length(SuperRat)
         SuperRat(ses).units(j).shortISI=sum(diff(spikets)<=0.001);
         SuperRat(ses).units(j).shortISI(2)=sum(diff(spikets)<=0.002);
         
-        
+        % mean rate and number of spikes
         SuperRat(ses).units(j).numspikes=length(spikets);
         SuperRat(ses).units(j).meanrate=length(spikets)/sesslength;
         

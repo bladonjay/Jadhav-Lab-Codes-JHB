@@ -43,12 +43,15 @@ for ei=1:length(epochinds)
     hold on;
 end
 set(gca,'ydir','reverse');
+title('all left runs');
 % now the speed
 sp(2)=subplot(1,3,2);
 for ei=1:length(breaks)-1
     plot(linLeft(epochinds(ei,1):epochinds(ei,2),1),linLeft(epochinds(ei,1):epochinds(ei,2),7));
     hold on;
 end
+title('all speeds for those runs')
+xlabel('time'); ylabel('speed');
 sp(3)=subplot(1,3,3);
 
 % and the linearized position
@@ -56,7 +59,7 @@ for ei=1:length(breaks)-1
     plot(linLeft(epochinds(ei,1):epochinds(ei,2),1),linLeft(epochinds(ei,1):epochinds(ei,2),8));
     hold on;
 end
-
+xlabel('time'); ylabel('linearized position');
 linkaxes(sp(2:3),'x');
 
 
