@@ -29,7 +29,6 @@ for i=1:length(SuperRat)
         % get units in that area that arent MUA
         myunits=find(contains({SuperRat(i).units.area},regions{j}) & ...
             ~contains({SuperRat(i).units.tag},'mua'));
-        %myunits=find(contains({SuperRat(i).units.area},regions{j}));
         if ~isempty(myunits)
             [~,LFPtet]=max(accumarray([SuperRat(i).units(myunits).tet]',1));
         else % if no units, grab the first one in that region
@@ -48,6 +47,9 @@ for i=1:length(SuperRat)
         % get lfp files from this tetrode and today
         sessname=sprintf('%seeg%02d',SuperRat(i).name,SuperRat(i).daynum);
         todayfiles=contains({allLFPfiles.name},sessname);
+
+        % skip middle number (epoch) and go straight to last number
+        % (tetrode)
         mytet=sprintf('%02d.mat',LFPtet);
         tetfiles=contains({allLFPfiles.name},mytet);
         loadfiles=allLFPfiles(todayfiles & tetfiles);
@@ -58,11 +60,14 @@ for i=1:length(SuperRat)
         for k=1:length(loadfiles)
             lfpBit=load(fullfile(loadfiles(k).folder,loadfiles(k).name));
             tempstruct=lfpBit.eeg{SuperRat(i).daynum}{k}{LFPtet};
-            tempstruct.tet=LFPtet; tempstruct.filename=loadfiles(k).name;
+            tempstruct.filename=loadfiles(k).name;
             lfpData(k)=tempstruct;
+            if tempstruct.data_voltage_inverted==1
+                tempstruct.data=tempstruct.data.*-1;
+                tempstruct.data_voltage_inverted=0;
+            end
             filtered=filtereeg2(tempstruct,respfilter);
             filtered2=filtereeg2(tempstruct,betafilter);
-
             % generate continuous data (ts, amp, instaphase, envelope)
             contdata=[contdata; (tempstruct.starttime:(1/tempstruct.samprate):tempstruct.endtime)' double(filtered.data)];
             contdata2=[contdata2; (tempstruct.starttime:(1/tempstruct.samprate):tempstruct.endtime)' double(filtered2.data)];

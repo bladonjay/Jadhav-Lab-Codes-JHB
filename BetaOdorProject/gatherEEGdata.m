@@ -61,7 +61,13 @@ for i=1:length(SuperRat)
         for k=1:length(loadfiles)
             lfpBit=load(fullfile(loadfiles(k).folder,loadfiles(k).name));
             tempstruct=lfpBit.eeg{SuperRat(i).daynum}{k}{LFPtet};
-            tempstruct.tet=LFPtet; tempstruct.filename=loadfiles(k).name;
+            if tempstruct.data_voltage_inverted==1
+                tempstruct.data=tempstruct.data.*-1;
+                tempstruct.data_voltage_inverted=0;
+            end
+
+            % add some metadata into that struct
+            tempstruct.filename=loadfiles(k).name;
             lfpData(k)=tempstruct;
             filtered=filtereeg2(tempstruct,respfilter);
             filtered2=filtereeg2(tempstruct,betafilter);
@@ -89,6 +95,7 @@ end
 %%
 
 % claires beta and my beta may be different
+% *** they're not.  I just had to use the correct jadhav lab filter (FIIR)
 
 
 %%
