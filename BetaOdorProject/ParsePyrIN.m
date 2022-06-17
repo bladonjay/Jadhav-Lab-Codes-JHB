@@ -94,15 +94,6 @@ for ses = 1:length(SuperRat)
     end
     fprintf('Session %d done in %.2f seconds \n',ses,toc);
 end
-%% I think i need to recalculate the mean firing rate of each unit
-% claire mentioned that a signifiant number of clusters arent carrying
-% across epochs... which surprises me
-
-for i=1:length(SuperRat)
-    for j=1:length(SuperRat(i).units)
-        % calc mean rate
-    end
-end
 
 
 %% now plot them to get a good impression of pyr vs IN

@@ -382,16 +382,11 @@ end
 % session 25, CS41, run 3 is a bad session, too much data were lost so I
 % ditched that session
 SuperRat(25)=[];
-
-% Session 4 has a dangling unit that doesnt exist....
-SuperRat(4).units(38)=[];
 %% for one session the metadata file was missing... oof
 
 ses=18;
-%[metadatafile,metadir]=uigetfile;
-%metadataalt=load(fullfile(metadir,metadatafile));
-metadataalt=load(SuperRat(15).files.info);
-
+[metadatafile,metadir]=uigetfile;
+metadataalt=load(fullfile(metadir,metadatafile));
 fname=fieldnames(metadataalt);
 % pull day 1 tetinfo down to day 4
 
@@ -459,9 +454,7 @@ xdata=[SuperRat(18).trialdata.rewardstart'; SuperRat(18).trialdata.rewardend'];
 xdata(3,:)=nan;
 plot(xdata(:))
 
-% its because some blocks have really poor performance.  In the future I
-% only take trials that are correct, or blocks that are noted.  I have
-% deleted blocks wherein the performance is below criterion level
+
 
 %% to get the designated tetrode: UNNECESSARY NOW
 %{
@@ -530,9 +523,7 @@ for i=1:length(SuperRat)
     end
 end
 
-%% tabulating how many units there are
 
-allCells=cell2mat({SuperRat.units});
 
 
 

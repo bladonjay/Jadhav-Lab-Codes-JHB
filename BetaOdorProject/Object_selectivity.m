@@ -9,11 +9,22 @@
 
 % object epochs are 'sniff' and the right and left 'correct' are the sides,
 % but if its inco0rrect, you have to flip the odor
-%% will ahve to use cs33 & cs 34 because 44 doesn thave odor identities\
 
+% cells that were active during the recording are separated first, these
+% cells have to fire during the 'run' sessions, so basically they have to
+% fire spikes during the trial period (take the grand sum of trial start
+% and ends)
 
+% odor selective is whether the cell fires more for one odor over the other
+% (using a bootstrap with p<.05)
 
-%for ses=1:length(SuperRat)
+% taskresponsive is whether they exhibited significant changes during odor
+% period (compared to a trial matched pre odor period) and this is a
+% signrank test by trial
+
+%% This plots the left and right rate for each cell locked to odor onset
+% these are single cell exmaple files
+
 for ses=1:length(SuperRat)
     
     timeedges=-2:.001:2; timebins=-2:.001:1.999;
@@ -82,7 +93,7 @@ bootct=1000;
 % p<05, 4 is the dprime effect size
 % odorMeans: mean rate for each odor
 % odorResponsive: rate at odor, mean chg from before, std chg from before, pval
-
+% taskResponsive: odor rate, preodor rate, pvalue
 
 for ses=1:length(SuperRat)
     tic
@@ -141,7 +152,8 @@ for ses=1:length(SuperRat)
             [~,prespkevs]=event_spikes(SuperRat(ses).units(i).ts(:,1),...
                 mytrialmat(:,1),mytrialmat(:,2)-mytrialmat(:,1),0); % matching at least -.5 to 0
             
-            % this is
+            % this is mean rate at odor, mean rate before odor, signrank p
+            % value
             taskResponsive=[nanmean(spkevs) nanmean(prespkevs) signrank(spkevs,prespkevs)];
             
             % get the mean rates for each
@@ -163,15 +175,16 @@ for ses=1:length(SuperRat)
                 odorResponse((3-r),3)=dprime(spkevs(odorid==(2-r)),prespkevs(odorid==(2-r))); % want to know if its consistent (normalized effect size)
                 odorResponse((3-r),4)=signrank(spkevs(odorid==(2-r)),prespkevs(odorid==(2-r))); % is it significant
             end
-             odorResponse(3,1)=nanmean(spkevs(odorid==(2-r))); % what is the sampling rate ( this is right left tho not left right)
-                odorResponse(3,2)=nanmean(spkevs-prespkevs); % + if elevated, - if depressed
-                odorResponse(3,3)=dprime(spkevs,prespkevs); % want to know if its consistent (normalized effect size)
-                odorResponse(3,4)=signrank(spkevs,prespkevs); % is it significant
+            odorResponse(3,1)=nanmean(spkevs); % what is the sampling rate ( this is right left tho not left right)
+            odorResponse(3,2)=nanmean(spkevs-prespkevs); % + if elevated, - if depressed
+            odorResponse(3,3)=dprime(spkevs,prespkevs); % want to know if its consistent (normalized effect size)
+            odorResponse(3,4)=signrank(spkevs,prespkevs); % is it significant
             % need to tabulate overall responsivity, not just for each
             % individually
         end
         SuperRat(ses).units(i).taskResponsive=taskResponsive;
-        SuperRat(ses).units(i).OdorResponsive=odorResponse;
+        %SuperRat(ses).units(i).OdorResponsive=odorResponse; % this is not
+        %really useful, taskResponsive is better
         SuperRat(ses).units(i).OdorRates=[myspkevs trialmat(:,3)];
         SuperRat(ses).units(i).OdorMeans=rlmeans'; % upload to the struct
         SuperRat(ses).units(i).OdorSelective=Selectivitydata';
@@ -191,6 +204,7 @@ end
 
 %************ DONT HAVE ALL THE REWARD DATA THOUGH ****************
 
+%{
 % this is claires way
 useblocks=false;
 bootct=500;
@@ -275,7 +289,7 @@ for ses=1:length(SuperRat)
     end
     
 end
-
+%}
 %% lets get a list of each cells session and name
 
 SuperUnits=orderfields(SuperRat(1).units);
@@ -293,14 +307,14 @@ for i=2:length(SuperRat)
 end
 
 % and the comparison to claires dataset
-clairedata=load('E:\Claire Data\ClaireObjResults.mat');
+clairedata=load('E:\Brandeis datasets\Claire Data\ClaireObjResults.mat');
 clairedata.names={'CS31','CS33','CS34','CS35','CS39','CS41','CS42','CS44'};
 % so i have to remove all sessions with rat numbers
 %  6 and 7
 
 % okay now need to track down all the cell she thinks code...
 clear ClaireRespCA1;
-
+% first is her cell name, second is mine, 3 is p and 4 is is sig
 for i=1:length(clairedata.npCellsCA1)
     ClaireRespCA1{i,1}=sprintf('%s ses %d tet %d cluster %d',...
         clairedata.names{clairedata.npCellsCA1(i,1)},...
@@ -313,10 +327,9 @@ for i=1:length(clairedata.npCellsCA1)
     if ~isempty(matchind)
         ClaireRespCA1{i,2}=sprintf('%s tet %d unit %d',SuperUnits(matchind).sess,...
             SuperUnits(matchind).tet, SuperUnits(matchind).unitnum);
-        odordata=SuperUnits(matchind).OdorResponsive;
-        [~,useind]=min(odordata(:,4));
-        ClaireRespCA1{i,3}=odordata(useind,:);
-        ClaireRespCA1{i,4}=odordata(useind,4)<.05;
+        odordata=SuperUnits(matchind).taskResponsive;
+        ClaireRespCA1{i,3}=odordata(3);
+        ClaireRespCA1{i,4}=odordata(3)<.05;
         
     elseif clairedata.npCellsCA1(i,1)==6 || clairedata.npCellsCA1(i,1)==7
         ClaireRespCA1{i,2}='didnt analyze session';
@@ -340,10 +353,9 @@ for i=1:length(clairedata.selectiveCA1)
     if ~isempty(matchind)
         ClaireSelCA1{i,2}=sprintf('%s tet %d unit %d',SuperUnits(matchind).sess,...
             SuperUnits(matchind).tet, SuperUnits(matchind).unitnum);
-        odordata=SuperUnits(matchind).OdorResponsive;
-        [~,useind]=min(odordata(:,4));
-        ClaireSelCA1{i,3}=odordata(useind,:);
-        ClaireSelCA1{i,4}=odordata(useind,4)<.05;
+        odordata=SuperUnits(matchind).OdorSelective;
+        ClaireSelCA1{i,3}=odordata(2);
+        ClaireSelCA1{i,4}=odordata(3);
         
     elseif clairedata.selectiveCA1(i,1)==6 || clairedata.selectiveCA1(i,1)==7
         ClaireSelCA1{i,2}='didnt analyze session';
@@ -367,10 +379,9 @@ for i=1:length(clairedata.npCellsPFC)
     if ~isempty(matchind)
         ClaireRespPFC{i,2}=sprintf('%s tet %d unit %d',SuperUnits(matchind).sess,...
             SuperUnits(matchind).tet, SuperUnits(matchind).unitnum);
-        odordata=SuperUnits(matchind).OdorResponsive;
-        [~,useind]=min(odordata(:,4));
-        ClaireRespPFC{i,3}=odordata(useind,:);
-        ClaireRespPFC{i,4}=odordata(useind,4)<.05;
+        odordata=SuperUnits(matchind).taskResponsive;
+        ClaireRespPFC{i,3}=odordata(3);
+        ClaireRespPFC{i,4}=odordata(3)<.05;
         
     elseif clairedata.npCellsPFC(i,1)==6 || clairedata.npCellsPFC(i,1)==7
         ClaireRespPFC{i,2}='didnt analyze session';
@@ -394,10 +405,9 @@ for i=1:length(clairedata.selectivePFC)
     if ~isempty(matchind)
         ClaireSelPFC{i,2}=sprintf('%s tet %d unit %d',SuperUnits(matchind).sess,...
             SuperUnits(matchind).tet, SuperUnits(matchind).unitnum);
-        odordata=SuperUnits(matchind).OdorResponsive;
-        [~,useind]=min(odordata(:,4));
-        ClaireSelPFC{i,3}=odordata(useind,:);
-        ClaireSelPFC{i,4}=odordata(useind,4)<.05;
+        odordata=SuperUnits(matchind).OdorSelective;
+        ClaireSelPFC{i,3}=odordata(2);
+        ClaireSelPFC{i,4}=odordata(3);
         
     elseif clairedata.selectivePFC(i,1)==6 || clairedata.selectivePFC(i,1)==7
         ClaireSelPFC{i,2}='didnt analyze session';
@@ -417,26 +427,25 @@ end
 varTypes=repmat({'double'},1,7);
 responseTable=table('size',[2 7],'VariableTypes',varTypes,'VariableNames',{'allTot','pyrTot','pyrResp','pyrSel','inTot','inResp','inSel'},...
     'RowNames',{'PFC','CA1'});
-
+allcells=cell2mat({SuperRat.units});
 regions={'PFC','CA1'};
-for i=1:length(SuperRat)
-    for j=1:2
-        mycells=SuperRat(i).units(contains({SuperRat(i).units.area},regions{j}));
-        responseTable.allTot(j)=responseTable.allTot(j)+length(mycells);
-        
-        mycells=SuperRat(i).units(contains({SuperRat(i).units.area},regions{j}) &...
-            contains({SuperRat(i).units.type},'pyr'));
-        responseTable.pyrTot(j)=responseTable.pyrTot(j)+length(mycells);
-        responseTable.pyrResp(j)=responseTable.pyrResp(j)+sum(cellfun(@(a) any(a(:,4)<.05), {mycells.OdorResponsive}));
-        responseTable.pyrSel(j)=responseTable.pyrTot(j)+sum(cellfun(@(a) a(4)<.05, {mycells.OdorSelective}));
-        
-        mycells=SuperRat(i).units(contains({SuperRat(i).units.area},regions{j}) &...
-            contains({SuperRat(i).units.type},'in'));
-        responseTable.inTot(j)=responseTable.inTot(j)+length(mycells);
-        responseTable.inResp(j)=responseTable.inResp(j)+sum(cellfun(@(a) any(a(:,4)<.05), {mycells.OdorResponsive}));
-        responseTable.inSel(j)=responseTable.inTot(j)+sum(cellfun(@(a) a(4)<.05, {mycells.OdorSelective}));
-    end
+for i=1:2
+    Pcells=allcells(strcmpi({allcells.area},regions{i}));
+    responseTable.allTot(i)=length(Pcells);
+    Ppyrams=Pcells(strcmpi({Pcells.type},'pyr'));
+    responseTable.pyrTot(i)=length(Ppyrams);
+    responseTable.pyrResp(i)=sum(cellfun(@(a) a(3)<.05, {Ppyrams.taskResponsive}));
+    responseTable.pyrSel(i)=sum(cellfun(@(a) a(2)<.05, {Ppyrams.OdorSelective}));
+
+    Pins=Pcells(cellfun(@(a) contains(a,'in'), {Pcells.type}));
+    responseTable.inTot(i)=length(Pins);
+    responseTable.inResp(i)=sum(cellfun(@(a) a(3)<.05, {Pins.taskResponsive}));
+    responseTable.inSel(i)=sum(cellfun(@(a) a(2)<.05, {Pins.OdorSelective}));
 end
+
+
+%%
+
 
 openvar('responseTable');
 
