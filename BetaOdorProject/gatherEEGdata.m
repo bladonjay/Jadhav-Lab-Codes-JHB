@@ -1,4 +1,4 @@
-%% GatherEEGdata
+%% GatherEEGdata ( the old way, with some analysis)
 
 
 % set region parameters here!!

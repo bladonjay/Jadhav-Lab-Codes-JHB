@@ -84,8 +84,8 @@ betaDir='E:\ClaireData';
 
 edit addTetInfo % get the info from tets (especially for ob tets)
 
-edit gatherEEGdata % pull the eeg data and parse into bands
-edit gatherEEG
+edit gatherEEGdata % pull the eeg data and parse into bands (and verify, old version)
+edit gatherEEG % this is the current stable copy of that function
 
 
 % spike-lfp interactions
@@ -97,6 +97,8 @@ edit ClaireRRAnalysis % same for rr
 
 % lfp only interactions
 edit ClaireCrossCoherence % run cross coherence across bands
+
+edit ClaireLFPspatialPlots
 
 edit ClaireCellCellInteractions
 

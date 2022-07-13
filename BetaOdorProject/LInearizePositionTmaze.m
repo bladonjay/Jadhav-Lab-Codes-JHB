@@ -276,6 +276,9 @@ end
 % one rat... i guess i'll have to figure that out later
 verbose=0;
 
+CoordVarNames={'ts','x','y','originWell','destinationWell','epoch','speed',...
+    'prefTrajDist','prefTrajInd'};
+
 for i=1:length(SuperRat)
     % this will asssign each trajectory based on origin and destination
     trajinds=[3 1; 3 2; 1 3; 2 3];
@@ -319,8 +322,11 @@ for i=1:length(SuperRat)
             set(gcf,'Position',[1000,270,560,1060])
         end
     end
-    
-    SuperRat(i).LinCoords=sortrows(allposplot,1);
+    % lincoords are
+    % {'ts','x','y','originWell','destinationWell','epoch','speed',...
+    %'prefTrajDist','prefTrajInd'}
+    SuperRat(i).LinCoords=array2table(sortrows(allposplot,1),...
+        'VariableNames',CoordVarNames);
 end
 
 

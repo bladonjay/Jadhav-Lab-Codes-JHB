@@ -2,7 +2,7 @@
 
 % adds tetinfo field to all the sessions.
 % the parent directory is just whatever directory has all of
-parentDir='E:\ClaireData';
+parentDir='E:\Brandeis datasets\Claire Data';
 subfolders=dir(parentDir); subfolders(1:2)=[];
 
 % for each rat, pull metadata (name, day, import all epochs)
@@ -14,7 +14,7 @@ for i=1:length(SuperRat)
     tetdata=tetinfoFF.tetinfo{daynum};
     
     % initialize the struct with the first day
-    firstrun=SuperRat(1).RunEpochs(1);
+    firstrun=SuperRat(i).RunEpochs(1);
     tetstruct=cellfun(@(a) a, tetdata{firstrun},'UniformOutput',false);
     for k=2:length(tetstruct)
         tetstruct{k}.tetnum=k;

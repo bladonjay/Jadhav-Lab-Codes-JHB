@@ -22,10 +22,11 @@ for i=1:length(SuperRat)
     
     % first gather a typical route for these animals.
     useinds=ismember(coorddata(:,6),SuperRat(1).RunEpochs');
-    if sum(useinds)>0
+
+    if sum(useinds)>0 && SuperRat(i).longTrack==1
         
-         %if ~isfield(SuperRat(i),'mazeMap') || contains(SuperRat(i).name,'CS39')
-            fprintf('No drawn tracks for this session, draw new ones: \n');
+         if length(SuperRat(i).mazeMap.mytracks)<4
+            fprintf('Not enough drawn tracks for this session, draw new ones: \n');
             fprintf('First do left out, then rigth out, left back right back \n');
             [xpos,ypos,tracks]=outlinemaze2(coorddata(useinds,(1:3)));
             
@@ -62,7 +63,7 @@ for i=1:length(SuperRat)
             end
         %else
         %    mytracks=SuperRat(i).mazeMap.mytracks;
-        %end
+        end
     end
     % now you need to identify runs, this will be based on the trials that are
     % in the data struct.  Basically, you ought to be able to go out from the
@@ -92,7 +93,8 @@ end
 
 
 %The cols are: 1. ts, 2. x, 3. y, 4. origin, 5. destination, 
-% 6. epoch,  7. speed, 8. Ldist, 9. Lind, 10. Rdist, 11. Rind,
+% 6. epoch,  7. speed, 8. Lodist, 9. Loind, 10. Rodist, 11. Roind,
+% 12 Lidist 13 Liind 14 ridist 15 riind
 
 
 
@@ -191,7 +193,7 @@ for i=1:length(SuperRat)
                     
                     % increment
                     thispos=thispos+1;
-                    if thispos>size(thesecoords,1)
+                    if thispos>=size(thesecoords,1)
                         %keyboard % dbcont to make sure we're okay
                         break
                     end
@@ -263,6 +265,10 @@ for i=1:length(SuperRat)
         end
         fprintf('Session %d done in %.2f seconds \n',i,toc);
         SuperRat(i).AllLinCoords=AllLinCoords;
+        SuperRat(i).AllLinCoords=array2table(AllLinCoords,'VariableNames',...
+            {'ts', 'x', 'y', 'origin','destination', 'epoch','speed','Lodist',...
+            'Loind','Rodist', 'Roind','Lidist','Liind','Ridist','Riind'});
+% 12 Lidist 13 Liind 14 ridist 15 riind'}
     else
         fprintf('Session %d was on a short track \n',i);
     end
@@ -270,6 +276,7 @@ end
 %%
 % and epoch each coord
 for ses=1:length(SuperRat)
+    if SuperRat(ses).longTrack==1
     myCoords=SuperRat(ses).AllLinCoords;
     allTracking=SuperRat(ses).tracking.data;
     % this will be the last datapoint until the next epoch starts
@@ -277,23 +284,40 @@ for ses=1:length(SuperRat)
     
     % something like start from 1:break(1), then from 2:end
     % (break(i)+1):break(i+1)
-    myCoords(:,6)=1;
+    myCoords.epoch(:)=1;
     for i=1:length(epochbreaks)-1
-        myCoords(myCoords(:,1)>epochbreaks(i) & myCoords(:,1)<=epochbreaks(i+1),6)=i+1;
+        myCoords.epoch(myCoords.ts>epochbreaks(i) & myCoords.ts<=epochbreaks(i+1))=i+1;
     end
     
     % and normalize all the trajectories
     NumTraj=(size(myCoords,2)-7)/2;
-    for tr=8:2:8+NumTraj
-        [~,~,myCoords(:,tr)]=histcounts(myCoords(:,tr),100); % bin into 100 increments
-        myCoords(myCoords(:,tr)==0,tr)=nan;
+    trajNames=myCoords.Properties.VariableNames;
+    for tr=9:2:7+NumTraj*2
+        
+        [~,~,tempcoords]=histcounts(myCoords.(trajNames{tr}),100); % bin into 100 increments
+        tempcoords(tempcoords==0)=nan;
+        myCoords.(trajNames{tr})=tempcoords;
     end
     
     SuperRat(ses).AllLinCoords=myCoords;
+
+    else
+        SuperRat(ses).AllLinCoords=[];
+    end
 end
+
+
+
+
 %% this is where we distill all the trajectories into the most likely traj
 verbose=0;
+CoordVarNames={'ts','x','y','originWell','destinationWell','epoch','speed',...
+    'prefTrajDist','prefTrajInd'};
+
 for i=1:length(SuperRat)
+    if SuperRat(i).longTrack==1
+    allVarnames=SuperRat(i).AllLinCoords.Properties.VariableNames;
+
     % this will asssign each trajectory based on origin and destination
     trajinds=[3 1; 3 2; 1 3; 2 3];
     
@@ -310,7 +334,8 @@ for i=1:length(SuperRat)
     % also you have to normalize all the trajectories
     for tr=1:4
         % first gather the four trajectories by nanning out all the other data
-        temptraj=SuperRat(i).AllLinCoords;
+
+        temptraj=table2array(SuperRat(i).AllLinCoords);
         % filter based on speed % we'll do 3... but we need
         temptraj(temptraj(:,7)<3,:)=[];
         
@@ -337,7 +362,12 @@ for i=1:length(SuperRat)
         end
     end
     
-    SuperRat(i).LinCoords=sortrows(allposplot,1);
+
+    SuperRat(i).LinCoords=array2table(sortrows(allposplot,1),...
+        'VariableNames',CoordVarNames);
+    else
+        SuperRat(i).LinCoords=[];
+    end
 end
 %%
         

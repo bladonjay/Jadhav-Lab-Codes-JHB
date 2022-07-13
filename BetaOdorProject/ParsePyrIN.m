@@ -8,6 +8,10 @@
 %% this generates the ac and calculates the stats off that
 % this adds the short ISI's for 1 and 2 msec, it adds the numspikes, the
 % mean rate, the burst probability, the burst index, and the theta index
+
+
+% dont use this code, its over the top...
+%{
 verbose=0;
 
 for ses = 1:length(SuperRat)
@@ -94,7 +98,7 @@ for ses = 1:length(SuperRat)
     end
     fprintf('Session %d done in %.2f seconds \n',ses,toc);
 end
-
+%}
 
 %% now plot them to get a good impression of pyr vs IN
 for ses=1:length(SuperRat)
