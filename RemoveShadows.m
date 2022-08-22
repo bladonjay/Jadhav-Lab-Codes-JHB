@@ -45,7 +45,7 @@ imshow(wnr1)
 title('Restored Blurred Image')
 %{
 
-% this doesnt realyl work, its fine for greyscale though
+% this doesnt really work, its fine for greyscale though
 shadow_lab = rgb2lab(testframe);
 max_luminosity = 100;
 L = shadow_lab(:,:,1)/max_luminosity;
@@ -101,7 +101,7 @@ h = waitbar(0,sprintf('Starting %s Please wait... (%02.0f%%)',b,0));
 
 updateintv = max(floor(vid.NumFrames/100),1);
 
-
+%%
 % go frame by frame
 for ii = 1:vid.NumFrames
     % Read the frame
@@ -127,7 +127,7 @@ end
 close(ovid);
 close(h);
 end
-
+%%
 
 
 myim=gpuArray(frame);

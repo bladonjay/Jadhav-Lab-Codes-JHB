@@ -20,6 +20,9 @@ MountainSort
 
 3. extract position data from videos via DeepLabCut
     DeepLabCut can be run from matlab scripting but i need to build it...
+this converts fileformats without compression:
+
+ffmpegtranscode(varargin)
 
 4. extract event data from the DIO's or the statescript ledger using
 probably custom code
