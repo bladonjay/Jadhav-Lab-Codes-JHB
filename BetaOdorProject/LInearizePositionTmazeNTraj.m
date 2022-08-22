@@ -16,29 +16,30 @@ track that the animal is most often closest to.
 
 for i=1:length(SuperRat)
     tic
-    coorddata=SuperRat(i).tracking.data;
-    % these coord data come in as ts, x, y, dir?, smoothed vel (not
-    % really), and epoch
-    
-    % first gather a typical route for these animals.
-    useinds=ismember(coorddata(:,6),SuperRat(1).RunEpochs');
+    if length(SuperRat(i).mazeMap.mytracks)<4
+        coorddata=SuperRat(i).tracking.data;
+        % these coord data come in as ts, x, y, dir?, smoothed vel (not
+        % really), and epoch
 
-    if sum(useinds)>0 && SuperRat(i).longTrack==1
-        
-         if length(SuperRat(i).mazeMap.mytracks)<4
+        % first gather only the used epochs
+        useinds=ismember(coorddata(:,6),SuperRat(1).RunEpochs');
+
+        if sum(useinds)>0
+
+
             fprintf('Not enough drawn tracks for this session, draw new ones: \n');
             fprintf('First do left out, then rigth out, left back right back \n');
             [xpos,ypos,tracks]=outlinemaze2(coorddata(useinds,(1:3)));
-            
+
             % now generate a reasonable number of continuous points that will grab
             % these trajectories
-            
+
             % first round these data to a decent number
             % empricially, we can probably use really small bins, and then when we get
             % linpos we can expand it by smoothing across tiny bins, and then taking
             % larger bins.
             % first generate a grid of positions to snap to
-            
+
             % now interpolate the tracks and scale up
             mytracks=cell(length(unique(tracks)),1);
             for tk=1:length(unique(tracks))
@@ -57,34 +58,34 @@ for i=1:length(SuperRat)
                 % now convolve with the gaussian kernel that has a mean of say two bins
                 mytracks{tk}(:,1)=SmoothMat2(mytracks{tk}(:,1),[0 25],5);
                 mytracks{tk}(:,2)=SmoothMat2(mytracks{tk}(:,2),[0 25],5);
-                
+
                 % and finally bring back to normal coordinates
                 mytracks{tk}=mytracks{tk}/10;
             end
-        %else
-        %    mytracks=SuperRat(i).mazeMap.mytracks;
+
         end
+        % now you need to identify runs, this will be based on the trials that are
+        % in the data struct.  Basically, you ought to be able to go out from the
+        % odor ends and project out till the next odor start
+
+        % so to start, lets grab the first coord that puts the animal in the home
+        % well.  This will be the first coord whose radius from the home well pixel
+        % is within say 10% of the total x and y distance of the maze
+        try alltracks=cell2mat(mytracks); catch alltracks=cell2mat(mytracks'); end
+        homewell.center=nanmean([mytracks{1}(1,:); mytracks{2}(1,:)],1); % take the mean of the two starts
+        % take the point that is the farthest from the home well, and then go
+        % to 5% of that distance
+        homewell.radius=max(hypot(alltracks(:,1),alltracks(:,2)))*.05; % the radius is designated here *********
+        sidewells.center=[mytracks{1}(end,:); mytracks{2}(end,:)];
+        sidewells.radius=homewell.radius;
+
+        SuperRat(i).mazeMap.homewell=homewell;
+        SuperRat(i).mazeMap.sidewells=sidewells;
+        SuperRat(i).mazeMap.mytracks=mytracks;
+        SuperRat(i).mazeMap.notes='Used trajectories to map these positions out, you may want to redo this';
+        fprintf('Linearized Coords for Session %d %s day %d in %.2f minutes \n', i,SuperRat(i).name, SuperRat(i).daynum, toc/60);
+
     end
-    % now you need to identify runs, this will be based on the trials that are
-    % in the data struct.  Basically, you ought to be able to go out from the
-    % odor ends and project out till the next odor start
-    
-    % so to start, lets grab the first coord that puts the animal in the home
-    % well.  This will be the first coord whose radius from the home well pixel
-    % is within say 10% of the total x and y distance of the maze
-    try alltracks=cell2mat(mytracks); catch alltracks=cell2mat(mytracks'); end 
-    homewell.center=nanmean([mytracks{1}(1,:); mytracks{2}(1,:)],1); % take the mean of the two starts
-    % take the point that is the farthest from the home well, and then go
-    % to 5% of that distance
-    homewell.radius=max(hypot(alltracks(:,1),alltracks(:,2)))*.05; % the radius is designated here *********
-    sidewells.center=[mytracks{1}(end,:); mytracks{2}(end,:)];
-    sidewells.radius=homewell.radius;
-    
-    SuperRat(i).mazeMap.homewell=homewell;
-    SuperRat(i).mazeMap.sidewells=sidewells;
-    SuperRat(i).mazeMap.mytracks=mytracks;
-    SuperRat(i).mazeMap.notes='Used trajectories to map these positions out, you may want to redo this';
-    fprintf('Linearized Coords for Session %d %s day %d in %.2f minutes \n', i,SuperRat(i).name, SuperRat(i).daynum, toc/60);
 end
 %%
 % now go until you have a radius small enough to start this is
@@ -106,6 +107,10 @@ for i=1:length(SuperRat)
         homewell=SuperRat(i).mazeMap.homewell;
         sidewells=SuperRat(i).mazeMap.sidewells;
         mytracks=SuperRat(i).mazeMap.mytracks;
+        if SuperRat(i).longTrack==0
+            homewell.radius=homewell.radius*3;
+            sidewells.radius=homewell.radius;
+        end
         for epoch=1:length(SuperRat(i).RunEpochs)
             % start with the behavior epochs
             thesecoords=coorddata(coorddata(:,6)==SuperRat(i).RunEpochs(epoch),:);

@@ -216,6 +216,10 @@ end
 % trials with high spike counts will be weighted equally to those with
 % few...
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%% IF THIS IS EXACTLY CLAIRES PLOT I NEED TO REVISE IT %%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 
 % Here I correct for edge effects.... by taking a trialwise correlation
 tbin=.005;
@@ -224,28 +228,33 @@ corrspan=.25;
 span=-corrspan:tbin:corrspan;
 celltypes={'pyr','in'};
 regions={'PFC','CA1'};
-
+pcrit=.05;
 plotIT=0;
 
-corrTable=table('Size',[length(SuperRat),4],'VariableNames',varNames,'VariableTypes',repmat({'cell'},1,4));
 pairIndex=[1 1; 1 2; 2 1; 2 2]; varNames=[];
 for i=1:length(pairIndex); varNames{i}=[celltypes{pairIndex(i,1)} '-' celltypes{pairIndex(i,2)}]; end
+corrTable=table('Size',[length(SuperRat),4],'VariableNames',varNames,'VariableTypes',repmat({'cell'},1,4));
+
+
 for i=1:length(SuperRat)
     sessclock=tic;
     % save this out for each rat
     
 
     odorTimes=[SuperRat(i).trialdata.sniffstart SuperRat(i).trialdata.sniffend];
-    odorTimes(diff(odorTimes,1,2)>2.5 | diff(odorTimes,1,2)<.5,:)=[]; % from 0.5 to 2 second samples
+    oktrials=diff(odorTimes,1,2)>2 | diff(odorTimes,1,2)<.5 & SuperRat(i).trialdata.CorrIncorr10==1;
+    odorTimes(~oktrials,:)=[]; % from 0.5 to 2 second samples
     % start with pyr-pyr and PFC is first region (as in regions
     for pr=1:length(varNames) % for each pairing
         PFCunits=find(cellfun(@(a) contains(a,regions{1}), {SuperRat(i).units.area}) & ...
             cellfun(@(a) contains(a,celltypes{pairIndex(pr,1)}), {SuperRat(i).units.type}) & ...
-            cellfun(@(a) any(a(:,4)), {SuperRat(i).units.OdorResponsive}));
+            [SuperRat(i).units.activeCell] & ...
+            cellfun(@(a) a(3)<=pcrit, {SuperRat(i).units.taskResponsive}));
         
         CA1units=find(cellfun(@(a) contains(a,regions{2}), {SuperRat(i).units.area}) & ...
             cellfun(@(a) contains(a,celltypes{pairIndex(pr,2)}), {SuperRat(i).units.type}) & ...
-            cellfun(@(a) any(a(:,4)), {SuperRat(i).units.OdorResponsive}));
+             [SuperRat(i).units.activeCell] & ...
+            cellfun(@(a) a(3)>=pcrit, {SuperRat(i).units.taskResponsive}));
         % corrmat will be big, it'll be a 3d, with i pfc cells by j HPC cells by k corrvals 
         odorMatrix=nan(length(PFCunits),length(CA1units),length(span)); % -25:25 bins
         
@@ -262,34 +271,36 @@ for i=1:length(SuperRat)
                 [Cspikes,~,~,~,~,Cspk]=event_spikes(SuperRat(i).units(CA1units(k)).ts, odorTimes(:,1),0,odorTimes(:,2)-odorTimes(:,1));
                 
                 activetrials=cellfun(@(a,b) ~isempty(a) & ~isempty(b), Pspk, Cspk);
-                Pvec=cellfun(@(a) SmoothMat2(accumarray(ceil(a/tbin),1),[1,gauss/tbin*10],[1,gauss/tbin]),...
-                    Pspk(activetrials), 'UniformOutput', false);
-                Cvec=cellfun(@(a) SmoothMat2(accumarray(ceil(a/tbin),1),[1,gauss/tbin*10],[1,gauss/tbin]),...
-                    Cspk(activetrials), 'UniformOutput', false);
-                %Cvec=SmoothMat2(accumarray(round(Cspikes/tbin),1),[gauss/tbin*10,1],[gauss/tbin,1]);
-                %Cvecnull=SmoothMat2(accumarray(round(CA1units(k).ts(:,1)/tbin),1),[gauss/tbin*10,1],[gauss/tbin,1]);
-                
-                % i think for trialdata i may want to do this as square
-                % matrices... lets see if we can do that
-                % trials ^2
-                it=1;
-                trCorr=[];
-                for xt=1:length(Pvec)
-                    trCorr(it,:)=xcorr(Pvec{xt},Cvec{xt},corrspan/tbin);
-                    it=it+1;
-                end
-                % whats the null?
-                % null is boot circshift same trials
-                
-                %corrMatrix(j,k,:)=xcorr(Pvec,Cvec,corrspan/tbin);
-                odorMatrix(j,k,:)=mean(zscore(trCorr,[],2),1,'omitnan');
-                
-                if plotIT==1
-                    subplot(length(PFCunits),length(CA1units),it);
-                    plot(span,odorMatrix(j,k,:)); yyaxis right;
-                    myxcorr=xcorr(Pvecnull,Cvecnull,corrspan/tbin);
-                    plot(span,myxcorr);
-                    it=it+1;
+                if sum(activetrials)>3
+                    Pvec=cellfun(@(a) SmoothMat2(accumarray(ceil(a/tbin),1),[1,gauss/tbin*10],[1,gauss/tbin]),...
+                        Pspk(activetrials), 'UniformOutput', false);
+                    Cvec=cellfun(@(a) SmoothMat2(accumarray(ceil(a/tbin),1),[1,gauss/tbin*10],[1,gauss/tbin]),...
+                        Cspk(activetrials), 'UniformOutput', false);
+                    %Cvec=SmoothMat2(accumarray(round(Cspikes/tbin),1),[gauss/tbin*10,1],[gauss/tbin,1]);
+                    %Cvecnull=SmoothMat2(accumarray(round(CA1units(k).ts(:,1)/tbin),1),[gauss/tbin*10,1],[gauss/tbin,1]);
+
+                    % i think for trialdata i may want to do this as square
+                    % matrices... lets see if we can do that
+                    % trials ^2
+                    it=1;
+                    trCorr=[];
+                    for xt=1:length(Pvec)
+                        trCorr(it,:)=xcorr(Pvec{xt},Cvec{xt},corrspan/tbin);
+                        it=it+1;
+                    end
+                    % whats the null?
+                    % null is boot circshift same trials
+
+                    %corrMatrix(j,k,:)=xcorr(Pvec,Cvec,corrspan/tbin);
+                    odorMatrix(j,k,:)=mean(zscore(trCorr,[],2),1,'omitnan');
+
+                    if plotIT==1
+                        subplot(length(PFCunits),length(CA1units),it);
+                        plot(span,odorMatrix(j,k,:)); yyaxis right;
+                        myxcorr=xcorr(Pvecnull,Cvecnull,corrspan/tbin);
+                        plot(span,myxcorr);
+                        it=it+1;
+                    end
                 end
             end
         end
@@ -404,10 +415,10 @@ for i=1:length(SuperRat)
     
     % start with pyr-pyr and PFC is first region (as in regions
     PFCunits=find(cellfun(@(a) contains(a,regions{1}), {SuperRat(i).units.area}) & ...
-        cellfun(@(a) any(a(:,4)<.05), {SuperRat(i).units.OdorResponsive}));
+        cellfun(@(a) a(3)<.05, {SuperRat(i).units.taskResponsive}));
     
     CA1units=find(cellfun(@(a) contains(a,regions{2}), {SuperRat(i).units.area}) & ...
-        cellfun(@(a) any(a(:,4)<.05), {SuperRat(i).units.OdorResponsive}));
+        cellfun(@(a) a(3)<.05, {SuperRat(i).units.taskResponsive}));
     
     for q=[PFCunits CA1units]
         SuperRat(i).units(q).partners=[];
@@ -614,7 +625,7 @@ for reg=1:length(regions)
     
     for i=1:length(SuperRat)
         theseUnits=find(cellfun(@(a) contains(a,regions{reg}), {SuperRat(i).units.area}) & ...
-            cellfun(@(a) any(a(:,4)<.05), {SuperRat(i).units.OdorResponsive})); % &...
+            cellfun(@(a) a(3)<.05, {SuperRat(i).units.taskResponsive})); % &...
             %cellfun(@(a) contains(a,celltype{ct}), {SuperRat(i).units.type}));
         if ~isempty(theseUnits)
         % gather n partners,
@@ -641,8 +652,8 @@ for reg=1:length(regions)
     betaP=cellfun(@(a) a(reg)<.05, {megarat.betaRstat});
     respMVL=cellfun(@(a) a(reg), {megarat.respMVL});
     respP=cellfun(@(a) a(reg)<.05, {megarat.respRstat});
-    mySel=cellfun(@(a) a(2), {megarat.OdorSelective});
-    isSel=cellfun(@(a) a(4)<.05, {megarat.OdorSelective});
+    mySel=cellfun(@(a) a.score(1), {megarat.OdorSelective});
+    isSel=cellfun(@(a) a.pval(1)<.05, {megarat.OdorSelective});
     
 
     figure(hf1);
@@ -816,10 +827,10 @@ for i=1:length(SuperRat)
        
     % start with all cells and PFC is first region (as in regions)
     PFCunits=find(cellfun(@(a) contains(a,regions{1}), {SuperRat(i).units.area}) & ...
-        cellfun(@(a) any(a(:,4)<.05), {SuperRat(i).units.OdorResponsive}));
+        cellfun(@(a) a(3)<.05, {SuperRat(i).units.taskResponsive}));
     
     CA1units=find(cellfun(@(a) contains(a,regions{2}), {SuperRat(i).units.area}) & ...
-        cellfun(@(a) any(a(:,4)<.05), {SuperRat(i).units.OdorResponsive}));
+        cellfun(@(a) a(3)<.05, {SuperRat(i).units.taskResponsive}));
     
     
     
@@ -1271,10 +1282,10 @@ for i=1:length(SuperRat)
        
     % start with all cells and PFC is first region (as in regions)
     PFCunits=find(cellfun(@(a) contains(a,regions{1}), {SuperRat(i).units.area}) & ...
-        cellfun(@(a) any(a(:,4)<.05), {SuperRat(i).units.OdorResponsive}));
+        cellfun(@(a) a(3)<.05, {SuperRat(i).units.taskResponsive}));
     
     CA1units=find(cellfun(@(a) contains(a,regions{2}), {SuperRat(i).units.area}) & ...
-        cellfun(@(a) any(a(:,4)<.05), {SuperRat(i).units.OdorResponsive}));
+        cellfun(@(a) a(3)<.05, {SuperRat(i).units.taskResponsive}));
     
     % all trials, not c vs i yet
     odorTimes=[SuperRat(i).trialdata.sniffstart SuperRat(i).trialdata.sniffend];
@@ -1325,39 +1336,32 @@ for i=1:length(SuperRat)
                 % for boot, remake the trialwise by adding starttimes to
                 % Pspk
                 bootCorr=nan(nboots,length(span));
-                %mixup=(rand(length(Pspikes),nboots)-.5)*.1; % center around zero, span 100 msec
-                %Pmix=mixup+Pspikes;
                 
                 for bt=1:nboots
                     % add or subtract up to 50 msec to each spike
                     Pmix=cellfun(@(a) a+(rand(length(a),1)-.5)*.1, Pspk,'UniformOutput',false);
                     spikediffs=cell2mat(cellfun(@(a,b) linearize(a-b'),Pmix,Cspk,'UniformOutput',false)'); 
-                    %{
-                    trCorrBt=[]; Pmix={};
-                    for tr=1:length(Pspk)
-                        %Pmix{tr}=mixup{tr}+Ctrials(tr,1);
-                        jitter=rand(length(Pspk{tr}),1)*.05;
-                        Pmix{tr}=Pspk{tr}+jitter+Ctrials(tr,1);
-                    end
-                    % again, if small negative, PFC leads
-                   
-                    spikediffs=cell2mat(Pmix')-Cspikes';
-                    %}
                     for td=1:length(span)
                         bootCorr(bt,td)=sum(abs(spikediffs-span(td))<=tbin/2);
                     end
                 end
                               
                 mu=mean(bootCorr,1,'omitnan'); sig=std(bootCorr,1,'omitnan');
-                %bootZ=(trCorr-mu)./sig;
-                bootZ=mean(trCorr>bootCorr);
-                %{  
-                figure; subplot(2,1,1);
-                plot(span,trCorr); hold on;                
-                patch([span fliplr(span)], [mu+sig*2 fliplr(mu-sig*2)],[.7 .7 .7],'LineStyle','none','FaceAlpha',.3);
-                subplot(2,1,2); plot(span,bootZ);   
-                %}
-                normcurve=rescale(trCorr);                
+                bootZ=(trCorr-mu)./sig;
+                %bootZ=mean(trCorr>bootCorr);
+                normcurve=rescale(trCorr); 
+                
+                if max(bootZ)>3
+                    figure; subplot(3,1,1);
+                    plot(span,trCorr); hold on;
+                    patch([span fliplr(span)], [mu+sig*2 fliplr(mu-sig*2)],[.7 .7 .7],'LineStyle','none','FaceAlpha',.3);
+                    subplot(3,1,2); plot(span,bootZ);
+                    subplot(3,1,3);
+                    [pxx,f] = pwelch(normcurve,round(.4/tbin),round(.3/tbin),5:.5:50,1/tbin,'Power');
+                    plot(f,pxx); xlabel('freq'); ylabel('pwr');
+                    keyboard;
+                end
+                               
                 corrMatrix(j,k,:)=bootZ;
                 rawMatrix(j,k,:)=normcurve;
                 [corrStats(j,k,1),peakind]=max(bootZ); corrStats(j,k,2)=span(peakind);

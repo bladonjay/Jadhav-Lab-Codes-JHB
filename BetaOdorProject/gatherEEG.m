@@ -1,7 +1,26 @@
 %% GatherEEGdata (just gather the data, no analysis, newer)
 
 
+
+
+%
+%
+%
+%
+%
+%***** MAKE SURE THIS WORKS FOR THIS COMPUTER
 eegDir='I:\BrandeisData\SymanskiData';
+eegOut='E:\Brandeis datasets\Claire Data';
+%
+%
+%
+%
+%
+
+
+
+
+
 
 
 % set region parameters here!!
@@ -39,7 +58,9 @@ for i=1:length(SuperRat)
             oktets=SuperRat(i).tetinfo(cellfun(@(a) ~isempty(a), {SuperRat(i).tetinfo.area}));
             LFPtet=oktets(find(contains({oktets.area},regions{j}),1,'first')).tetnum;
         end
-        if isempty(LFPtet) || SuperRat(i).longTrack==0
+        if isempty(LFPtet) || isfile([SuperRat(i).([regions{j} 'eegFile']) '.mat'])
+            fprintf('skipping %s session %d in %s \n', SuperRat(i).name,...
+                SuperRat(i).daynum,regions{j})
             continue;
         end
         
@@ -63,41 +84,56 @@ for i=1:length(SuperRat)
         mytet=sprintf('%02d.mat',LFPtet);
         tetfiles=contains({allLFPfiles.name},mytet);
         loadfiles=allLFPfiles(todayfiles & tetfiles);
+        [~,ia]=unique({loadfiles.name});
+        loadfiles=loadfiles(ia);
         % sort the files in ascending order
         [~,index] = sortrows({loadfiles.name}.'); loadfiles = loadfiles(index); clear index
-        respcont=[]; betacont=[]; ripplecont=[];
+        respcontinuous=[]; betacontinuous=[]; ripplecontinuous=[]; rawcontinuous=[];
         clear lfpData
-        for k=1:length(loadfiles)
-            lfpBit=load(fullfile(loadfiles(k).folder,loadfiles(k).name));
-            tempstruct=lfpBit.eeg{SuperRat(i).daynum}{k}{LFPtet};
-            tempstruct.filename=loadfiles(k).name;
-            lfpData(k)=tempstruct;
-            if tempstruct.data_voltage_inverted==1
-                tempstruct.data=tempstruct.data.*-1;
-                tempstruct.data_voltage_inverted=0;
-            end
-            % now filter those data!
-            respfiltered=filtereeg2(tempstruct,respfilter);
-            betafiltered=filtereeg2(tempstruct,betafilter);
-            ripplefiltered=filtereeg2(tempstruct,ripplefilter);
-            % generate continuous data (ts, amp, instaphase, envelope)
-            respcont=[respcont; (tempstruct.starttime:(1/tempstruct.samprate):tempstruct.endtime)' double(respfiltered.data)];
-            betacont=[betacont; (tempstruct.starttime:(1/tempstruct.samprate):tempstruct.endtime)' double(betafiltered.data)];
-            ripplecont=[ripplecont; (tempstruct.starttime:(1/tempstruct.samprate):tempstruct.endtime)' double(ripplefiltered.data)];
-        end
-        
-        clear tempstruct;
-        
-        
-        % save struct out
-        SuperRat(i).([regions{j} lfpdir])=lfpData;
-        % save continuous phase data out
-        SuperRat(i).([regions{j} 'resp'])=sortrows(respcont,1); % sort epochs by time!
-        SuperRat(i).([regions{j} 'beta'])=sortrows(betacont,1); % sort epochs by time!
-        SuperRat(i).([regions{j} 'ripple'])=sortrows(betacont,1); % sort epochs by time!
+        if ~isempty(loadfiles)
+            
+            for k=1:length(loadfiles)
+                lfpBit=load(fullfile(loadfiles(k).folder,loadfiles(k).name));
+                tempstruct=lfpBit.eeg{SuperRat(i).daynum}{k}{LFPtet};
+                tempstruct.filename=loadfiles(k).name;
+                lfpData(k)=tempstruct;
+                if tempstruct.data_voltage_inverted==1
+                    tempstruct.data=tempstruct.data.*-1;
+                    tempstruct.data_voltage_inverted=0;
+                end
+                % now filter those data!
+                respfiltered=filtereeg2(tempstruct,respfilter);
+                betafiltered=filtereeg2(tempstruct,betafilter);
+                ripplefiltered=filtereeg2(tempstruct,ripplefilter);
 
+                % generate continuous data (ts, filtered, instaphase, envelope)
+                rawcontinuous=[rawcontinuous; (tempstruct.starttime:(1/tempstruct.samprate):tempstruct.endtime)' tempstruct.data];
+                respcontinuous=[respcontinuous; (tempstruct.starttime:(1/tempstruct.samprate):tempstruct.endtime)' double(respfiltered.data)];
+                betacontinuous=[betacontinuous; (tempstruct.starttime:(1/tempstruct.samprate):tempstruct.endtime)' double(betafiltered.data)];
+                ripplecontinuous=[ripplecontinuous; (tempstruct.starttime:(1/tempstruct.samprate):tempstruct.endtime)' double(ripplefiltered.data)];
+            end
+
+            % this will have all the eeg data, so we dont have to load it,
+            % we'll save each file with the LFPraw, resp, beta, and ripple
+            % and we will just rewrite the file to add more variables
+            clear tempstruct;
+
+            
+
+            % save struct out
+            eegName=fullfile(eegOut,sprintf('%sExpt',SuperRat(i).name),'EEG',...
+                sprintf('%sday%d%seegdata',SuperRat(i).name,SuperRat(i).daynum,regions{j}));
+            save(eegName,'rawcontinuous','respcontinuous','betacontinuous','ripplecontinuous','respfilter',...
+                'betafilter','ripplefilter');
+            SuperRat(i).(sprintf('%seegFile',regions{j}))=eegName;
+            % save continuous phase data out(its huge so we put it elsewhere
+            % and save the filename
+        else
+            fprintf('No LFP files for %s session %d in %s \n', SuperRat(i).name,...
+                SuperRat(i).daynum,regions{j})
+        end
 
     end
-    fprintf('session number %d, animal %s day %d done\n',i,SuperRat(i).name,SuperRat(i).daynum);
+    fprintf('Session number %d, animal %s day %d done\n',i,SuperRat(i).name,SuperRat(i).daynum);
     
 end

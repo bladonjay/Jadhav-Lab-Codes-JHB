@@ -5,7 +5,7 @@
 
 
 %load('F:\Claire Data\ClaireData20220201.mat')
-load('E:\Brandeis datasets\Claire Data\SuperRat_Symanski_2022-05-24.mat')
+load('E:\Brandeis datasets\Claire Data\ClaireData-2022-08-02.mat')
 
 %% or to rebuild the dataset from scratch
 edit ClaireDataAggregator
@@ -84,21 +84,22 @@ betaDir='E:\ClaireData';
 
 edit addTetInfo % get the info from tets (especially for ob tets)
 
-edit gatherEEGdata % pull the eeg data and parse into bands (and verify, old version)
+%edit gatherEEGdata % pull the eeg data and parse into bands (and verify, old version)
 edit gatherEEG % this is the current stable copy of that function
 
+edit ClaireLFPspatialPlots
 
 % spike-lfp interactions
 edit ClaireBetaAnalysis % get spike-band coherence
 % rr analysis just has the same as beta but for rr
 
-% rr is defunct now, all beta and rr control analysis is n beta above
-edit ClaireRRAnalysis % same for rr
+% rr is defunct now, all beta and rr control analysis is in beta above
+% edit ClaireRRAnalysis % same for rr
 
 % lfp only interactions
 edit ClaireCrossCoherence % run cross coherence across bands
 
-edit ClaireLFPspatialPlots
+
 
 edit ClaireCellCellInteractions
 

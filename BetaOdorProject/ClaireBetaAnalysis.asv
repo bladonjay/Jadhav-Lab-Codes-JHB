@@ -405,7 +405,7 @@ bary=[mean(cellTable.betaCoh(cellTable.isCA1==1 & cellTable.isPYR==1));...
     mean(cellTable.betaCoh(cellTable.isPFC==1 & cellTable.isPYR==1))];
 
 
-subplot(2,3,4);
+subplot(2,3,2);
 bar([.9 1.1 1.4 1.6 2.4 2.6 2.9 3.1],bary');
 set(gca,'XTick',[]), xlabel('CA1                    PFC');
 ylabel(sprintf('Percentage of Task- \nResponsive Pyramidal Cells'))
@@ -433,7 +433,7 @@ bary=[mean(cellTable.respCoh(cellTable.isCA1==1 & cellTable.isPYR==1));...
     mean(cellTable.respCoh(cellTable.isPFC==1 & cellTable.isPYR==1))];
 
 
-subplot(2,3,5);
+subplot(2,3,3);
 bar([.9 1.1 1.4 1.6 2.4 2.6 2.9 3.1],bary');
 set(gca,'XTick',[]), xlabel('CA1                    PFC');
 ylabel(sprintf('Percentage of Task- \nResponsive Pyramidal Cells'))
@@ -464,7 +464,7 @@ bary=[mean(cellTable.respCoh(cellTable.isCA1==1 & cellTable.isPYR==0));...
     mean(cellTable.respCoh(cellTable.isPFC==1 & cellTable.isPYR==0))];
 
 
-subplot(2,3,6);
+subplot(2,3,4);
 bar([.9 1.1 1.4 1.6 2.4 2.6 2.9 3.1],bary');
 set(gca,'XTick',[]), xlabel('CA1                    PFC');
 ylabel(sprintf('Percentage of Task- \nResponsive Interneurons'))

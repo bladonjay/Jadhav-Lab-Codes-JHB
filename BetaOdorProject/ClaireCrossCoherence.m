@@ -69,10 +69,12 @@ params=struct('tapers',[3 5],'fs',1500,'pad',1,'Fpass',[2 40]);
 % the tet with the most odor responsive units or the tet with the highest
 % beta to gamma power (15-30) hz to 30-45 hz ratio
 %% lets see if we can get some beta to gamma ratios in tetrodes
+
 % if there is a good spread, i'll try to relate that to place fields and
 % odor fields
 % per igarashi et al extended data figure 5
 
+% this doesnt really work, mostly because some animals dont have good beta
 
 for i=1:length(SuperRat)
     tic
@@ -149,48 +151,63 @@ histogram(cell2mat(allbetagamma2),0:.5:6);
 
 
 %% overall coherence comparing correct and incorrect trials
-
+rstream = RandStream('dsfmt19937','Seed',16);
+RandStream.setGlobalStream(rstream);
 % currently using tetrode with highest beta to gamma power in HPC
 
 regions={'PFC','CA1','OB'};
 colors=[rgbcolormap('DarkAquamarine'); rgbcolormap('LightCoral'); rgbcolormap('DarkOrange')];
-rhythmcolors=[rgbcolormap('DeepPink'); rgbcolormap('navy')];
+rhythmcolors=[rgbcolormap('navy'); rgbcolormap('DeepPink') ]; % beta is blue
 combocolors=[rgbcolormap('DarkMagenta'); rgbcolormap('Chocolate'); rgbcolormap('SpringGreen')];
 
 orders=[1 2; 1 3; 2 3];
 
 
 params=struct('tapers',[3 5],'Fs',1500,'pad',1,'fpass',[0 60]);
-mindur=.75; plotIT=0;
+maxdur=2; plotIT=0;
 
-Cperf=repmat({nan(length(SuperRat),164)},3,1); CperfX=Cperf;
-Sperf=Cperf; SperfX=Cperf;
+
+mindur=.5;
+Cperf=repmat({nan(1,82)},3,1); CperfX=Cperf;
+
+
+Sperf=Cperf; SperfX=Cperf; C12Corr={}; C12Inc={};
 
 % want to do this separately for each trial I think
 for i=1:length(SuperRat)
+    % first load up the eegfiles
+    EEGdata{1}=load(SuperRat(i).PFCeegFile);
+    EEGdata{2}=load(SuperRat(i).CA1eegFile);
+    EEGdata{3}=load(SuperRat(i).OBeegFile);
+
     tic
     for j=1:3
         try
-            eegTime=SuperRat(i).PFCbeta(:,1);
-            
-            S1eeg=zscore(cell2mat({SuperRat(i).([regions{orders(j,1)} 'EEG']).data}'));
-            S2eeg=zscore(cell2mat({SuperRat(i).([regions{orders(j,2)} 'EEG']).data}'));
+            eegTime=EEGdata{1}.rawcontinuous(:,1);
+            % for contdata, time, filt, phase, amp
+            S1eeg=zscore(EEGdata{orders(j,1)}.rawcontinuous(:,2));
+            S2eeg=zscore(EEGdata{orders(j,2)}.rawcontinuous(:,2));
 
-        % now get our trial blocks
-        odorTimes=[SuperRat(i).trialdata.sniffstart SuperRat(i).trialdata.sniffend];
-        trialCorrect=SuperRat(i).trialdata.CorrIncorr10;
-        odorTimes=odorTimes(diff(odorTimes')>mindur,:);
-        trialCorrect=trialCorrect(diff(odorTimes')>mindur);
-        % go back from odor end
-        odorTimes(:,1)=odorTimes(:,2)-mindur;
-        
-        C=[];S1=[]; S2=[];
-        for k=1:length(odorTimes)
-            okinds=eegTime>=odorTimes(k,1) & eegTime<=odorTimes(k,2);
-            [C(k,:),~,~,S1(k,:),S2(k,:),f]=coherencyc(S1eeg(okinds),S2eeg(okinds),params);
 
-        end
-        %{
+            % now get our trial blocks
+            odorTimes=[SuperRat(i).trialdata.sniffstart SuperRat(i).trialdata.sniffend];
+            trialCorrect=SuperRat(i).trialdata.CorrIncorr10;
+            oktrials=diff(odorTimes')>mindur & diff(odorTimes')<maxdur;
+
+            odorTimes=odorTimes(oktrials,:);
+            trialCorrect=trialCorrect(oktrials);
+            % go back from odor end
+            odorTimes(:,1)=odorTimes(:,2)-mindur; % go back from odor exit
+
+            C=[];S1=[]; S2=[]; S12=[];
+            for k=1:length(odorTimes)
+                okinds=eegTime>=odorTimes(k,1) & eegTime<=odorTimes(k,2);
+                [C(k,:),~,S12(k,:),S1(k,:),S2(k,:),f]=coherencyc(S1eeg(okinds),S2eeg(okinds),params);
+                % and i think wpli is just on the cross spectrum...
+            end
+            %{
+
+
         if plotIT % defunct as of now
             figure; subplot(1,3,1);
             errorbar(f,nanmean(C12(trialCorrect==1,:)),SEM(C12(trialCorrect==1,:),1));
@@ -209,24 +226,38 @@ for i=1:length(SuperRat)
             title(sprintf('PFC-OB coherence Session %d from %s',SuperRat(i).daynum,SuperRat(i).name));
             drawnow;
         end
-        %}
-        % downsample here:
-        minct=min([sum(trialCorrect==1) sum(trialCorrect==0)]);
-        Ctrials=find(trialCorrect==1);
-        Cperf{j}(i,:)=mean(C(Ctrials(randperm(length(Ctrials),minct)),:),'omitnan');
-        Itrials=find(trialCorrect==0);
+            %}
 
-        CperfX{j}(i,:)=mean(C(Itrials(randperm(length(Itrials),minct)),:),'omitnan');
-        
-        
-        Sperf{orders(j,1)}(i,:)=mean(S1(trialCorrect==1,:),'omitnan');
-        SperfX{orders(j,1)}(i,:)=mean(S1(trialCorrect==0,:),'omitnan');
-        Sperf{orders(j,2)}(i,:)=mean(S2(trialCorrect==1,:),'omitnan');
-        SperfX{orders(j,2)}(i,:)=mean(S2(trialCorrect==0,:),'omitnan');
-      
-        fprintf('Session %d,  %s %d done \n',i,SuperRat(i).name,SuperRat(i).daynum);
-    catch
-        fprintf('Session %d with %s didnt work \n',SuperRat(i).daynum,SuperRat(i).name);
+            
+            % now parse the trials apart
+            % equalize trial counts for correct and incorrect trials
+            minct=min([sum(trialCorrect==1) sum(trialCorrect==0)]);
+
+            % now save out cross spectra for both
+            Ctrials=find(trialCorrect==1);
+            Cuse=Ctrials(randperm(length(Ctrials),minct));
+            Cperf{j}(i,:)=mean(C(Cuse,:),'omitnan');
+            Itrials=find(trialCorrect==0);
+            Iuse=Itrials(randperm(length(Itrials),minct));
+            CperfX{j}(i,:)=mean(C(Iuse,:),'omitnan');
+
+            % that way i can just run wple as a cellfun
+            C12Corr{i,j}=S12(Cuse,:)./sqrt(S1(Cuse,:).*...
+                S2(Cuse,:));
+            C12Inc{i,j}=S12(Iuse,:)./sqrt(S1(Iuse,:).*...
+                S2(Iuse,:));
+            
+
+            % and individual spectra for each, no trialcount equalization
+            Sperf{orders(j,1)}(i,:)=mean(S1(trialCorrect==1,:),'omitnan');
+            SperfX{orders(j,1)}(i,:)=mean(S1(trialCorrect==0,:),'omitnan');
+            Sperf{orders(j,2)}(i,:)=mean(S2(trialCorrect==1,:),'omitnan');
+            SperfX{orders(j,2)}(i,:)=mean(S2(trialCorrect==0,:),'omitnan');
+
+            fprintf('Session %d,  %s %d (%s vs %s) done \n',i,SuperRat(i).name,...
+                SuperRat(i).daynum,regions{orders(j,1)},regions{orders(j,2)});
+        catch
+            fprintf('Session %d with %s didnt work \n',SuperRat(i).daynum,SuperRat(i).name);
         end
     end
 end
@@ -241,7 +272,124 @@ end
 % recordings do not have distal tets and therefore are not useful for this
 % analysis
 
-%% now plotting functions
+
+%% now calculate wpli from the C12
+addpath(genpath('E:\GithubCodeRepositories\fieldtrip'));
+
+WPLICorr=cellfun(@ft_connectivity_wpli, C12Corr,'UniformOutput',false);
+WPLIInc=cellfun(@ft_connectivity_wpli, C12Inc,'UniformOutput',false);
+rmpath(genpath('E:\GithubCodeRepositories\fieldtrip'));
+
+%% now plotting functions for Correct-Incorrect
+
+
+%%
+%
+%  first just odor period power, no correction
+%
+
+figure;
+clear pl;
+for k=1:3
+    % start with patches in back
+    ylims=[-.2 .2];
+    % change range colors to our colors
+    if k==1
+        patch([7 8 8 7],linearize(repmat(ylims,2,1)),rhythmcolors(2,:),'LineStyle','none','FaceAlpha',.3);
+        hold on; patch([20 30 30 20],linearize(repmat(ylims,2,1)),rhythmcolors(1,:),'LineStyle','none','FaceAlpha',.3);
+    end
+    pl(k)=plot(f,mean(Cperf{k},'omitnan'),'color',combocolors(k,:),'LineWidth',2);
+    patch([f fliplr(f)]', [mean(Cperf{k},'omitnan')+SEM(Cperf{k},1),...
+        fliplr(mean(Cperf{k},'omitnan')-SEM(Cperf{k},1))]',...
+        combocolors(k,:),'LineStyle','none','FaceAlpha',.5);
+    
+    %ylim(ylims);
+    xlabel('Frequency, Hz');
+    ylabel(sprintf('Raw Cross Coherence'));
+end
+
+plot([0 60],[0 0],'k','LineWidth',3);
+legend(pl,{'CA1-PFC','CA1-OB','PFC-OB'});
+
+
+%% the old way, separate plots
+
+for i=1:3
+    figure;
+    % inset
+    subplot(1,2,1);
+    % get mean rr amp across
+    RRmeans=mean(Cperf{i}(:,f>=7 & f<=8),2,'omitnan');
+    RRPremeans=mean(CperfX{i}(:,f>=7 & f<=8),2,'omitnan');
+    [a,b]=histcounts(RRmeans,10);
+    bar(mean([b(1:end-1); b(2:end)]),a,1,'LineStyle','none',...
+        'FaceColor',rhythmcolors(2,:),'FaceAlpha',.7);
+    hold on; plot(repmat(mean(RRmeans,'omitnan'),1,2),[0 max(a)],'Color',rhythmcolors(2,:),...
+        'LineWidth',2); box off; ylabel('Counts'); xlabel('CA1-PFC RR Coherence')
+    title(sprintf('p=%.2e',signrank(RRmeans)));
+    
+    
+    subplot(1,2,2);
+    % get mean beta amp across
+    betameans=mean(Cperf{i}(:,f>=20 & f<=30),2,'omitnan');
+    betaPremeans=mean(CperfX{i}(:,f>=20 & f<=30),2,'omitnan');
+    [a,b]=histcounts(betameans,10);
+    bar(mean([b(1:end-1); b(2:end)]),a,1,'LineStyle','none',...
+        'FaceColor',rhythmcolors(1,:),'FaceAlpha',.7);
+    hold on; plot(repmat(mean(betameans,'omitnan'),1,2),[0 max(a)],'Color',rhythmcolors(1,:),...
+        'LineWidth',2); box off; ylabel('Counts'); xlabel('CA1-PFC in Beta Coherence')
+    title(sprintf('p=%.2e',signrank(betameans)));
+    sgtitle(sprintf('%s %s coherence',regions{orders(i,1)},regions{orders(i,2)}));
+end
+
+%%
+%
+%
+%  WPLI RAW VALUES
+%
+%
+
+% first remove rows with missing values
+
+toremove=sum(cellfun(@isempty,WPLIInc),2)>0 | sum(cellfun(@isempty,WPLICorr),2)>0;
+WPLIInc(toremove,:)=[]; WPLICorr(toremove,:)=[];
+
+
+figure;
+clear pl;
+for k=1:3
+    % start with patches in back
+    ylims=[-.2 .2];
+    % change range colors to our colors
+    if k==1
+        patch([7 8 8 7],linearize(repmat(ylims,2,1)),rhythmcolors(2,:),'LineStyle','none','FaceAlpha',.3);
+        hold on; patch([20 30 30 20],linearize(repmat(ylims,2,1)),rhythmcolors(1,:),'LineStyle','none','FaceAlpha',.3);
+    end
+    % and now to get our actual data
+    pl(k)=plot(f,mean(cell2mat(WPLICorr(:,k)'),2,'omitnan'),'color',combocolors(k,:),'LineWidth',2);
+    
+    % need to work on the patch, the first value in all the spectra is nan
+   xvals=[f fliplr(f)]'; 
+   yvals= [mean(cell2mat(WPLICorr(:,k)'),2,'omitnan')+SEM(cell2mat(WPLICorr(:,k)'),2);...
+        flipud(mean(cell2mat(WPLICorr(:,k)'),2,'omitnan')-SEM(cell2mat(WPLICorr(:,k)'),2))];
+   toomit=isnan(yvals); 
+   patch(xvals(~toomit), yvals(~toomit),...
+        combocolors(k,:),'LineStyle','none','FaceAlpha',.5);
+    
+    %ylim(ylims);
+    xlabel('Frequency, Hz');
+    ylabel(sprintf('Raw \n WPLI'));
+end
+
+plot([0 60],[0 0],'k','LineWidth',3);
+legend(pl,{'CA1-PFC','CA1-OB','PFC-OB'});
+
+%% 
+% 
+% this is correct- incorrect coherence values
+%
+% 
+
 
 
 % thinking a full spectrogram with patch, then inset is...
@@ -258,8 +406,8 @@ for k=1:3
     ylims=[-.2 .2];
     % change range colors to our colors
     if k==1
-        patch([7 8 8 7],[linearize(repmat(ylims,2,1))],rhythmcolors(1,:),'LineStyle','none','FaceAlpha',.3);
-        hold on; patch([20 30 30 20],[linearize(repmat(ylims,2,1))],rhythmcolors(2,:),'LineStyle','none','FaceAlpha',.3);
+        patch([7 8 8 7],[linearize(repmat(ylims,2,1))],rhythmcolors(2,:),'LineStyle','none','FaceAlpha',.3);
+        hold on; patch([20 30 30 20],[linearize(repmat(ylims,2,1))],rhythmcolors(1,:),'LineStyle','none','FaceAlpha',.3);
     end
     pl(k)=plot(f,mean(Cperf{k}-CperfX{k},'omitnan'),'color',combocolors(k,:),'LineWidth',2);
     patch([f fliplr(f)]', [mean(Cperf{k}-CperfX{k},'omitnan')+SEM(Cperf{k}-CperfX{k},1)...
@@ -286,8 +434,8 @@ for i=1:3
     RRPremeans=mean(CperfX{i}(:,f>=7 & f<=8),2,'omitnan');
     [a,b]=histcounts(RRmeans-RRPremeans,10);
     bar(mean([b(1:end-1); b(2:end)]),a,1,'LineStyle','none',...
-        'FaceColor',rhythmcolors(1,:),'FaceAlpha',.7);
-    hold on; plot(repmat(mean(RRmeans-RRPremeans,'omitnan'),1,2),[0 max(a)],'Color',rhythmcolors(1,:),...
+        'FaceColor',rhythmcolors(2,:),'FaceAlpha',.7);
+    hold on; plot(repmat(mean(RRmeans-RRPremeans,'omitnan'),1,2),[0 max(a)],'Color',rhythmcolors(2,:),...
         'LineWidth',2); box off; ylabel('Counts'); xlabel('Change in CA1-PFC RR Coherence')
     title(sprintf('p=%.2e',signrank(RRmeans-RRPremeans)));
     
@@ -298,8 +446,8 @@ for i=1:3
     betaPremeans=mean(CperfX{i}(:,f>=20 & f<=30),2,'omitnan');
     [a,b]=histcounts(betameans-betaPremeans,10);
     bar(mean([b(1:end-1); b(2:end)]),a,1,'LineStyle','none',...
-        'FaceColor',rhythmcolors(2,:),'FaceAlpha',.7);
-    hold on; plot(repmat(mean(betameans-betaPremeans,'omitnan'),1,2),[0 max(a)],'Color',rhythmcolors(2,:),...
+        'FaceColor',rhythmcolors(1,:),'FaceAlpha',.7);
+    hold on; plot(repmat(mean(betameans-betaPremeans,'omitnan'),1,2),[0 max(a)],'Color',rhythmcolors(1,:),...
         'LineWidth',2); box off; ylabel('Counts'); xlabel('Change CA1-PFC in Beta Coherence')
     title(sprintf('p=%.2e',signrank(betameans-betaPremeans)));
     sgtitle(sprintf('%s %s coherence',regions{orders(i,1)},regions{orders(i,2)}));
@@ -315,13 +463,13 @@ for k=1:3
     ylims=[-.15 .15];
     % change range colors to our colors
     if k==1
-        patch([7 8 8 7],[linearize(repmat(ylims,2,1))],rhythmcolors(1,:),'LineStyle','none','FaceAlpha',.3);
-        hold on; patch([20 30 30 20],[linearize(repmat(ylims,2,1))],rhythmcolors(2,:),'LineStyle','none','FaceAlpha',.3);
+        patch([7 8 8 7],[linearize(repmat(ylims,2,1))],rhythmcolors(2,:),'LineStyle','none','FaceAlpha',.3);
+        hold on; patch([20 30 30 20],[linearize(repmat(ylims,2,1))],rhythmcolors(1,:),'LineStyle','none','FaceAlpha',.3);
     end
     pl(k)=plot(f,mean(Sperf{k}-SperfX{k},'omitnan').*f,'color',colors(k,:),'LineWidth',2);
     patch([f fliplr(f)]', [mean(Sperf{k}-SperfX{k},'omitnan').*f+SEM(Sperf{k}-SperfX{k},1).*f...
         fliplr(mean(Sperf{k}-SperfX{k},'omitnan').*f-SEM(Sperf{k}-SperfX{k},1).*f)]',...
-        colors(k,:),'LineStyle','none','FaceAlpha',.5);
+        colors(k,:),'LineStyle','none','FaceAlpha',.3);
     
     ylim(ylims);
     xlabel('Frequency, Hz');
@@ -332,7 +480,7 @@ legend(pl,regions);
 % and the histograms if you want them...
 
 
-%%
+%% and again old way
 for k=1:3
     figure;
     % inset
@@ -342,8 +490,8 @@ for k=1:3
     RRPremeans=mean(SperfX{k}(:,f>=7 & f<=8),2,'omitnan');
     [a,b]=histcounts(RRmeans-RRPremeans,10);
     bar(mean([b(1:end-1); b(2:end)]),a,1,'LineStyle','none',...
-        'FaceColor',rhythmcolors(1,:),'FaceAlpha',.7);
-    hold on; plot(repmat(mean(RRmeans-RRPremeans,'omitnan'),1,2),[0 max(a)],'Color',rhythmcolors(1,:),...
+        'FaceColor',rhythmcolors(2,:),'FaceAlpha',.7);
+    hold on; plot(repmat(mean(RRmeans-RRPremeans,'omitnan'),1,2),[0 max(a)],'Color',rhythmcolors(2,:),...
         'LineWidth',2); box off; ylabel('Counts');
     xlabel(sprintf('Change in %s RR Power',regions{k}));
     title(sprintf('p=%.2e',signrank(RRmeans-RRPremeans)));
@@ -355,12 +503,50 @@ for k=1:3
     betaPremeans=mean(SperfX{k}(:,f>=20 & f<=30),2,'omitnan');
     [a,b]=histcounts(betameans-betaPremeans,10);
     bar(mean([b(1:end-1); b(2:end)]),a,1,'LineStyle','none',...
-        'FaceColor',rhythmcolors(2,:),'FaceAlpha',.7);
-    hold on; plot(repmat(mean(betameans-betaPremeans,'omitnan'),1,2),[0 max(a)],'Color',rhythmcolors(2,:),...
+        'FaceColor',rhythmcolors(1,:),'FaceAlpha',.7);
+    hold on; plot(repmat(mean(betameans-betaPremeans,'omitnan'),1,2),[0 max(a)],'Color',rhythmcolors(1,:),...
         'LineWidth',2); box off; ylabel('Counts');
     xlabel(sprintf('Change in %s Beta Power (db)',regions{k}));
     title(sprintf('p=%.2e',signrank(betameans-betaPremeans)));
 end
+
+%% finally wplc corr-incorr
+
+toremove=sum(cellfun(@isempty,WPLIInc),2)>0 | sum(cellfun(@isempty,WPLICorr),2)>0;
+WPLIInc(toremove,:)=[]; WPLICorr(toremove,:)=[];
+
+
+figure;
+clear pl;
+for k=1:3
+    % start with patches in back
+    ylims=[-.25 .25];
+    % change range colors to our colors
+    if k==1
+        patch([7 8 8 7],linearize(repmat(ylims,2,1)),rhythmcolors(2,:),'LineStyle','none','FaceAlpha',.3);
+        hold on; patch([20 30 30 20],linearize(repmat(ylims,2,1)),rhythmcolors(1,:),'LineStyle','none','FaceAlpha',.3);
+    end
+    % and now to get our actual data
+    pl(k)=plot(f,mean(cell2mat(WPLICorr(:,k)')-cell2mat(WPLIInc(:,k)'),2,'omitnan'),'color',combocolors(k,:),'LineWidth',2);
+   
+    % need to work on the patch, the first value in all the spectra is nan
+   xvals=[f fliplr(f)]'; 
+   yvals= [mean(cell2mat(WPLICorr(:,k)')-cell2mat(WPLIInc(:,k)'),2,'omitnan')+...
+       SEM(cell2mat(WPLICorr(:,k)')-cell2mat(WPLIInc(:,k)'),2);...
+        flipud(mean(cell2mat(WPLICorr(:,k)')-cell2mat(WPLIInc(:,k)'),2,'omitnan')...
+        -SEM(cell2mat(WPLICorr(:,k)')-cell2mat(WPLIInc(:,k)'),2))];
+   toomit=isnan(yvals); 
+   patch(xvals(~toomit), yvals(~toomit),...
+        combocolors(k,:),'LineStyle','none','FaceAlpha',.5);
+    
+    %ylim(ylims);
+    xlabel('Frequency, Hz');
+    ylabel(sprintf('Correct-Incorrect \n WPLI'));
+end
+
+plot([0 60],[0 0],'k','LineWidth',3);
+legend(pl,{'CA1-PFC','CA1-OB','PFC-OB'});
+ylim([ylims])
 
 %%
 
@@ -379,11 +565,17 @@ regions={'PFC','CA1','OB'};
 colors=[rgbcolormap('DarkAquamarine'); rgbcolormap('LightCoral'); rgbcolormap('DarkOrange')];
 rhythmcolors=[rgbcolormap('navy'); rgbcolormap('DeepPink')];
 orders=[1 2; 1 3; 2 3];
-
 params=struct('tapers',[3 5],'Fs',1500,'pad',1,'fpass',[0 60]);
-mindur=.75;
-Csess=repmat({nan(length(SuperRat),164)},3,1); % this is based on the mindur and the fpass
+
+
+
+mindur=.5;
+Csess=repmat({nan(1,82)},3,1);
+
+%mindur=.75;
+%Csess=repmat({nan(length(SuperRat),164)},3,1); % this is based on the mindur and the fpass
 preCsess=Csess;
+C12Pre={}; C12Post={};
 orders=[1 2; 1 3; 2 3]; %
 Ssess=Csess; preSsess=Csess;
 
@@ -392,12 +584,17 @@ Ssess=Csess; preSsess=Csess;
 % want to do this separately for each trial I think
 for i=1:length(SuperRat)
     tic
+
+    EEGdata{1}=load(SuperRat(i).PFCeegFile);
+    EEGdata{2}=load(SuperRat(i).CA1eegFile);
+    EEGdata{3}=load(SuperRat(i).OBeegFile);
+
     for j=1:3
         try
-            eegTime=SuperRat(i).PFCbeta(:,1);
-            
-            S1eeg=zscore(cell2mat({SuperRat(i).([regions{orders(j,1)} 'EEG']).data}'));
-            S2eeg=zscore(cell2mat({SuperRat(i).([regions{orders(j,2)} 'EEG']).data}'));
+            eegTime=EEGdata{1}.rawcontinuous(:,1);
+            % for contdata, time, filt, phase, amp
+            S1eeg=zscore(EEGdata{orders(j,1)}.rawcontinuous(:,2));
+            S2eeg=zscore(EEGdata{orders(j,2)}.rawcontinuous(:,2));
             % now get our trial blocks
             
             odorTimes=[SuperRat(i).trialdata.sniffstart SuperRat(i).trialdata.sniffend]; % full poke time
@@ -406,14 +603,18 @@ for i=1:length(SuperRat)
             
             odorTimes2=[odorTimes(:,1)-mindur odorTimes(:,1)]; % backwards from odor start
             odorTimes(:,1)=odorTimes(:,2)-mindur; % go backwards from odor end
-            clear C S1 S2 preC preS1 preS2;
+            clear C S1 S2 preC preS1 preS2 S12 preS12;
             for k=1:length(odorTimes)
                 okinds=eegTime>=odorTimes(k,1) & eegTime<=odorTimes(k,2);
-                [C(k,:),~,~,S1(k,:),S2(k,:),f]=coherencyc(S1eeg(okinds),S2eeg(okinds),params);
+                [C(k,:),~,S12(k,:),S1(k,:),S2(k,:),f]=coherencyc(S1eeg(okinds),S2eeg(okinds),params);
                 okinds=eegTime>=odorTimes2(k,1) & eegTime<=odorTimes2(k,2);
-                [preC(k,:),~,~,preS1(k,:),preS2(k,:),f]=coherencyc(S1eeg(okinds),S2eeg(okinds),params);
+                [preC(k,:),~,preS12(k,:),preS1(k,:),preS2(k,:),f]=coherencyc(S1eeg(okinds),S2eeg(okinds),params);
                 
             end
+
+             % that way i can just run wple as a cellfun
+            C12Pre{i,j}=preS12./sqrt(preS1.*preS2);
+            C12Post{i,j}=S12./sqrt(S1.*S2);
             % plot each session out
             %{
     figure;
@@ -449,9 +650,22 @@ for i=1:length(SuperRat)
     end
 end
 
-%% now plot Coherence Results
+addpath(genpath('E:\GithubCodeRepositories\fieldtrip'));
 
-% plot before and after reward onset here
+WPLIPre=cellfun(@ft_connectivity_wpli, C12Pre,'UniformOutput',false);
+WPLIPost=cellfun(@ft_connectivity_wpli, C12Post,'UniformOutput',false);
+rmpath(genpath('E:\GithubCodeRepositories\fieldtrip'));
+
+
+%% now plot Coherence Results
+%
+%
+%
+%
+%
+%
+%
+%% plot before and after reward onset here
 
 % thinking a full spectrogram with patch, then inset is...
 % a histogram of shaded regions differences by session, to show that across
@@ -516,6 +730,48 @@ hold on; plot(repmat(mean(betameans-betaPremeans,'omitnan'),1,2),[0 9],'Color',r
 title(sprintf('p=%.2e',signrank(betameans-betaPremeans)));
 sgtitle(sprintf('%s -%s coherence',regions{orders(i,1)},regions{orders(i,2)}));
 end
+
+%%
+%
+% now wpli
+% 
+% 
+% 
+%%
+toremove=sum(cellfun(@isempty,WPLIPre),2)>0 | sum(cellfun(@isempty,WPLIPost),2)>0;
+WPLIPre(toremove,:)=[]; WPLIPost(toremove,:)=[];
+
+
+figure;
+clear pl;
+for k=1:3
+    % start with patches in back
+    ylims=[-.2 .2];
+    % change range colors to our colors
+    if k==1
+        patch([7 8 8 7],linearize(repmat(ylims,2,1)),rhythmcolors(1,:),'LineStyle','none','FaceAlpha',.3);
+        hold on; patch([20 30 30 20],linearize(repmat(ylims,2,1)),rhythmcolors(2,:),'LineStyle','none','FaceAlpha',.3);
+    end
+    % and now to get our actual data
+    pl(k)=plot(f,mean(cell2mat(WPLIPost(:,k)')-cell2mat(WPLIPre(:,k)'),2,'omitnan'),'color',combocolors(k,:),'LineWidth',2);
+    
+    % need to work on the patch, the first value in all the spectra is nan
+   xvals=[f fliplr(f)]'; 
+   yvals= [mean(cell2mat(WPLIPost(:,k)')-cell2mat(WPLIPre(:,k)'),2,'omitnan')+...
+       SEM(cell2mat(WPLIPost(:,k)')-cell2mat(WPLIPre(:,k)'),2);...
+        flipud(mean(cell2mat(WPLIPost(:,k)')-cell2mat(WPLIPre(:,k)'),2,'omitnan')...
+        -SEM(cell2mat(WPLIPost(:,k)')-cell2mat(WPLIPre(:,k)'),2))];
+   toomit=isnan(yvals); 
+   patch(xvals(~toomit), yvals(~toomit),...
+        combocolors(k,:),'LineStyle','none','FaceAlpha',.5);
+    
+    %ylim(ylims);
+    xlabel('Frequency, Hz');
+    ylabel(sprintf('Post-Pre \n WPLI'));
+end
+
+plot([0 60],[0 0],'k','LineWidth',3);
+legend(pl,{'CA1-PFC','CA1-OB','PFC-OB'});
 
 
 %%
@@ -661,14 +917,18 @@ end
 
 
 
-%% match to seconds preceding release
+%% match to same reward periods
 
 params=struct('tapers',[3 5],'Fs',1500,'pad',1,'fpass',[0 60]);
-mindur=.75;
 
-Csess=repmat({nan(length(SuperRat),164)},3,1); % this is based on the mindur and the fpass
-CsessR=Csess;
-Ssess=Csess; SsessR=Csess;
+mindur=.5;
+Codor=repmat({nan(1,82)},3,1);
+
+
+%mindur=.5;
+%Codor=repmat({nan(length(SuperRat),164)},3,1); % this is based on the mindur and the fpass
+Creward=Codor; C12odor=Codor; C12reward=Codor;
+Sodor=Codor; Sreward=Codor;
 
 orders=[1 2; 1 3; 2 3]; %
 
@@ -676,12 +936,16 @@ orders=[1 2; 1 3; 2 3]; %
 % want to do this separately for each trial I think
 for i=1:length(SuperRat)
     tic
+    EEGdata{1}=load(SuperRat(i).PFCeegFile);
+    EEGdata{2}=load(SuperRat(i).CA1eegFile);
+    EEGdata{3}=load(SuperRat(i).OBeegFile);
+
     for j=1:3
         try
-            eegTime=SuperRat(i).PFCbeta(:,1);
-            
-            S1eeg=zscore(cell2mat({SuperRat(i).([regions{orders(j,1)} 'EEG']).data}'));
-            S2eeg=zscore(cell2mat({SuperRat(i).([regions{orders(j,2)} 'EEG']).data}'));
+            eegTime=EEGdata{1}.rawcontinuous(:,1);
+            % for contdata, time, filt, phase, amp
+            S1eeg=zscore(EEGdata{orders(j,1)}.rawcontinuous(:,2));
+            S2eeg=zscore(EEGdata{orders(j,2)}.rawcontinuous(:,2));
             % now get our trial blocks
             
             odorTimes=[SuperRat(i).trialdata.sniffstart SuperRat(i).trialdata.sniffend]; % full poke time
@@ -694,20 +958,23 @@ for i=1:length(SuperRat)
             odorTimes=odorTimes(oktrials,:); rewardTimes=rewardTimes(oktrials,:);
             odorTimes(:,1)=odorTimes(:,2)-mindur; % go backwards from odor end
             rewardTimes(:,1)=rewardTimes(:,2)-mindur;
-            clear C S1 S2 preC preS1 preS2;
+            clear C S1 S2 S12 preC preS1 preS2 preS12;
             for k=1:length(odorTimes)
                 okinds=eegTime>=odorTimes(k,1) & eegTime<=odorTimes(k,2);
-                [C(k,:),~,~,S1(k,:),S2(k,:),f]=coherencyc(S1eeg(okinds),S2eeg(okinds),params);
+                [C(k,:),~,S12(k,:),S1(k,:),S2(k,:),f]=coherencyc(S1eeg(okinds),S2eeg(okinds),params);
                 okinds=eegTime>=rewardTimes(k,1) & eegTime<=rewardTimes(k,2);
-                [preC(k,:),~,~,preS1(k,:),preS2(k,:),f]=coherencyc(S1eeg(okinds),S2eeg(okinds),params);
+                [preC(k,:),~,preS12(k,:),preS1(k,:),preS2(k,:),f]=coherencyc(S1eeg(okinds),S2eeg(okinds),params);
                 
             end
 
             
             % or save the data into a sessionwise struct
-            Csess{j}(i,:)=mean(C); CsessR{j}(i,:)=mean(preC);
-            Ssess{orders(j,1)}(i,:)=mean(S1); SsessR{orders(j,1)}(i,:)=mean(preS1);
-            Ssess{orders(j,2)}(i,:)=mean(S2); SsessR{orders(j,2)}(i,:)=mean(preS2);
+            C12odor{i,j}=preS12./sqrt(preS1.*preS2);
+            C12reward{i,j}=S12./sqrt(S1.*S2);
+
+            Codor{j}(i,:)=mean(C); Creward{j}(i,:)=mean(preC);
+            Sodor{orders(j,1)}(i,:)=mean(S1); Sreward{orders(j,1)}(i,:)=mean(preS1);
+            Sodor{orders(j,2)}(i,:)=mean(S2); Sreward{orders(j,2)}(i,:)=mean(preS2);
             
             fprintf('Session %d %s %d took %d seconds \n',i,SuperRat(i).name,SuperRat(i).daynum,round(toc))
             
@@ -716,13 +983,20 @@ for i=1:length(SuperRat)
         end
     end
 end
+
+addpath(genpath('E:\GithubCodeRepositories\fieldtrip'));
+
+WPLIreward=cellfun(@ft_connectivity_wpli, C12reward,'UniformOutput',false);
+WPLIodor=cellfun(@ft_connectivity_wpli, C12odor,'UniformOutput',false);
+rmpath(genpath('E:\GithubCodeRepositories\fieldtrip'));
+
 %% power odor period to reard period
 
 % all three on same plot
 figure('position',[1000 910 910 450]);
 clear pl;
 for k=1:3
-    S1sessdb=Ssess{k}.*f; preS1sessdb=SsessR{k}.*f;
+    S1sessdb=Sodor{k}.*f; preS1sessdb=Sreward{k}.*f;
 
     % start with patches in back
     ylims=[-.15 .65];
@@ -746,7 +1020,7 @@ legend(pl,regions);
 %% on separate plots
 maxpow=[.35 .35 .6];
 for k=1:3
-    S1sessdb=Ssess{k}.*f; preS1sessdb=SsessR{k}.*f;
+    S1sessdb=Sodor{k}.*f; preS1sessdb=Sreward{k}.*f;
     figure;
     subplot(2,2,1:2);
     % start with patches in back
@@ -771,8 +1045,8 @@ for k=1:3
     % inset
     subplot(2,2,3);
     % get mean rr amp across
-    RRmeans=mean(Ssess{k}(:,f>=7 & f<=8),2,'omitnan');
-    RRPremeans=mean(SsessR{k}(:,f>=7 & f<=8),2,'omitnan');
+    RRmeans=mean(Sodor{k}(:,f>=7 & f<=8),2,'omitnan');
+    RRPremeans=mean(Sreward{k}(:,f>=7 & f<=8),2,'omitnan');
     [a,b]=histcounts(RRmeans-RRPremeans,10);
     bar(mean([b(1:end-1); b(2:end)]),a,1,'LineStyle','none',...
         'FaceColor',rhythmcolors(1,:),'FaceAlpha',.7);
@@ -784,8 +1058,8 @@ for k=1:3
     
     subplot(2,2,4);
     % get mean beta amp across
-    betameans=mean(Ssess{k}(:,f>=20 & f<=30),2,'omitnan');
-    betaPremeans=mean(SsessR{k}(:,f>=20 & f<=30),2,'omitnan');
+    betameans=mean(Sodor{k}(:,f>=20 & f<=30),2,'omitnan');
+    betaPremeans=mean(Sreward{k}(:,f>=20 & f<=30),2,'omitnan');
     [a,b]=histcounts(betameans-betaPremeans,10);
     bar(mean([b(1:end-1); b(2:end)]),a,1,'LineStyle','none',...
         'FaceColor',rhythmcolors(2,:),'FaceAlpha',.7);
@@ -817,14 +1091,14 @@ for i=1:3
         patch([7 8 8 7],[linearize(repmat(ylims,2,1))],rhythmcolors(1,:),'LineStyle','none','FaceAlpha',.3);
         hold on; patch([20 30 30 20],[linearize(repmat(ylims,2,1))],rhythmcolors(2,:),'LineStyle','none','FaceAlpha',.3);
         
-        p=plot(f,mean(Csess{i}-CsessR{i},'omitnan'),'Color',combocolors(i,:),'LineWidth',2);
-        patch([f fliplr(f)]', [mean(Csess{i}-CsessR{i},'omitnan')+SEM(Csess{i}-CsessR{i},1)...
-            fliplr(mean(Csess{i}-CsessR{i},'omitnan')-SEM(Csess{i}-CsessR{i},1))]',...
+        p=plot(f,mean(Codor{i}-Creward{i},'omitnan'),'Color',combocolors(i,:),'LineWidth',2);
+        patch([f fliplr(f)]', [mean(Codor{i}-Creward{i},'omitnan')+SEM(Codor{i}-Creward{i},1)...
+            fliplr(mean(Codor{i}-Creward{i},'omitnan')-SEM(Codor{i}-Creward{i},1))]',...
             combocolors(i,:),'LineStyle','none','FaceAlpha',.5);
     else
-        p(i)=plot(f,mean(Csess{i}-CsessR{i},'omitnan'),'Color',combocolors(i,:),'LineWidth',2);
-        patch([f fliplr(f)]', [mean(Csess{i}-CsessR{i},'omitnan')+SEM(Csess{i}-CsessR{i},1)...
-            fliplr(mean(Csess{i}-CsessR{i},'omitnan')-SEM(Csess{i}-CsessR{i},1))]',...
+        p(i)=plot(f,mean(Codor{i}-Creward{i},'omitnan'),'Color',combocolors(i,:),'LineWidth',2);
+        patch([f fliplr(f)]', [mean(Codor{i}-Creward{i},'omitnan')+SEM(Codor{i}-Creward{i},1)...
+            fliplr(mean(Codor{i}-Creward{i},'omitnan')-SEM(Codor{i}-Creward{i},1))]',...
             combocolors(i,:),'LineStyle','none','FaceAlpha',.5);
         ylim(ylims);
     end
@@ -842,8 +1116,8 @@ for i=1:3
     % inset
     subplot(1,2,1);
     % get mean rr amp across
-    RRmeans=mean(Csess{i}(:,f>=7 & f<=8),2,'omitnan');
-    RRPremeans=mean(CsessR{i}(:,f>=7 & f<=8),2,'omitnan');
+    RRmeans=mean(Codor{i}(:,f>=7 & f<=8),2,'omitnan');
+    RRPremeans=mean(Creward{i}(:,f>=7 & f<=8),2,'omitnan');
     [a,b]=histcounts(RRmeans-RRPremeans,10);
     bar(mean([b(1:end-1); b(2:end)]),a,1,'LineStyle','none',...
         'FaceColor',rhythmcolors(1,:),'FaceAlpha',.7);
@@ -854,8 +1128,8 @@ for i=1:3
     
     subplot(1,2,2);
     % get mean beta amp across
-    betameans=mean(Csess{i}(:,f>=20 & f<=30),2,'omitnan');
-    betaPremeans=mean(CsessR{i}(:,f>=20 & f<=30),2,'omitnan');
+    betameans=mean(Codor{i}(:,f>=20 & f<=30),2,'omitnan');
+    betaPremeans=mean(Creward{i}(:,f>=20 & f<=30),2,'omitnan');
     [a,b]=histcounts(betameans-betaPremeans,10);
     bar(mean([b(1:end-1); b(2:end)]),a,1,'LineStyle','none',...
         'FaceColor',rhythmcolors(2,:),'FaceAlpha',.7);
@@ -865,6 +1139,40 @@ for i=1:3
     sgtitle(sprintf('%s -%s coherence odor to reward',regions{orders(i,1)},regions{orders(i,2)}));
 end
 
+
+%% finally wplc Odor-Reward
+
+toremove=sum(cellfun(@isempty,WPLIreward),2)>0 | sum(cellfun(@isempty,WPLIodor),2)>0;
+WPLIreward(toremove,:)=[]; WPLIodor(toremove,:)=[];
+
+
+figure;
+clear pl;
+for k=1:3
+    % start with patches in back
+    ylims=[-.25 .25];
+    % change range colors to our colors
+    if k==1
+        patch([7 8 8 7],linearize(repmat(ylims,2,1)),rhythmcolors(2,:),'LineStyle','none','FaceAlpha',.3);
+        hold on; patch([20 30 30 20],linearize(repmat(ylims,2,1)),rhythmcolors(1,:),'LineStyle','none','FaceAlpha',.3);
+    end
+    % and now to get our actual data
+    pl(k)=plot(f,mean(cell2mat(WPLIodor(:,k)')-cell2mat(WPLIreward(:,k)'),2,'omitnan'),'color',combocolors(k,:),'LineWidth',2);
+   
+    % need to work on the patch, the first value in all the spectra is nan
+   xvals=[f fliplr(f)]'; 
+   yvals= [mean(cell2mat(WPLIodor(:,k)')-cell2mat(WPLIreward(:,k)'),2,'omitnan')+...
+       SEM(cell2mat(WPLIodor(:,k)')-cell2mat(WPLIreward(:,k)'),2);...
+        flipud(mean(cell2mat(WPLIodor(:,k)')-cell2mat(WPLIreward(:,k)'),2,'omitnan')...
+        -SEM(cell2mat(WPLIodor(:,k)')-cell2mat(WPLIreward(:,k)'),2))];
+   toomit=isnan(yvals); 
+   patch(xvals(~toomit), yvals(~toomit),...
+        combocolors(k,:),'LineStyle','none','FaceAlpha',.5);
+    
+    %ylim(ylims);
+    xlabel('Frequency, Hz');
+    ylabel(sprintf('Odor-Reward \n WPLI'));
+end
 
 %% now calculate phase amp CFC.
 
@@ -1033,7 +1341,81 @@ end
 
 
 LECspectam=cwt(zscore(LECdata),bases,wname); % the spectrogram for ALLLLL
+%% Reviewer 2
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%{ 
+reviewer two asked us to run an analysis of the offsets between beta
+rhythms in PFC, OB and CA1.  The question being whether the offset is
+smaller in any of the regions.  I think there are a number of algorithms we
+can use.  
 
+First, I can scrape across each trial, say from -1s of odor exit
+to +1 and get the average phase offset and plot the three graphs to see
+what the offset is.  the issue with that is whether its consistent.  I
+think I would have to do histogram. the final plot could be superrat, or it
+could be where the peak line lies across sessions
+
+Second, I can threshold power and just get a histogram across trials and
+peek that at a session.
+
+The plot would eithe rbe superrat or peak across sessions
+%}
+
+%% method 1 for beta phase offset:
+
+
+regions={'PFC','CA1','OB'};
+colors=[rgbcolormap('DarkAquamarine'); rgbcolormap('LightCoral'); rgbcolormap('DarkOrange')];
+rhythmcolors=[rgbcolormap('DeepPink'); rgbcolormap('navy')];
+combocolors=[rgbcolormap('DarkMagenta'); rgbcolormap('Chocolate'); rgbcolormap('SpringGreen')];
+
+orders=[1 2; 1 3; 2 3];
+
+% data will come in as an image, so 3d? m lags by n timebins by p trials?
+
+
+i=1; % first session, will have to do some random ones
+alltrials=[SuperRat(i).trialdata.sniffstart SuperRat(i).trialdata.sniffend,...
+    SuperRat(i).trialdata.CorrIncorr10 SuperRat(i).trialdata.EpochInds(:,2)];
+oktrials=alltrials(diff(alltrials(:,1:2),1,2)>.5 & diff(alltrials(:,1:2),1,2)<1.5 &...
+    alltrials(:,3)==1 & ismember(alltrials(:,4),SuperRat(i).RunEpochs),:);
+phaselagmat=nan(length(oktrials));
+
+
+    % grab the LFP for each pair
+    lfpSource=matfile(SuperRat(i).([regions{1} 'eegFile']));
+    myLFP{1}=lfpSource.(['betacontinuous']);  
+    lfpSource=matfile(SuperRat(i).([regions{2} 'eegFile']));
+    myLFP{2}=lfpSource.(['betacontinuous']);  
+    lfpSource=matfile(SuperRat(i).([regions{3} 'eegFile']));
+    myLFP{3}=lfpSource.(['betacontinuous']);  
+for pr=1:3 % each pair
+    lfpTime=myLFP{1}(:,1);
+    % grab the indices of the
+    [~,~,~,phaseInds]=event_spikes(lfpTime,oktrials(:,2),1,1);
+    Phases1=cellfun(@(a) myLFP{orders(pr,1)}(a,3), phaseInds);
+    Phases2=cellfun(@(a) myLFP{orders(pr,2)}(a,3), phaseInds);
+
+    % now find the minimum angle difference (between -pi and pi) but
+    % keeping sign...
+    diffmat=cellfun(@(a,b) angdiff(a,b), Phases1,Phases2,'UniformOutput',false);
+    diffmat{11}(3000)=nan;
+    diffmat2=cell2mat(diffmat); % now a 3000 bins by 15 trials
+    diffmat3=[];
+    for i=1:size(diffmat2,1)
+        [diffmat3(i,:)]=histcounts(diffmat2(i,:),linspace(-pi,pi,30));
+    end
+
+end
 %%
 %
 %
