@@ -129,7 +129,6 @@ for c = 1:size(daycells,1)
             trigwin_resp = [trig, trig+win(2)];
             winspikes_resp =runspikes(runspikes > trigwin_resp(1) & runspikes <= trigwin_resp(2));
             leftspikes_count = [leftspikes_count;length(winspikes_resp)]; % Total spikes   
-            
          
             % Nosepoke
             %currnp_left = np_left_all(t); % Same as trigger time                 

@@ -1,4 +1,33 @@
 % SJ
+%%
+%{
+Hi John,
+
+Attached is PCA code, with some dependent codes.
+
+sj_PCA_AvgDis_Sess_npcells_update:
+Main code. Gets the data, does the PCA on left and right trials, and plots it. 
+Several parts are commented out and not executed, which you should ignore. 
+This is where I tried doing shuffles on individual trial PCs, but that does 
+not work at all. 
+
+What works is getting Distance metric between average trajectories for Left and Right trials,
+ and then doing shuffles with trial labels for this metric.
+If anything is missing or not clear, let me know. If it's too much, 
+I can also send a clean/ sanitized version tomorrow with the not-executed parts removed.
+
+sj_columnVectors_day_npCells.m: 
+Helps to get the data. npCells stands for nosepoke/task responsive cells. 
+I have tried many different variants, including taking all pyramidal cells, 
+etc, and it does not affect the PAC results much.
+
+Utilities: 
+getTwoDigitNumber.m
+cs_getSpecificTrialTypeInds.m
+nansem.m
+%}
+%%
+
 % June 2021. Precursor to running from trialSpikes. Directly use npCells
 % with Pyr and Interneurons, and get PC Discrimin per Sess/Day
 
@@ -44,7 +73,7 @@ win = [0.2 0.9]; % Implies from -0.2 to 1
 binsize=0.1;
 binsize_ms=1000*binsize;
 selectiveonly=0;
-timeaxis = -1000*win(1):binsize_ms:1000*win(2);
+timeaxis = -1000*win(1):bi:1000*win(2);
 
 digits(16);
 
