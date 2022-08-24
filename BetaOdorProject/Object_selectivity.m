@@ -390,14 +390,16 @@ for i=1:2
     Pcells=allcells(strcmpi({allcells.area},regions{i}));
     responseTable.allTot(i)=length(Pcells);
     Ppyrams=Pcells(strcmpi({Pcells.type},'pyr'));
-    responseTable.pyrTot(i)=length(Ppyrams);
-    responseTable.pyrResp(i)=sum(cellfun(@(a) a(3)<.05, {Ppyrams.taskResponsive}));
-    responseTable.pyrSel(i)=sum(cellfun(@(a) a{1,3}==1, {Ppyrams.OdorSelective}));
+    responseTable.pyrTot(i)=length(Ppyrams); % total number of cells
+    responseTable.pyrResp(i)=sum(cellfun(@(a) a(3)<.05, {Ppyrams.taskResponsive})); % of tot that are task responsive
+
+    % now % of task responsive that are odor selective
+    responseTable.pyrSel(i)=sum(cellfun(@(a) a{1,3}==1, {Ppyrams(cellfun(@(a) a(3)<.05, {Ppyrams.taskResponsive})).OdorSelective}));
 
     Pins=Pcells(cellfun(@(a) contains(a,'in'), {Pcells.type}));
     responseTable.inTot(i)=length(Pins);
     responseTable.inResp(i)=sum(cellfun(@(a) a(3)<.05, {Pins.taskResponsive}));
-    responseTable.inSel(i)=sum(cellfun(@(a) a{1,3}==1, {Pins.OdorSelective}));
+    responseTable.inSel(i)=sum(cellfun(@(a) a{1,3}==1, {Pins(cellfun(@(a) a(3)<.05, {Pins.taskResponsive})).OdorSelective}));
 end
 
 pctTable=responseTable;

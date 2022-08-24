@@ -1279,13 +1279,12 @@ too short to do it this way
 % tbin=.01; corrspan=.2; skernel=2; % bins 
 
 % Here I correct for edge effects.... by taking a trialwise correlation
-tbin=.004; corrspan=.2; % basically two theta cycles (to allow for theta here)
-step=.001;
-span=-corrspan:step:corrspan;
+tbin=.005; corrspan=.2; % basically two theta cycles (to allow for theta here)
+span=-corrspan:tbin:corrspan;
 regions={'PFC','CA1'};
 nboots=200;  plotIT=0;  odorDur=0.5;
 showCells=0;
-freqs=3:.5:50;
+    freqs=3:.5:50;
 pairIndex=[0 0; 1 0; 0 1; 1 1];
 
 varNames={'xcorrgrams','statstable','celltypes','rawgrams'};
@@ -1369,9 +1368,10 @@ for i=1:length(SuperRat)
                               
                 mu=mean(bootCorr,1,'omitnan'); sig=std(bootCorr,1,'omitnan');
                 bootZ=(trCorr-mu)./sig;
-
+                %bootZ=mean(trCorr>bootCorr);
                 normcurve=rescale(trCorr); 
-                [pxx] = pwelch(normcurve,round(.2/step),round(.1/step),freqs,1/step,'Power');
+                [pxx] = pwelch(normcurve,round(.2/tbin),round(.1/tbin),freqs,1/tbin,'Power');
+                %[pxx2,f]=pmtm(normcurve,3,freqs,1/tbin);
                 if max(bootZ)>4 && showCells
                      figure; 
                     subplot(3,1,1);
@@ -1529,7 +1529,7 @@ end
 
 linkaxes(get(gcf,'Children'),'x');
 xlim([-window window]);
-sgtitle(sprintf('Bins=%f, step =%f, 1 bin kernel',tbin,step));
+sgtitle(sprintf('Bins=%f, 1 bin kernel',tbin));
 
 %% align all to center
 %

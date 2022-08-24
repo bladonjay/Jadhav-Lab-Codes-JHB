@@ -129,6 +129,8 @@ for i=1:length(SuperRat)
     fprintf('Session %d, %s %d done %d seconds \n',i, SuperRat(i).name,SuperRat(i).daynum,toc);
 end
 
+clear eegData lfpBit tempstruct;
+
 
 allbetagamma=cellfun(@(a) a, {SuperRat.betagamma},'UniformOutput',false);
 allbetagamma2=cellfun(@(a) max(a), {SuperRat.betagamma},'UniformOutput',false);
@@ -261,6 +263,8 @@ for i=1:length(SuperRat)
         end
     end
 end
+
+clear EEGdata S1eeg S2eeg C S12 S1 S2;
 
 % Tried this with HPC tetrode with most cells vs PFC tet with most cells
 % results did not look good
@@ -510,7 +514,7 @@ for k=1:3
     title(sprintf('p=%.2e',signrank(betameans-betaPremeans)));
 end
 
-%% finally wplc corr-incorr
+%% finally wpli corr-incorr
 
 toremove=sum(cellfun(@isempty,WPLIInc),2)>0 | sum(cellfun(@isempty,WPLICorr),2)>0;
 WPLIInc(toremove,:)=[]; WPLICorr(toremove,:)=[];
@@ -547,6 +551,40 @@ end
 plot([0 60],[0 0],'k','LineWidth',3);
 legend(pl,{'CA1-PFC','CA1-OB','PFC-OB'});
 ylim([ylims])
+% and with statistics
+
+for k=1:3
+    figure;
+    % inset
+    subplot(1,2,1);
+    % get mean rr amp across
+    wpliCmat=cell2mat(WPLICorr(:,k)')';
+    RRmeans=mean(wpliCmat(:,f>=7 & f<=8),2,'omitnan');
+    wpliImat=cell2mat(WPLIInc(:,k)')';
+    RRPremeans=mean(wpliImat(:,f>=7 & f<=8),2,'omitnan');
+    [a,b]=histcounts(RRmeans-RRPremeans,10);
+    bar(mean([b(1:end-1); b(2:end)]),a,1,'LineStyle','none',...
+        'FaceColor',rhythmcolors(2,:),'FaceAlpha',.7);
+    hold on; plot(repmat(mean(RRmeans-RRPremeans,'omitnan'),1,2),[0 max(a)],'Color',rhythmcolors(2,:),...
+        'LineWidth',2); box off; ylabel('Counts');
+    xlabel('Change inWPLI');
+    title(sprintf('p=%.2e',signrank(RRmeans-RRPremeans)));
+    
+    
+    subplot(1,2,2);
+    % get mean beta amp across
+    betameans=mean(wpliCmat(:,f>=20 & f<=30),2,'omitnan');
+    betaPremeans=mean(wpliImat(:,f>=20 & f<=30),2,'omitnan');
+    [a,b]=histcounts(betameans-betaPremeans,10);
+    bar(mean([b(1:end-1); b(2:end)]),a,1,'LineStyle','none',...
+        'FaceColor',rhythmcolors(1,:),'FaceAlpha',.7);
+    hold on; plot(repmat(mean(betameans-betaPremeans,'omitnan'),1,2),[0 max(a)],'Color',rhythmcolors(1,:),...
+        'LineWidth',2); box off; ylabel('Counts');
+    xlabel('Change in WPLI');
+    title(sprintf('p=%.2e',signrank(betameans-betaPremeans)));
+    sgtitle(sprintf('%s -%s WPLI',regions{orders(k,1)},regions{orders(k,2)}));
+end
+
 
 %%
 
@@ -569,7 +607,7 @@ params=struct('tapers',[3 5],'Fs',1500,'pad',1,'fpass',[0 60]);
 
 
 
-mindur=.5;
+mindur=.5; maxdur=2;
 Csess=repmat({nan(1,82)},3,1);
 
 %mindur=.75;
@@ -598,7 +636,7 @@ for i=1:length(SuperRat)
             % now get our trial blocks
             
             odorTimes=[SuperRat(i).trialdata.sniffstart SuperRat(i).trialdata.sniffend]; % full poke time
-            odorTimes=odorTimes(diff(odorTimes')>mindur,:);
+            odorTimes=odorTimes(diff(odorTimes')>mindur & diff(odorTimes')<maxdur,:);
             trialCorrect=SuperRat(i).trialdata.CorrIncorr10(diff(odorTimes')>mindur);
             
             odorTimes2=[odorTimes(:,1)-mindur odorTimes(:,1)]; % backwards from odor start
@@ -650,6 +688,8 @@ for i=1:length(SuperRat)
     end
 end
 
+clear EEGdata S1eeg S2eeg C S12 S1 S2 preC preS12 preS1 preS2;
+
 addpath(genpath('E:\GithubCodeRepositories\fieldtrip'));
 
 WPLIPre=cellfun(@ft_connectivity_wpli, C12Pre,'UniformOutput',false);
@@ -665,7 +705,7 @@ rmpath(genpath('E:\GithubCodeRepositories\fieldtrip'));
 %
 %
 %
-%% plot before and after reward onset here
+%% plot before and after odor onset here
 
 % thinking a full spectrogram with patch, then inset is...
 % a histogram of shaded regions differences by session, to show that across
@@ -746,7 +786,7 @@ figure;
 clear pl;
 for k=1:3
     % start with patches in back
-    ylims=[-.2 .2];
+    ylims=[-.3 .35];
     % change range colors to our colors
     if k==1
         patch([7 8 8 7],linearize(repmat(ylims,2,1)),rhythmcolors(1,:),'LineStyle','none','FaceAlpha',.3);
@@ -772,7 +812,42 @@ end
 
 plot([0 60],[0 0],'k','LineWidth',3);
 legend(pl,{'CA1-PFC','CA1-OB','PFC-OB'});
+ylim(ylims)
 
+%%
+for i=1:3
+figure;
+% inset
+subplot(1,2,1);
+% get mean rr amp across
+rhythmcat=cell2mat(WPLIPost(:,i)')';
+RRmeans=mean(rhythmcat(:,f>=7 & f<=8),2,'omitnan');
+betameans=mean(rhythmcat(:,f>=20 & f<=30),2,'omitnan');
+
+rhythmcat=cell2mat(WPLIPre(:,i)')';
+RRPremeans=mean(rhythmcat(:,f>=7 & f<=8),2,'omitnan');
+betaPremeans=mean(rhythmcat(:,f>=20 & f<=30),2,'omitnan');
+
+[a,b]=histcounts(RRmeans-RRPremeans,10);
+bar(mean([b(1:end-1); b(2:end)]),a,1,'LineStyle','none',...
+    'FaceColor',rhythmcolors(1,:),'FaceAlpha',.7);
+hold on; plot(repmat(mean(RRmeans-RRPremeans,'omitnan'),1,2),[0 7],'Color',rhythmcolors(1,:),...
+    'LineWidth',2); box off; ylabel('Counts'); xlabel('Change in RR WPLI')
+title(sprintf('signrank p=%.2e',signrank(RRmeans-RRPremeans)));
+
+
+subplot(1,2,2);
+% get mean beta amp across
+
+[a,b]=histcounts(betameans-betaPremeans,10);
+bar(mean([b(1:end-1); b(2:end)]),a,1,'LineStyle','none',...
+    'FaceColor',rhythmcolors(2,:),'FaceAlpha',.7);
+hold on; plot(repmat(mean(betameans-betaPremeans,'omitnan'),1,2),[0 9],'Color',rhythmcolors(2,:),...
+    'LineWidth',2); box off; ylabel('Counts'); xlabel('Change in Beta WPLI')
+title(sprintf('p=%.2e',signrank(betameans-betaPremeans)));
+sgtitle(sprintf('%s -%s WPLI',regions{orders(i,1)},regions{orders(i,2)}));
+end
+%%
 
 %%
 % plot difference in coherence between before and after for all three
@@ -984,6 +1059,9 @@ for i=1:length(SuperRat)
     end
 end
 
+clear EEGdata C S1 S2 S12 preC preS1 preS2 preS12;
+
+
 addpath(genpath('E:\GithubCodeRepositories\fieldtrip'));
 
 WPLIreward=cellfun(@ft_connectivity_wpli, C12reward,'UniformOutput',false);
@@ -1140,7 +1218,7 @@ for i=1:3
 end
 
 
-%% finally wplc Odor-Reward
+%% finally wpli Odor-Reward
 
 toremove=sum(cellfun(@isempty,WPLIreward),2)>0 | sum(cellfun(@isempty,WPLIodor),2)>0;
 WPLIreward(toremove,:)=[]; WPLIodor(toremove,:)=[];
