@@ -323,6 +323,37 @@ cellTable.respCoh=cellfun(@(a) any(a<pcrit), {allCells.respRstat})';
 cellTable.respPref=temp';
 cellTable.odorP=cellfun(@(a) a.issig(1), {allCells.OdorSelective})';
 cellTable.odorSI=cellfun(@(a) a.score(1), {allCells.OdorSelective})';
+
+
+for celltype=1:2
+    for rh=1:2
+        regions={'PFC','CA1'};
+        regions2={'PFC','CA1','OB'};
+        varTypes=repmat({'double'},1,6);
+        allcount=table('size',[3 6],'VariableTypes',varTypes,'VariableNames',{'PFCtot','PFClocked','PFCpct','CA1tot','CA1locked','CA1pct'},...
+            'rownames',{'PFCLFP','CA1LFP','OBLFP'});
+        for j=1:length(regions) % cell region
+            % mycells=the total count
+            nTot=sum(cellTable.(['is' regions{j}])==1 & cellTable.isPYR==2-celltype);
+            allLocked=accumarray(cellTable.betaPref(cellTable.([rhythm{rh} 'Coh'])==1 & cellTable.(['is' regions{j}])==1 & cellTable.isPYR==2-celltype),1,[3, 1],@sum)';
+            allcount{:,(j-1)*3+1}=repmat(nTot,3,1);
+            allcount{:,(j-1)*3+2}=allLocked';
+        end
+
+        allcount.PFCpct=allcount.PFClocked./allcount.PFCtot;
+        allcount.CA1pct=allcount.CA1locked./allcount.CA1tot;
+        allcount{4,:}=sum(table2array(allcount));
+        allcount.Properties.RowNames(4)={'Totals'};
+        allcount.PFCtot(4)=allcount.PFCtot(3);
+        allcount.CA1tot(4)=allcount.CA1tot(3);
+
+        eval([types{celltype} rhythm{rh} 'coherence=allcount;']);
+        eval(['openvar ' types{celltype} rhythm{rh} 'coherence']);
+    end
+end
+
+
+
 % now make stacked bar on this:
 
 bary=[accumarray(cellTable.betaPref(cellTable.betaCoh==1 & cellTable.isCA1==1 & cellTable.isPYR==1),1,[3, 1],@sum)'/sum(cellTable.isCA1==1 & cellTable.isPYR==1);...
@@ -330,8 +361,9 @@ bary=[accumarray(cellTable.betaPref(cellTable.betaCoh==1 & cellTable.isCA1==1 & 
    accumarray(cellTable.betaPref(cellTable.betaCoh==1 & cellTable.isPFC==1 & cellTable.isPYR==1),1,[3, 1],@sum)'/sum(cellTable.isPFC==1 & cellTable.isPYR==1);...
    accumarray(cellTable.betaPref(cellTable.betaCoh==1 & cellTable.isPFC==1 & cellTable.isPYR==0),1,[3, 1],@sum)'/sum(cellTable.isPFC==1 & cellTable.isPYR==0)];
 
-   figure;
-   subplot(1,2,1);
+
+figure;
+subplot(1,2,1);
 barx=[.9 1.1 1.4 1.6];
 bar(barx,bary,'stacked');
 set(gca,'XTick', [.9 1.1 1.4 1.6],'XTickLabel',{'CA1 Pyr','CA1 IN','PFC Pyr','PFC IN'});
@@ -794,7 +826,7 @@ not meaningfully change the main result.
 
 
 %}
-onlysig=1; saveout=0;
+onlysig=0; saveout=0;
 pcrit=.05;
 if saveout, savefolder=uigetdir; end
 
@@ -1035,17 +1067,19 @@ rmpath(genpath('C:\Users\Jadhavlab\Documents\gitRepos\MyChronux'));
 % longer the animal is in the odor port...
 
 
-for i=1:length(SuperRat)
+for i=1:5 %length(SuperRat)
     % get odor starts
     odorTimes=[SuperRat(i).trialdata.sniffstart SuperRat(i).trialdata.sniffend];
     odorTimes([odorTimes(:,2)-odorTimes(:,1)]<.5,:)=[];
     figure;
     for j=1:length(regions)
-        betaPow=SuperRat(i).([regions{j} 'beta']);
+        eegData=load(SuperRat(i).([regions{j} 'eegFile']));
+        betaPow=eegData.betacontinuous;
         betaPow(:,4)=zscore(betaPow(:,4));
-        respPow=SuperRat(i).([regions{j} 'resp']);
+        respPow=eegData.respcontinuous;
         respPow(:,4)=zscore(respPow(:,4));
-        
+        clear eegData; % clear this massive file
+
         % now gather the amplitudes
         [~,~,~,lfpInds,~,times]=event_spikes(betaPow(:,1),odorTimes(:,1),0,odorTimes(:,2)-odorTimes(:,1));
         betaData=cellfun(@(a) betaPow(a,4), lfpInds,'UniformOutput',false);
@@ -1078,7 +1112,244 @@ for i=1:length(SuperRat)
     end
 end
 
-    
+%%
+%
+%
+%
+%
+% Calculating phase offsets for beta and RR during odor sampling
+%
+%
+%
+%
+%
+
+% observation block:
+%{
+- first observation is that locked to sniff end you get a small peak at end
+in beta offset in the positive direction
+- if you lock to sniff start, you get a positive swing then a massive
+negative swing
+- There are definitiely fluctuations locked to sniff start and sniff end,
+but its hard to suss out whats going on in aggregate.
+
+%}
+
+%%
+%
+%   observe single sessions here
+%
+%
+
+% i think the gist of this is that the beta power just keeps going up the
+% longer the animal is in the odor port...
+pairs=[1 2; 1 3; 2 3];
+span=[-.7 .7]; % secbefore to secafter
+dur=1500*diff(span);
+for i=[1 5 8 12 15 20] %length(SuperRat)
+    % get odor starts
+    odorTimes=[SuperRat(i).trialdata.sniffstart SuperRat(i).trialdata.sniffend];
+    odorTimes(odorTimes(:,2)-odorTimes(:,1)<.5 | odorTimes(:,2)-odorTimes(:,1)>2,:)=[];
+    % gather all three regions
+    betaData={}; respData={};
+    for r=1:length(regions)
+        eegData=load(SuperRat(i).([regions{r} 'eegFile']));
+        betaPow=eegData.betacontinuous;
+        betaPow(:,4)=zscore(betaPow(:,4));
+        respPow=eegData.respcontinuous;
+        respPow(:,4)=zscore(respPow(:,4));
+        clear eegData; % clear this massive file
+
+        % now gather the amplitudes
+        [~,~,~,lfpInds,~,times]=event_spikes(betaPow(:,1),odorTimes(:,2),abs(span(1)),span(2));
+        betaData{r}=cellfun(@(a) betaPow(a,4), lfpInds,'UniformOutput',false);
+        respData{r}=cellfun(@(a) respPow(a,4), lfpInds,'UniformOutput',false);
+        % cast all to same size
+        for tr=1:length(betaData{r})
+            if length(betaData{r}{tr})<dur
+                betaData{r}{tr}(end+1:dur)=nan;
+                respData{r}{tr}(end+1:dur)=nan;
+            elseif length(betaData{r}{tr})>dur
+                 betaData{r}{tr}(dur+1:end)=[];
+                 respData{r}{tr}(dur+1:end)=[];
+            end
+        end 
+        
+        clear betaPow respPow; % dont need this anymore either
+    end
+    % now get difference in phase
+    figure;
+    for p=1:3 % pairs
+        betaDiff=cellfun(@(a,b) angdiff(a,b), betaData{pairs(p,1)},betaData{pairs(p,2)},'UniformOutput',false);
+        subplot(2,3,p);
+        betaIM=cell2mat(betaDiff)';
+        imagesc(span(1)+1/1500:1/1500:span(2),1:size(betaIM,1),betaIM);
+        subplot(2,3,p+3);
+        cmean=nan(1,dur); cstd=nan(1,dur);
+        for c=1:dur
+            cmean(c)=circ_mean(betaIM(:,c));
+            cstd(c)=circ_std(betaIM(:,c));
+        end
+        plot(span(1)+1/1500:1/1500:span(2),cmean); yyaxis right
+        plot(span(1)+1/1500:1/1500:span(2),cstd);
+        legend({'circ mean','circ std'});
+        title(sprintf('%s to %s',regions{pairs(p,1)},regions{pairs(p,2)}))
+    end
+
+    clear betaDiff betaIM cmean;
+    sgtitle(sprintf('Sess %d Beta',i));    colormap(hsv);
+    figure;
+    for p=1:3 % pairs
+        respDiff=cellfun(@(a,b) angdiff(a,b), respData{pairs(p,1)},respData{pairs(p,2)},'UniformOutput',false);
+        subplot(2,3,p);
+        respIM=cell2mat(respDiff)';
+        imagesc(span(1)+1/1500:1/1500:span(2),1:size(respIM,1),respIM);
+        subplot(2,3,p+3);
+        cmean=nan(1,dur); cstd=nan(1,dur);
+        for c=1:dur
+            cmean(c)=circ_mean(respIM(:,c)); 
+            cstd(c)=circ_std(respIM(:,c));
+        end
+        plot(span(1)+1/1500:1/1500:span(2),cmean); yyaxis right
+        plot(span(1)+1/1500:1/1500:span(2),cstd);
+        legend({'circ mean','circ std'});
+        title(sprintf('%s to %s',regions{pairs(p,1)},regions{pairs(p,2)}))
+    end
+    clear respDiff respIM cmean;
+    sgtitle(sprintf('Sess %d RR',i));    colormap(hsv);
+end
+
+%% run sessions in aggregate here
+
+betaOffsets=cell(length(SuperRat),6);
+rrOffsets=cell(length(SuperRat),6);
+% i think the gist of this is that the beta power just keeps going up the
+% longer the animal is in the odor port...
+pairs=[1 2; 1 3; 2 3];
+span=[-.7 .7]; % secbefore to secafter
+dur=1500*diff(span);
+for i=1:length(SuperRat)
+    % get odor starts
+    odorTimes=[SuperRat(i).trialdata.sniffstart SuperRat(i).trialdata.sniffend];
+    odorTimes(odorTimes(:,2)-odorTimes(:,1)<.5 | odorTimes(:,2)-odorTimes(:,1)>2,:)=[];
+    % gather all three regions
+    betaData={}; respData={};
+    for r=1:length(regions)
+        eegData=load(SuperRat(i).([regions{r} 'eegFile']));
+        betaPow=eegData.betacontinuous;
+        betaPow(:,4)=zscore(betaPow(:,4));
+        respPow=eegData.respcontinuous;
+        respPow(:,4)=zscore(respPow(:,4));
+        clear eegData; % clear this massive file
+
+        % now gather the amplitudes
+        [~,~,~,lfpInds,~,times]=event_spikes(betaPow(:,1),odorTimes(:,1),abs(span(1)),span(2));
+        betaData{r}=cellfun(@(a) betaPow(a,4), lfpInds,'UniformOutput',false);
+        respData{r}=cellfun(@(a) respPow(a,4), lfpInds,'UniformOutput',false);
+        % cast all to same size
+        for tr=1:length(betaData{r})
+            if length(betaData{r}{tr})<dur
+                betaData{r}{tr}(end+1:dur)=nan;
+                respData{r}{tr}(end+1:dur)=nan;
+            elseif length(betaData{r}{tr})>dur
+                 betaData{r}{tr}(dur+1:end)=[];
+                 respData{r}{tr}(dur+1:end)=[];
+            end
+        end 
+        
+        clear betaPow respPow; % dont need this anymore either
+    end
+    % now get difference in phase
+
+    for p=1:3 % pairs
+        betaDiff=cellfun(@(a,b) angdiff(a,b), betaData{pairs(p,1)},betaData{pairs(p,2)},'UniformOutput',false);
+       
+        betaIM=cell2mat(betaDiff)';
+        cmean=nan(1,dur); cstd=nan(1,dur);
+        for c=1:dur
+            cmean(c)=circ_mean(betaIM(:,c));
+            cstd(c)=circ_std(betaIM(:,c));
+        end
+        %
+        betaOffsets{i,p}=cmean;
+        betaOffsets{i,p+3}=cstd;
+        
+    end
+
+    clear betaDiff betaIM cmean;
+    sgtitle(sprintf('Sess %d Beta',i));    colormap(hsv);
+    figure;
+    for p=1:3 % pairs
+        respDiff=cellfun(@(a,b) angdiff(a,b), respData{pairs(p,1)},respData{pairs(p,2)},'UniformOutput',false);
+       
+        respIM=cell2mat(respDiff)';
+        cmean=nan(1,dur); cstd=nan(1,dur);
+        for c=1:dur
+            cmean(c)=circ_mean(respIM(:,c)); 
+            cstd(c)=circ_std(respIM(:,c));
+        end
+        rrOffsets{i,p}=cmean;
+        rrOffsets{i,p+3}=cstd;
+    end
+    clear respDiff respIM cmean;
+    sgtitle(sprintf('Sess %d RR',i));    colormap(hsv);
+end
+
+% for both rhythms is 
+% 1 mean PFC-CA1, 
+% 2 mean PFC-OB 
+% 3 mean CA1-OB 
+% 4 std PFC-CA1, 
+% 5 std PFC-OB 
+% 6 std CA1-OB 
+save('E:\Brandeis datasets\Claire Data\ClaireFigs\BetaRROffsetsOdorOn','rrOffsets','betaOffsets','span','pairs','regions');
+fprintf('saved Beta and RR offsets to \n %s','E:\Brandeis datasets\Claire Data\ClaireFigs\BetaRROffsetsOdorOn');
+%%
+%
+% plotting the above results
+%
+%
+tbins=span(1)+1/1500:1/1500:span(2);
+figure(12); figure(22);
+for i=1:3
+    figure(12);
+    subplot(2,3,i);
+    betamean=mean(cell2mat(betaOffsets(:,i)),'omitnan');
+    betaspread=SEM(cell2mat(betaOffsets(:,i)),1);
+    plot(tbins,betamean);
+    hold on; patch([tbins fliplr(tbins)],[betamean+betaspread fliplr(betamean-betaspread)],...
+        colors(mod(i,3)+1,:),'LineStyle','none','FaceAlpha',.6);
+    title(sprintf('%s,%s',regions{pairs(i,1)},regions{pairs(i,2)}));
+    xlabel('time from odor onset'); ylabel('Offset ');
+    subplot(2,3,i+3);
+    betamean=mean(cell2mat(betaOffsets(:,i+3)),'omitnan');
+    betaspread=SEM(cell2mat(betaOffsets(:,i+3)),1);
+    plot(tbins,betamean);
+    hold on; patch([tbins fliplr(tbins)],[betamean+betaspread fliplr(betamean-betaspread)],...
+        colors(mod(i,3)+1,:),'LineStyle','none','FaceAlpha',.6);
+    title(sprintf('%s,%s',regions{pairs(i,1)},regions{pairs(i,2)}));
+    xlabel('time from odor onset'); ylabel('Offset variance');
+
+    figure(22);
+    subplot(2,3,i);
+    betamean=mean(cell2mat(rrOffsets(:,i)),'omitnan');
+    betaspread=SEM(cell2mat(rrOffsets(:,i)),1);
+    plot(tbins,betamean);
+    hold on; patch([tbins fliplr(tbins)],[betamean+betaspread fliplr(betamean-betaspread)],...
+        colors(mod(i,3)+1,:),'LineStyle','none','FaceAlpha',.6);
+    title(sprintf('%s,%s',regions{pairs(i,1)},regions{pairs(i,2)}));
+    xlabel('time from odor offset'); ylabel('Offset');
+     betamean=mean(cell2mat(rrOffsets(:,i+3)),'omitnan');
+     subplot(2,3,i+3);
+    betaspread=SEM(cell2mat(rrOffsets(:,i+3)),1);
+    plot(tbins,betamean);
+    hold on; patch([tbins fliplr(tbins)],[betamean+betaspread fliplr(betamean-betaspread)],...
+        colors(mod(i,3)+1,:),'LineStyle','none','FaceAlpha',.6);
+    title(sprintf('%s,%s',regions{pairs(i,1)},regions{pairs(i,2)}));
+    xlabel('time from odor onset'); ylabel('Offset Variance');
+end
+figure(12); sgtitle('beta'); figure(22); sgtitle('rr');
+
 %% so we know that beta power increases with time, but what about spike-beta coherence
 % all ca1 cells tend to fire at the same beta phase, so maybe the better
 % clustering leads to quicker decisions

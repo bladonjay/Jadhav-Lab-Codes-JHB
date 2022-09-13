@@ -62,6 +62,8 @@ plot(timeaxis,store_avg_DISTPC,'ko-', 'LineWidth',4,'MarkerSize',16);
 plot(timeaxis,shuffavgDIST_PC,'ko-', 'LineWidth',8);
 plot(timeaxis,shuffavgCIDIST_PC(2,:),'k--', 'LineWidth',2); % 95% CI
 plot(timeaxis,shuffavgCIDIST_PC(1,:),'k--', 'LineWidth',2); % 95% CI 
+figure;
+plot(timeaxis,store_avg_DISTPC,'ko-', 'LineWidth',4,'MarkerSize',16);
 
 
 % 4) Example PFC Discrimination. 3 PCs, 9 cells

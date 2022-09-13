@@ -234,6 +234,7 @@ celltypes={'pyr','in'};
 regions={'PFC','CA1'};
 pcrit=.05;
 plotIT=0;
+celltype={'pyr','in'};
 
 pairIndex=[1 1; 1 2; 2 1; 2 2]; varNames=[];
 for i=1:length(pairIndex); varNames{i}=[celltypes{pairIndex(i,1)} '-' celltypes{pairIndex(i,2)}]; end
@@ -246,8 +247,8 @@ for i=1:length(SuperRat)
     
 
     odorTimes=[SuperRat(i).trialdata.sniffstart SuperRat(i).trialdata.sniffend];
-    oktrials=diff(odorTimes,1,2)>2.5 | diff(odorTimes,1,2)<.5 & SuperRat(i).trialdata.CorrIncorr10==1;
-    odorTimes(~oktrials,:)=[]; % from 0.5 to 2 second samples
+    badtrials=diff(odorTimes,1,2)>2.5 | diff(odorTimes,1,2)<.5 | SuperRat(i).trialdata.CorrIncorr10==0;
+    odorTimes(~badtrials,:)=[]; % from 0.5 to 2 second samples
     % start with pyr-pyr and PFC is first region (as in regions
     for pr=1:length(varNames) % for each pairing
         PFCunits=find(cellfun(@(a) contains(a,regions{1}), {SuperRat(i).units.area}) & ...
@@ -332,14 +333,14 @@ for i=1:size(corrTable,2)
         allData=[allData reshape(permute(thisCorr,[3,1,2]),size(thisCorr,3),size(thisCorr,1)*size(thisCorr,2))];
     end    
     allData=zscore(allData,1,1);
-    allData(:,mean(isnan(allData))>.6)=[];
+    allData(:,mean(isnan(allData))>.4)=[];
     figure('Position',[100+100*i 100 380 600]);
     subplot(3,1,1);
     [a,b]=max(allData(sortwin,:),[],1);
     [~,inds]=sort(b);
     imagesc(span,1:size(allData,2),allData(:,inds)');
      hold on; plot([0 0],[0 size(allData,2)],'k')
-      title(sprintf('%s in PFC %s in CA1',celltype{pairIndex(i,1)},celltype{pairIndex(i,2)}));
+      title(sprintf('%s in PFC %s in CA1',celltypes{pairIndex(i,1)},celltypes{pairIndex(i,2)}));
     subplot(3,1,2);
     plot(span,mean(allData,2,'omitnan'));
     hold on;
@@ -443,8 +444,7 @@ for i=1:length(SuperRat)
     
     
     % use only okay trials
-    odorTimes=odorTimes(activetrials,:);
-    trialCorrect=trialCorrect(activetrials,:);
+    odorTimes=odorTimes(activetrials & trialCorrect,:);
     
     
     % cast all odorTimes to 0.5 seconds
@@ -465,19 +465,19 @@ for i=1:length(SuperRat)
             [Cspikes,~,~,~,~,Cspk]=event_spikes(SuperRat(i).units(CA1units(k)).ts, odorTimes(:,1),0,odorTimes(:,2)-odorTimes(:,1));
             %[Crspikes,~,~,~,~,Crspk]=event_spikes(SuperRat(i).units(CA1units(k)).ts(:,1), runTimes(:,1),0,runTimes(:,2)-runTimes(:,1));
             
-            oktrials=cellfun(@(a,b) ~isempty(a) & ~isempty(b), Pspk, Cspk);
+            badtrials=cellfun(@(a,b) ~isempty(a) & ~isempty(b), Pspk, Cspk);
             
-            if sum(oktrials)>8
+            if sum(badtrials)>8
                 % need to do odor and run, and randomize each, and then do
                 % correct vs incorrect and jackknife an effect size
                 % need to make the vectors the same length
                 Pvec=cellfun(@(a) SmoothMat2(histcounts(ceil(a/tbin),[0:ceil(.5/tbin)]'),[1,gauss/tbin*10],[1,gauss/tbin]),...
-                    Pspk(oktrials), 'UniformOutput', false);
+                    Pspk(badtrials), 'UniformOutput', false);
                 %Prvec=cellfun(@(a) SmoothMat2(histcounts(ceil(a/tbin),[0:ceil(4/tbin)]'),[1,gauss/tbin*10],[1,gauss/tbin]),...
                 %    Prspk(activetrials2), 'UniformOutput', false);
                 
                 Cvec=cellfun(@(a) SmoothMat2(histcounts(ceil(a/tbin),[0:ceil(.5/tbin)]'),[1,gauss/tbin*10],[1,gauss/tbin]),...
-                    Cspk(oktrials), 'UniformOutput', false);
+                    Cspk(badtrials), 'UniformOutput', false);
                 %Crvec=cellfun(@(a) SmoothMat2(histcounts(ceil(a/tbin),[0:ceil(4/tbin)]'),[1,gauss/tbin*10],[1,gauss/tbin]),...
                 %    Crspk(activetrials2), 'UniformOutput', false);
                 
@@ -491,10 +491,11 @@ for i=1:length(SuperRat)
                 
                 % minus values means that the first vector (PFC) leads
                 for xt=1:length(Pvec)
-                    trCorr(it,:)=xcorr(Pvec{xt},Cvec{xt},corrspan/tbin);
+                    trCorr(it,:)=rescale(xcorr(Pvec{xt},Cvec{xt},corrspan/tbin));
                     %trCorrR(it,:)=xcorr(Prvec{xt},Crvec{xt},corrspan/tbin);
                     it=it+1;
                 end
+
                 % for boot
                 bootCorr=[]; %bootCorrR=[];
                 for bt=1:nboots
@@ -503,7 +504,7 @@ for i=1:length(SuperRat)
                     %randshift=randi(round(corrspan/tbin*2*[.1 .9]),length(Pvec),1);
                     trCorrBtR=[]; trCorrBt=[];
                     for xt=1:length(Pvec)
-                        trCorrBt(xt,:)=xcorr(mixup{xt},Cvec{xt},corrspan/tbin);
+                        trCorrBt(xt,:)=rescale(xcorr(mixup{xt},Cvec{xt},corrspan/tbin));
                         %trCorrBt(xt,:)=xcorr(circshift(Pvec{xt},randshift(xt))',Cvec{xt},corrspan/tbin);
                         %trCorrBtR(xt,:)=xcorr(mixup2{xt},Crvec{xt},corrspan/tbin);
                         
@@ -577,7 +578,7 @@ for i=1:length(SuperRat)
             end
         end
     end
-    corrTable{i,pr}={odorMatrix};
+
     % on first blush, it looks like specific PFC units will assume
     % peaks in their xcorr with many CA1 units during odor sampling
     % she will plot the mean of all these
@@ -1234,7 +1235,7 @@ title(sprintf('%.5f, %.5f, %.5f',cf(2), cf(3), cf(4)));
 %
 %
 %
-%  Recapitulate claires cell cell analysis exactly
+%  Below is the method i landed on...
 %
 %
 %
@@ -1270,27 +1271,31 @@ too short to do it this way
 % I also want to measure the amount of beta or theta in the xcgram for c
 % and incorrect
 
+% one alternative option is ot measure the lfp centered around paired
+% spikes.  you might see strong beta when paired spikes occur
+
 % use the get ACinfo to measure beta and theta in autocorr, do this for
 % correct first just to see what most pairs do, then see if it's different
 % for incorrect trials (will need to do some stats here)
-
+rstream = RandStream('dsfmt19937','Seed',16);
+RandStream.setGlobalStream(rstream);
 
 % to my knowledge here are claires numbers:
 % tbin=.01; corrspan=.2; skernel=2; % bins 
 
 % Here I correct for edge effects.... by taking a trialwise correlation
-tbin=.004; corrspan=.2; % basically two theta cycles (to allow for theta here)
-step=.001;
+tbin=.0025; corrspan=.14; % basically two theta cycles (to allow for theta here)
+step=.0025; % 4 msec means nyquist is 200
 span=-corrspan:step:corrspan;
 regions={'PFC','CA1'};
 nboots=200;  plotIT=0;  odorDur=0.5;
 showCells=0;
-freqs=3:.5:50;
+freqs=6:.5:60;
 pairIndex=[0 0; 1 0; 0 1; 1 1];
 
-varNames={'xcorrgrams','statstable','celltypes','rawgrams'};
 
-corrTable=table('Size',[length(SuperRat),4],'VariableNames',varNames,'VariableTypes',repmat({'cell'},1,4));
+corrTable=table('Size',[length(SuperRat),4],'VariableNames',...
+    {'xcorrgrams','statstable','celltypes','rawgrams'},'VariableTypes',repmat({'cell'},1,4));
 allclock=tic;
 for i=1:length(SuperRat)
     sessclock=tic;
@@ -1304,49 +1309,52 @@ for i=1:length(SuperRat)
     
     % all trials, not c vs i yet
     odorTimes=[SuperRat(i).trialdata.sniffstart SuperRat(i).trialdata.sniffend];
-    oktrials=diff(odorTimes,1,2)<2.5 & diff(odorTimes,1,2)>.5; % from 0.5 to 2 second samples
+    badtrials=diff(odorTimes,1,2)<2.5 & diff(odorTimes,1,2)>odorDur; % from 0.5 to 2 second samples
     trialCorrect=SuperRat(i).trialdata.CorrIncorr10; % from 0.5 to 2 second samples
     
     % use only okay trials
-    odorTimes=odorTimes(oktrials,:);
-    trialCorrect=trialCorrect(oktrials,:);
-    
-    % cast all odorTimes to 0.5 seconds
-    %odorTimes(:,1)=odorTimes(:,2)-odorDur;
-    Ctrials=odorTimes(trialCorrect==1,:);
-    Itrials=odorTimes(trialCorrect==0,:);
+    odorTimes=odorTimes(badtrials,:);
+    trialCorrect=trialCorrect(badtrials,:);
+
+
+    %
+    % this matters alot, if you cast to .5 seconds from end you get better
+    % beta
+    %
+    %
+   odorTimes(:,1)=odorTimes(:,2)-odorDur;
+
+    % preallocate
     % corrmat will be big, it'll be a 3d, with i pfc cells by j HPC cells by k corrvals
     corrMatrix=nan(length(PFCunits),length(CA1units),length(span));
     rawMatrix=corrMatrix;
     corrStats=nan(length(PFCunits),length(CA1units),3); 
-    freqMatrix=nan(length(PFCunits),length(CA1units),91); 
-
+    %freqMatrix=nan(length(PFCunits),length(CA1units),length(freqs)); 
+    freqMatrix=nan(length(PFCunits),length(CA1units),length(freqs));
     % celltypetable- 0=IN IN; 1=PYR-IN; 2=IN-PYR; 3=PYR-PYR
     cellTypes=nan(length(PFCunits),length(CA1units));
     
     for j=1:length(PFCunits)
         % pspikes are the raw ts, pspk is how you bootstrap
         [Pspikes,~,~,~,~,Pspk]=event_spikes(SuperRat(i).units(PFCunits(j)).ts(:,1),...
-            Ctrials(:,1),0,Ctrials(:,2)-Ctrials(:,1));
+            odorTimes(:,1),0,odorTimes(:,2)-odorTimes(:,1));
         Ptype=contains(SuperRat(i).units(PFCunits(j)).type,'pyr');
         
         for k=1:length(CA1units)
             [Cspikes,~,~,~,~,Cspk]=event_spikes(SuperRat(i).units(CA1units(k)).ts,...
-                Ctrials(:,1),0,Ctrials(:,2)-Ctrials(:,1));
+                odorTimes(:,1),0,odorTimes(:,2)-odorTimes(:,1));
             Ctype=contains(SuperRat(i).units(CA1units(k)).type,'pyr');
             
             cellTypes(j,k)=find(sum([Ptype Ctype]==pairIndex,2)==2)-1;
             % count trials where both cells fire
             activetrials=cellfun(@(a,b) ~isempty(a) & ~isempty(b), Pspk, Cspk);
+            trCorr=nan(1,length(span));
+            % this does all the spikes, lots of unnecessary data
+            %spikediffs=Pspikes-Cspikes';
+            % PFC times-CA1 times, so negative is pfc first
+            spikediffs=cell2mat(cellfun(@(a,b) linearize(a-b'),Pspk,Cspk,'UniformOutput',false)'); 
             
-            if sum(activetrials)>=5
-                
-                trCorr=[];
-                % this does all the spikes, lots of unnecessary data
-                %spikediffs=Pspikes-Cspikes';
-                % PFC times-CA1 times, so negative is pfc first
-                spikediffs=cell2mat(cellfun(@(a,b) linearize(a-b'),Pspk,Cspk,'UniformOutput',false)'); 
-
+            if sum(spikediffs<.05)>10 % if there are at least 10 spikes within 50 msec
                 % now for each time diff- so a positive span means CA1
                 % leads
                 for td=1:length(span)
@@ -1368,30 +1376,34 @@ for i=1:length(SuperRat)
                 end
                               
                 mu=mean(bootCorr,1,'omitnan'); sig=std(bootCorr,1,'omitnan');
-                bootZ=(trCorr-mu)./sig;
+                bootZ=(trCorr-mu)./sig; bootZ(isnan(bootZ))=0;
 
                 normcurve=rescale(trCorr); 
-                [pxx] = pwelch(normcurve,round(.2/step),round(.1/step),freqs,1/step,'Power');
-                if max(bootZ)>4 && showCells
+                [pxx] = pwelch(bootZ,round(length(span)/2),[],freqs,1/step,'Power');
+                %[pxx,f]=pmtm(normcurve,{3,5},100,1/step)
+                if max(bootZ)>3 && showCells
                      figure; 
                     subplot(3,1,1);
                     [hc,x]=histcounts(cell2mat(Pspk'),0:.02:.5);
                     plot(x(2:end),hc); hold on;
                     [hc,x]=histcounts(cell2mat(Cspk'),0:.02:.5);
                     plot(x(2:end),hc);
-                   subplot(3,1,2);
+                    subplot(3,1,2);
                     plot(span,trCorr); hold on;
                     patch([span fliplr(span)], [mu+sig*2 fliplr(mu-sig*2)],[.7 .7 .7],'LineStyle','none','FaceAlpha',.3);
                     subplot(3,1,3);
-                    plot(f,pxx.*f); xlabel('freq'); ylabel('pwr');
+                    %plot(f,pxx.*f); xlabel('freq'); ylabel('pwr');
+                    plot(freqs,pxx.*freqs); xlabel('freq'); ylabel('pwr');
                     %yyaxis right; plot(f,pxx2)
-                    keyboard;
+                    pause(.5); kill;
                 end
                                
                 corrMatrix(j,k,:)=bootZ;
                 rawMatrix(j,k,:)=normcurve;
                 [corrStats(j,k,1),peakind]=max(bootZ); corrStats(j,k,2)=span(peakind);
+                
                 freqMatrix(j,k,:)=pxx.*freqs;                
+                
             end
         end
     end
@@ -1407,7 +1419,7 @@ for i=1:length(SuperRat)
     fprintf('Sess %d, rat %s %d done in %d, prob %d more\n',i,SuperRat(i).name,...
     SuperRat(i).daynum,round(toc(sessclock)), round(toc(allclock)/i*(length(SuperRat)-i)));
 end
-
+clear corrMatrix rawMatrix corrStats freqMatrix;
 % corrStats will be empty
 %%
 %
@@ -1437,13 +1449,14 @@ end
 % first histogram our ratios
 % we can recalculate our peaks here
 newpeaks=1;
-window=.1;
+window=.14;
 winbin=.005;
 skernel=0;
 Zfirst=0;
-corrthresh=2;
-%allGrams=zscore(SmoothMat2(allGrams,[0 8],skernel));
+corrthresh=3;
 windowedges=-window-winbin/2:winbin:window+winbin/2;
+
+freqs=5:.5:80;
 if newpeaks==1
     for i=1:size(allGrams,2)
         [mypeak,myind]=max(allGrams(abs(span)<window,i));
@@ -1457,8 +1470,6 @@ if newpeaks==1
             allstats(2,i)=nan;
             allstats(3,i)=nan;
         end
-
-            
     end
 end
 allGrams=SmoothMat2(allGrams,[0 15],skernel);
@@ -1466,7 +1477,7 @@ figure;
 %minus values means that the first vector (PFC) leads
 % first get a waterfall
 
-subplot(2,3,[1 4]);
+subplot(6,3,[1 4 7 10 13]);
 % get peak position
 okpairs=allstats(2,allstats(1,:)>corrthresh & abs(allstats(2,:))<window);
 % get ccgram
@@ -1477,7 +1488,7 @@ if Zfirst==1
 else
     imagesc(span,1:length(okpairs),zscore(okgrams(:,a))'); % smooth later or
 end
-
+clear okgrams;
 hold on; plot([0 0],[1 length(a)],'k');
 yyaxis right;
 % mean
@@ -1494,14 +1505,22 @@ title(sprintf('All Cross Region \n x=%.3f p=%.2e p=%.2e',...
     mean(okpairs),signrank(okpairs(abs(okpairs)<.05)),p2));
 xlabel('PFC leads <-> CA1 leads');
 ylim([0 4]); set(gca,'YTick',[0 .5 1]);
+subplot(6,3,16);
 
-subinds=[2 3 5 6];
+[pxx] = pwelch(cts,length(cts)/2,[],freqs,1/winbin,'Power');
+
+    plot(freqs,pxx.*)
+
+
+
+subinds={[2 5], [3 6],[11 14],[12 15]};
+subinds2=[8 9 17 18];
 mytitles={'PFC INs <-> CA1 INs','PFC PYRs <-> CA1 INs',...
     'PFC INs <-> CA1 PYRs','PFC PYRs <-> CA1 PYRs'};
 
 for i=1:4
     % now for the four subtypes
-    subplot(2,3,subinds(i));
+    subplot(6,3,subinds{i});
     okpairs=allstats(2,allstats(1,:)>corrthresh & allPairs==i-1 & abs(allstats(2,:))<window);
     okgrams=allGrams(:,allstats(1,:)>corrthresh & allPairs==i-1 & abs(allstats(2,:))<window);
     [~,a]=sort(okpairs);
@@ -1513,7 +1532,7 @@ for i=1:4
     hold on; plot([0 0],[1 length(a)],'k');
     yyaxis right;
     %plot(span,mean(okgrams')./max(mean(okgrams')),'w');
-
+    xlim([-window window]);
     [cts,bins]=histcounts(okpairs,windowedges);
     wincts=okpairs'-(windowedges(2:end)-winbin/2);
     cts=sum(abs(wincts)<=winbin*2);
@@ -1525,10 +1544,17 @@ for i=1:4
     title(sprintf('%s \n x=%.3f n=%d p=%.2e',mytitles{i},mean(okpairs),length(okpairs),signrank(okpairs)));
     xlabel('PFC leads <-> CA1 leads');
     ylim([0 4]); set(gca,'YTick',[0 .5 1]);
-end
 
-linkaxes(get(gcf,'Children'),'x');
-xlim([-window window]);
+    subplot(6,3,subinds2(i))
+    [pxx] = pwelch(cts,length(cts)/2,[],freqs,1/winbin,'Power');
+
+    plot(freqs,pxx.*freqs)
+
+
+end
+clear okgrams;
+%linkaxes(get(gcf,'Children'),'x');
+
 sgtitle(sprintf('Bins=%f, step =%f, 1 bin kernel',tbin,step));
 
 %% align all to center
@@ -1547,8 +1573,9 @@ okpairs=allstats(2,allstats(1,:)>corrthresh);
 okgrams=allGrams(:,allstats(1,:)>corrthresh);
 okoffsets=allstats(3,allstats(1,:)>corrthresh);
 
+clear okgrams2;
 % first circshift these
-shiftnum=okoffsets-ceil(length(newspan)/2);
+shiftnum=okoffsets-ceil(length(span)/2);
 for i=1:size(okgrams,2)
     okgrams2(:,i)=circshift(okgrams(:,i),-shiftnum(i));
 end
@@ -1561,8 +1588,8 @@ imagesc(span,1:length(okpairs),zscore(okgrams2(:,a))');
 hold on; plot([0 0],[1 length(a)],'k');
 yyaxis right;
 % mean
-plot(span,mean(okgrams2','omitnan')./max(mean(okgrams2','omitnan')),'k');
-ylim([0.2 1.5])
+plot(span,mean(okgrams2,2,'omitnan')./max(mean(okgrams2,2,'omitnan')),'k');
+ylim([0 4])
 
 for i=1:4
 % now for the four subtypes
@@ -1586,14 +1613,14 @@ plot(span,mean(okgrams,2,'omitnan')./max(mean(okgrams,2,'omitnan')),'w-');
 
 [cts,bins]=histcounts(okpairs,windowedges);
 %  check smoothing kernel here
-plot(mean([bins(2:end); bins(1:end-1)]),SmoothMat2(cts./max(cts),[1 2],1),-'k.',...
+plot(mean([bins(2:end); bins(1:end-1)]),SmoothMat2(cts./max(cts),[1 4],1),'-k.',...
     'MarkerSize',4,'LineWidth',1.2);
 [~,p2]=ttest(okpairs);
 title(sprintf('%s \n x=%.3f p=%.2e p=%.2e',mytitles{i},mean(okpairs),signrank(okpairs),p2));
 xlabel('PFC leads <-> CA1 leads');
 ylim([0 1.5]); set(gca,'YTick',[0 .5 1]);
 end
-
+clear okgrams;
 linkaxes(get(gcf,'Children'),'x');
 xlim([-.15 .15]);
 
@@ -1620,7 +1647,7 @@ for i=1:height(corrTable)
 end
 
 % now go through and recalculate your peak at the window of choice
-window=.14; % plus or minus this distance
+window=.08; % plus or minus this distance
 winbin=.0025;
 skernel=1;
 
@@ -1634,7 +1661,7 @@ peakTimes=peakTs(peakind); % now this is the real ts of those peaks
 figure;
 subplot(2,2,1);
 
-corrthresh=2.5;
+corrthresh=2;
 okcells=peakvals>corrthresh;
 [~,peakinds]=sort(peakTimes(okcells));
 theseGrams=allGrams(:,okcells);
@@ -1653,9 +1680,9 @@ theseSpec=zscore(allspecGrams(:,okcells));
 imagesc(freqs,1:sum(okcells),theseSpec(:,reordered)');
 xlabel('frequency'); ylabel('Cells')
 subplot(2,2,4);
-errorbar(freqs,mean(zscore(theseSpec(:,peakinds<0)),2).*freqs',SEM(zscore(theseSpec(:,peakinds<0)),2).*freqs');
+errorbar(freqs,mean(zscore(theseSpec(:,peakTimes(okcells)<0)),2).*freqs',SEM(zscore(theseSpec(:,peakTimes(okcells)<0)),2).*freqs');
 hold on;
-errorbar(freqs,mean(zscore(theseSpec(:,peakinds>0)),2).*freqs',SEM(zscore(theseSpec(:,peakinds>0)),2).*freqs');
+errorbar(freqs,mean(zscore(theseSpec(:,peakTimes(okcells)>0)),2).*freqs',SEM(zscore(theseSpec(:,peakTimes(okcells)>0)),2).*freqs');
 
 xlabel('frequency'); ylabel('power (dB)'); legend({'PFC leads pair','CA1 leads pair'})
 
@@ -1681,7 +1708,13 @@ for i=1:4
 
     imagesc(freqs,1:sum(okcells),theseSpec(:,reordered)');
     xlabel('frequency'); ylabel('Cells'); title('spectrogram of xcorrs')
-    subplot(2,2,4)
+    subplot(2,2,4);
+
+    %[y,x]=histcounts(freqs(peakinds(peakTimes(okcells)<0)),30);
+    %plot(x(2:end),y);
+    %yyaxis right;
+    %[y,x]=histcounts(freqs(peakinds(peakTimes(okcells)>0)),30);
+    %plot(x(2:end),y);
 
     errorbar(freqs,mean(zscore(theseSpec(:,peakTimes(okcells)<0)),2).*freqs',SEM(zscore(theseSpec(:,peakTimes(okcells)<0)),2).*freqs');
     hold on;
@@ -1690,7 +1723,7 @@ for i=1:4
 
     sgtitle(mytitles{i});
 end
-
+clear theseGrams theseSpec;
 
 %%
 %
@@ -1743,13 +1776,13 @@ for i=1:length(SuperRat)
     catch
         continue
     end
-    oktrials=diff(odorTimes,1,2)<2.5 & diff(odorTimes,1,2)>.5; % from 0.5 to 2 second samples
+    badtrials=diff(odorTimes,1,2)<2.5 & diff(odorTimes,1,2)>.5; % from 0.5 to 2 second samples
     trialCorrect=SuperRat(i).trialdata.CorrIncorr10; % from 0.5 to 2 second samples
     
     % use only okay trials
-    odorTimes=odorTimes(oktrials,:);
-    trialCorrect=trialCorrect(oktrials,:);
-    runTimes=runTimes(oktrials,:);
+    odorTimes=odorTimes(badtrials,:);
+    trialCorrect=trialCorrect(badtrials,:);
+    runTimes=runTimes(badtrials,:);
     
     % cast all odorTimes to 0.5 seconds
     odorTimes(:,1)=odorTimes(:,2)-odorDur;

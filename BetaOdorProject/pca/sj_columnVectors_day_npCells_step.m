@@ -1,4 +1,4 @@
-function [leftfr,rightfr, lefttrials, righttrials, cellinds, np_left, np_right,np_all] = sj_columnVectors_day_npCells(animal, animno, day, region, win, binsize)
+function [leftfr,rightfr, lefttrials, righttrials, cellinds, np_left, np_right,np_all] = sj_columnVectors_day_npCells_step(animal, animno, day, region, win, binsize,step)
 
 %[topDir,~] = cs_setPaths();
 %topDir = '/Users/Shantanu/data25/OLF_CS/Data/';
@@ -7,6 +7,7 @@ winsize = win(1)+win(2);
 leftfr = []; rightfr = [];
 cellinds = [];
 totalcells = 0;
+
 
 animDir = [topDir,animal,'Expt/'];
 %load([animDir,animal,'cellinfo.mat'])
@@ -121,13 +122,22 @@ for c = 1:size(daycells,1)
             trig = correct_left_all(t);
             trigwin = [trig-win(1), trig+win(2)];
             winspikes =runspikes(runspikes > trigwin(1) & runspikes <= trigwin(2));
-            bins = (trig-win(1):binsize:trig+win(2));
+            
             if isempty(winspikes)
                 %keyboard; break;
                 nonrespleft_flag = 1; winspikes=0;
                 %nonrespleftidx=[ nonrespleftidx;t];
             end
-            binspikecount = histcounts(winspikes,bins);
+            
+            bins = (trig-win(1):binsize:trig+win(2));
+            stepbins=[(-win(1):step:win(2))-binsize/2;...
+                (-win(1):step:win(2))+binsize/2];
+            for i=1:length(stepbins)
+               binspikecount(i)=sum(winspikes>trig+stepbins(1,i) & winspikes<trig+stepbins(2,i))  ;
+            end
+
+
+            %binspikecount = histcounts(winspikes,bins);
             leftspikes = [leftspikes;binspikecount];    % Binned spikes in trial
             
             % leftspikes_count = [leftspikes_count;length(winspikes)]; 
@@ -152,7 +162,13 @@ for c = 1:size(daycells,1)
                 %nonresprightidx=[ nonresprightidx;t];
             end
             bins = (trig-win(1):binsize:trig+win(2));
-            binspikecount = histcounts(winspikes,bins);
+            stepbins=[(-win(1):step:win(2))-binsize/2;...
+                (-win(1):step:win(2))+binsize/2];
+            for i=1:length(stepbins)
+               binspikecount(i)=sum(winspikes>trig+stepbins(1,i) & winspikes<trig+stepbins(2,i))  ;
+            end
+
+            %binspikecount = histcounts(winspikes,bins);
             rightspikes = [rightspikes;binspikecount];  % Binned spikes
             
             %rightspikes_count = [rightspikes_count;length(winspikes)];  % Total spikes           

@@ -34,6 +34,9 @@ RUN THE ODOR DECODER ON A TRIAL BASIS BACKWARDS AND SEE WHICH BRAIN REGION
 RUN THE ODOR DECODER ON A TRIAL BASIS BACKWARDS AND DETERMINE WHETHER THE
 DECODES ARE BETTER OR OCCUR LONGER FOR CORRECT TRIALS
 
+RUN THE DECODES ON A TRIAL BASIS AND SEE WHETHER DECODING ACCURACY VARIANCE
+IS CORRELATED ACROSS REGIONS (AND ISNT BECAUSE OF DURATION)
+
 
 
 
@@ -157,7 +160,7 @@ end
 %}
 
 %% this is the same decoder but now also decoding odor on track runs
-% we also arent using claires decoder here
+% we also arent using claires decoder, which is this code
 
 %{
 %{
@@ -354,6 +357,15 @@ linkaxes(get(gcf,'Children'),'y')
 %}
 
 %% now using the bayesian method with poisson firing
+%
+%
+%
+%  the poisson naive bayesian decoder, we used this code
+%
+%
+%
+%
+%
 % this uses a training set of odor spikes, and decodes left out odor trials
 % as well as run trials.  It may be a good idea to do the same leave one
 % out for this though...
@@ -391,16 +403,18 @@ veltimesmooth=8;
 speedthreshold=3;
 region={'CA1','PFC'};
 
-mytemplate={sprintf('%d boots',nBoots),'Odor Decode','Run Decode';'CA1',[],[];'PFC',[],[]};
+mytemplate={sprintf('%d boots',nBoots),'Odor Decode','Run Decode';'CA1',[nan nan],nan(5,2);'PFC',[nan nan],nan(5,2)};
 mytemplate(:,:,2)=mytemplate; mytemplate{1}='Success Prob real, null';
 for ses=1:length(SuperRat)
+    if SuperRat(ses).longTrack==1
+
     % take only correct trials during active epochs
     odorOK=ismember(SuperRat(ses).trialdata.EpochInds(:,2),SuperRat(ses).RunEpochs);
     odorflip=~logical(SuperRat(ses).trialdata.CorrIncorr10(odorOK)); % wrong trials
     odorStarts=SuperRat(ses).trialdata.sniffstart(odorOK); % start time
     odorEnds=SuperRat(ses).trialdata.sniffend(odorOK); % start time
     odorIDs=SuperRat(ses).trialdata.leftright10(odorOK); % odor id
-    badtrials=isnan(odorIDs);
+    badtrials=isnan(odorIDs | (odorEnds-odorStarts)<.5 | (odorEnds-odorStarts)>3);
     % somehow nans snuck into the odor ids? wtf?
     odorStarts(badtrials)=[]; odorEnds(badtrials)=[];
     odorIDs(badtrials)=[]; odorflip(badtrials)=[];
@@ -416,14 +430,14 @@ for ses=1:length(SuperRat)
     
     % now gather all the runs.
     fulltraj=SuperRat(ses).LinCoords;
-    
+  
     % first, get a true velocity, filter (1 if running, 0 if not)
-    fulltraj(:,10)=SmoothMat2(fulltraj(:,7),[0 50],veltimesmooth)>=speedthreshold;
+    fulltraj.smoothspeed=SmoothMat2(fulltraj.speed,[0 50],veltimesmooth)>=speedthreshold;
     % this might be a good place to figure out which cells are silent
     % for which epochs
     trajinds=[3 1; 3 2]; % only outbound this time
-    keepinds=ismember(fulltraj(:,4:5),trajinds,'rows');
-    fulltraj=sortrows(fulltraj(keepinds,:),1);
+    keepinds=ismember(fulltraj{:,4:5},trajinds,'rows');
+    fulltraj=sortrows(fulltraj{keepinds,:},1);
     
     %
     % work up the tracking data into track bins
@@ -455,7 +469,8 @@ for ses=1:length(SuperRat)
         end
         
        
-        breaks=find(diff(temptraj(:,1))>1); % only use time breaks that last more than a second
+        breaks=find(diff(temptraj(:,1))>1); 
+        % only use time breaks that last more than a second
         % concatenate the start of each traj, its end, and the origin and
         % destination at that first index
         runepochs=[[temptraj(1); temptraj(breaks+1,1)] [temptraj(breaks,1);...
@@ -471,9 +486,10 @@ for ses=1:length(SuperRat)
         if onlyodorruns
             for rn=1:length(odorStarts)
                 % find the next run start
-                nextind=find(runepochs(:,1)>odorStarts(rn,1),1,'first');
-                OKrunepochs(rn,:)=runepochs(nextind,:);
-                OKruninds(rn,:)=runinds(nextind,:);
+
+                    nextind=find(runepochs(:,1)>odorStarts(rn,1),1,'first');
+                    OKrunepochs(rn,:)=runepochs(nextind,:);
+                    OKruninds(rn,:)=runinds(nextind,:);
             end
         else
             OKrunepochs=runepochs;
@@ -551,7 +567,10 @@ for ses=1:length(SuperRat)
     SuperRat(ses).BayesDecodePvals=thisdecode;
     % this method of taking the mean run probably doesnt make much sense
     % i think i'd rather do something like a matched timewindow analysis
-    
+    else
+            SuperRat(ses).BayesDecodePvals=mytemplate;
+    end
+
 end
 warning('on','all');
 
@@ -670,7 +689,7 @@ for ses=1:length(SuperRat)
     odorIDs(badtrials)=[]; odorflip(badtrials)=[];
     odorIDs(odorflip)=double(~odorIDs(odorflip)); % flip the sign of the wrong trials
     % now gather all the runs.
-    fulltraj=SuperRat(ses).LinCoords;
+    fulltraj=table2array(SuperRat(ses).LinCoords);
     
     % first, get a true velocity, filter (1 if running, 0 if not)
     fulltraj(:,10)=SmoothMat2(fulltraj(:,7),[0 50],veltimesmooth)>=speedthreshold;
@@ -1113,7 +1132,7 @@ end
 %
 %
 %
-%
+%     need to start this analysis....
 %
 %% now using the bayesian method with poisson firing
 % this uses a training set of odor spikes, and decodes left out odor trials
@@ -1136,7 +1155,6 @@ rstream = RandStream('mt19937ar','Seed',16);
 RandStream.setGlobalStream(rstream);
 
 %p(x|spikes)=C(prod across units (mean rates)^spikes_i ) * exp( -tau * sum(all rates at x)
-onlyodorruns=1;
 decoderprobs=[];
 warning('off','all');
 winsize=1; % second of odor sampling
@@ -1150,6 +1168,9 @@ odorNames=[1 0];
 veltimesmooth=8;
 speedthreshold=3;
 region={'CA1','PFC'};
+snifftimes=-1:.02:0.1; %  
+binsize=.1;
+sniffbounds=[snifftimes-binsize; snifftimes+binsize]';
 
 mytemplate={sprintf('%d boots',nBoots),'Odor Decode','Run Decode';'CA1',[],[];'PFC',[],[]};
 mytemplate(:,:,2)=mytemplate; mytemplate{1}='Success Prob real, null';
@@ -1161,15 +1182,17 @@ for ses=1:length(SuperRat)
     odorStarts=SuperRat(ses).trialdata.sniffstart(odorOK); % start time
     odorEnds=SuperRat(ses).trialdata.sniffend(odorOK); % start time
     odorIDs=SuperRat(ses).trialdata.leftright10(odorOK); % odor id
-    badtrials=isnan(odorIDs);
+    
+    % what if you remove bad trials?
+    %
+    badtrials=isnan(odorIDs | (odorEnds-odorStarts)<.5 | (odorEnds-odorStarts)>3);
     
     % somehow nans snuck into the odor ids? wtf?
     odorStarts(badtrials)=[]; odorEnds(badtrials)=[];
     odorIDs(badtrials)=[]; odorflip(badtrials)=[];
     odorIDs(odorflip)=double(~odorIDs(odorflip)); % flip the sign of the wrong trials
     
-    % what if you remove bad trials?
-    %
+
     odorSpkMat=[]; foundOdorspikes={}; % grab big old matrix
     for j=1:length(SuperRat(ses).units)
         [~,odorSpkMat(:,j),~,~,~,foundOdorspikes(:,j)]=event_spikes(SuperRat(ses).units(j).ts,...
@@ -1193,68 +1216,27 @@ for ses=1:length(SuperRat)
     % work up the tracking data into track bins
     %
     runSpkMat={}; runIDs={};
-    for ile=1:length(runpos)
+    for ile=1:length(snifftimes)
         % only use times when the linear trajectory is between...
-        okpos=runpos(ile,:);% segment out the arm
-        oktrackpos=fulltraj(:,8)>okpos(1) & fulltraj(:,8)<okpos(2);
-        temptraj=fulltraj(oktrackpos,:);
         
-        killslow=0; % kill slow moving times
-        if killslow
-            temptraj(temptraj(:,10)==0)=[]; % now cut out when he's slow
-        end
-        
-        % kill bins that are too close to the sampling period (1 sec)
-        
-        if deadspace>0
-            for i=1:length(odorEnds)
-                % kill the n seconds after the odor end
-                timediffs=temptraj(:,1)-odorEnds(i,1);
-                % for that end, kill all following tracking coords until
-                % deadspace ends
-                badtimes=timediffs<deadspace & timediffs>0;
-                temptraj(badtimes,:)=[];
-                hadtocut(i)=sum(badtimes);
-            end
-        end
-        
-       
-        breaks=find(diff(temptraj(:,1))>1); % only use time breaks that last more than a second
-        % concatenate the start of each traj, its end, and the origin and
-        % destination at that first index
-        runepochs=[[temptraj(1); temptraj(breaks+1,1)] [temptraj(breaks,1);...
-            temptraj(end,1)] temptraj([1; breaks+1],[4 5])];
-        runinds=[[1; breaks+1] [breaks; size(temptraj,1)] temptraj([1; breaks+1],[4 5])];
-        %runepochs(diff(runepochs(:,[1 2]),1,2)<=.5,:)=[]; % remove short epochs
-        %runinds(diff(runepochs(:,[1 2]),1,2)<=.5,:)=[]; % remove short epochs
-        
-        % here would be the place to pick the runs that follow each correct
-        % odor sample...
-        
-        OKruninds=[]; OKrunepochs=[];
-        if onlyodorruns
-            for rn=1:length(odorStarts)
-                % find the next run start
-                nextind=find(runepochs(:,1)>odorStarts(rn,1),1,'first');
-                OKrunepochs(rn,:)=runepochs(nextind,:);
-                OKruninds(rn,:)=runinds(nextind,:);
-            end
-        else
-            OKrunepochs=runepochs;
-            OKruninds=runinds;
-        end
-        
-        % identify each run epoch by which type of run it is
-        % now get the likelihood of each spike per msec
-        runIDs{ile}=ismember(OKruninds(:,[3 4]),trajinds(1,:),'rows');
+
 
         for j=1:length(SuperRat(ses).units)
             [~,runSpkMat{ile}(:,j)]=event_spikes(SuperRat(ses).units(j).ts,...
-                OKrunepochs(:,1),0,OKrunepochs(:,2)-OKrunepochs(:,1));
+                odorStarts+sniffbounds(ile,1),0,binsize);
         end
     end
 
+    % so what I want to do is a leave one out, or leave a few out and do a
+    % head to head comparison of whether the decoder can decode the values
+    % so what i'll do is for every leave-out, i'll build a priors mat of
+    % the full odor periods, and then go for each bin back until i get a
+    % real decode for both regions if i dont get a signfiicant decode for
+    % both, then i nan them out and i dont use.
 
+
+    % this section is where I left off::
+    
     thisdecode=mytemplate;
     for i=1:length(region)
         inRegion=cellfun(@(a) contains(a,region{i},'IgnoreCase',true), {SuperRat(ses).units.area});
@@ -1272,7 +1254,31 @@ for ses=1:length(SuperRat)
             % now decode runs based on odor period
             odorPriors=mean(SpkMat(odorIDs==1,:)); % 1,nunits,1
             odorPriors(:,:,2)=mean(SpkMat(odorIDs==0,:)); % 1,nunits,2
-           
+            for ile=1:length(runpos)
+                testmat=runSpkMat{ile}(:,inRegion & ~badunits); % ntrials x nunits
+                trueOdors=runIDs{ile}; % true run sides
+                prodmat=prod((odorPriors.^testmat),2); % prod across units i (mean_i)^spikes_i
+                summat=sum(odorPriors,2); % sum across units (mean_i)
+                tau=1; % tau is basically a conversion to n spikes per second (but we've already done that)
+                probmat=prodmat.*exp(-tau.*summat);
+                % sum p across potential odors must ==1 (the c term)
+                realProb=probmat./sum(probmat,3);
+                [~,decoded]=max(squeeze(realProb),[],2);
+                fract_correct_run=nanmean(trueOdors==odorNames(decoded)');
+                
+                            
+                for boot=1:200
+                    scrambledecode=decoded(randperm(length(decoded)));
+                    fract_correct_shuff(boot)=nanmean(trueOdors==odorNames(scrambledecode)');
+                end
+                fract_correct_null=nanmean(fract_correct_shuff);
+                
+                p_run=1-normcdf(fract_correct_run,nanmean(fract_correct_shuff),...
+                    nanstd(fract_correct_shuff));
+
+                thisdecode{i+1,3,1}=[thisdecode{i+1,3,1}; [fract_correct_run nanmean(fract_correct_null)]];
+                thisdecode{i+1,3,2}(ile)=p_run;
+            end
 
             fprintf('%s %d %s trials:%d,  odor decoding correct%.f%%, run decoding correct%.f%%,  null=%.f%% p=%.3f, p%.3f\n',...
                 SuperRat(ses).name,SuperRat(ses).daynum,region{i},length(odorIDs),...
@@ -1287,6 +1293,7 @@ for ses=1:length(SuperRat)
             fprintf('%s %d %s not used, not enough units... \n',...
                 SuperRat(ses).name,SuperRat(ses).daynum,region{i});
         end
+    end
     end
     SuperRat(ses).BayesDecodePvals=thisdecode;
     % this method of taking the mean run probably doesnt make much sense

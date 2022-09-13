@@ -65,6 +65,15 @@ params=struct('tapers',[3 5],'fs',1500,'pad',1,'Fpass',[2 40]);
 
 %}
 
+
+regions={'PFC','CA1','OB'};
+colors=[rgbcolormap('DarkAquamarine'); rgbcolormap('LightCoral'); rgbcolormap('DarkOrange')];
+rhythmcolors=[rgbcolormap('navy'); rgbcolormap('DeepPink')]; % BETA IS BLUE
+types={'pyr','in'};
+rhythm={'beta','resp'};
+
+
+
 % the biggest choice here is which HPC lfp to use.  I am inclined to use
 % the tet with the most odor responsive units or the tet with the highest
 % beta to gamma power (15-30) hz to 30-45 hz ratio
@@ -150,7 +159,7 @@ histogram(cell2mat(allbetagamma2),0:.5:6);
 %
 % Correct vs incorrect trials
 %
-
+%
 
 %% overall coherence comparing correct and incorrect trials
 rstream = RandStream('dsfmt19937','Seed',16);
@@ -251,6 +260,7 @@ for i=1:length(SuperRat)
             
 
             % and individual spectra for each, no trialcount equalization
+            % dont really need these
             Sperf{orders(j,1)}(i,:)=mean(S1(trialCorrect==1,:),'omitnan');
             SperfX{orders(j,1)}(i,:)=mean(S1(trialCorrect==0,:),'omitnan');
             Sperf{orders(j,2)}(i,:)=mean(S2(trialCorrect==1,:),'omitnan');

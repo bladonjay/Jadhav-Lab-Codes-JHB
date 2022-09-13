@@ -30,14 +30,10 @@ animals = {'CS31','CS33','CS34','CS35','CS39','CS41','CS42','CS44'};
 regions = {'CA1','PFC'};
 
 
-% for PFC example
-regionIDX=2; animno = 8; day = 2;
-% for HPC example
-regionIDX=1; animno = 3; day = 3;
-
-
+regionIDX=1;
 region = regions{regionIDX}; 
-animal = animals{animno};
+
+animno = 3; animal = animals{animno}; day = 3;
 %dataDir = '/Users/Shantanu/data25/OLF_CS/Data/';
 %figdir = '/Users/Shantanu/data25/OLF_CS/Data/sj_Figures';
 dataDir='E:\Brandeis datasets\Claire Data\';
@@ -54,6 +50,7 @@ load([animalDir,animal,'nosepokeWindow',daystr,'.mat'])
 
 win = [0.2 0.9]; % Implies from -0.2 to 1
 binsize=0.1;
+step=.02;
 binsize_ms=1000*binsize;
 selectiveonly=0;
 %timeaxis = -1000*win(1):binsize_ms:1000*win(2);
@@ -72,16 +69,10 @@ end
 
 %% --- Calculate
 disp('creating column vectors')
-[leftfr, rightfr, lefttrials, righttrials, cellinds, np_left,np_right,np_all] = sj_columnVectors_day_npCells(animal, animno, day, region, win, binsize);
+[leftfr, rightfr, lefttrials, righttrials, cellinds, np_left,np_right,np_all] =...
+    sj_columnVectors_day_npCells_step(animal, animno, day, region, win, binsize,step);
 %[leftfr, rightfr, lefttrials, righttrials, cellinds] = cs_columnVectors(animals, region, win, binsize, selectiveonly);
-%
-% Get Bins
-allbins = -0.5:binsize:1.5-binsize;
-goodbins = win1:binsize:win(2)-binsize; 
-%binind = lookup(goodbins,allbins);
-%numtimebins = length(goodbins);
 
-numtimebins = length(goodbins); 
 
 %% 
 
@@ -119,6 +110,10 @@ Ntotaltr = Nlefttr + Nrighttr;
 
 bins = -win(1):binsize:win(2);
 Nbins = length(bins)-1; % histogram will have bins-1 edges
+
+stepbins=-win(1):step:win(2);
+Nbins = length(stepbins); % histogram will have bins-1 edges
+
 
 % For each bin, get a NtrxNneu matrix, and then do PCA
 
@@ -163,7 +158,6 @@ lefttrials_pc = zeros(Nlefttr,Nbins,3); righttrials_pc =zeros(Nrighttr,Nbins,3);
 
 % Do only DIST between average trajectories for Left and Right
 store_avg_DISTPC1=[];  % Avg left vs Avg right
-store_avg_DISTPC=[];  % Avg left vs Avg right
 
 
 
@@ -228,7 +222,6 @@ end
 % than individual shuffled trials
 store_avg_randDISTPC1=[]; % 1st PC
 store_avg_randDISTPC=[]; % All PCs
-DistExample=[];
 itr=1000;
 
 for shuf = 1:itr    
@@ -299,7 +292,7 @@ shuffavgCIDIST_PC = [prctile(store_avg_randDISTPC,5,1);prctile(store_avg_randDIS
 % -------------------------------------------------------------
 oldplot=0;
 if oldplot==1
-timeaxis = -1000*win(1):binsize_ms:1000*win(2);
+timeaxis = -1000*win(1):step*1000:1000*win(2);
 timeaxis = timeaxis(1:end-1);
 
 
@@ -333,11 +326,11 @@ legend({'PC distance','Null mean','Null upper 95%CI','Null lower 95%CI','Even-Od
 end
 
 %% now lets clean this up
-timeaxis = -win(1):binsize:win(2);
-timeaxis = timeaxis(1:end-1);
-regcolors=[242/256 100/256 86/256; 0 162/256 181/256 ];
 
-figure;
+regcolors=[242/256 100/256 86/256; 0 162/256 181/256 ];
+timeaxis = -1000*win(1):step*1000:1000*win(2);
+
+figure(2);
 title(sprintf('%s Example',region));
 % This is left vs. right PC distances using average PC - 3 PCs
 hold on;

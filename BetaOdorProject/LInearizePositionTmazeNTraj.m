@@ -107,10 +107,7 @@ for i=1:length(SuperRat)
         homewell=SuperRat(i).mazeMap.homewell;
         sidewells=SuperRat(i).mazeMap.sidewells;
         mytracks=SuperRat(i).mazeMap.mytracks;
-        if SuperRat(i).longTrack==0
-            homewell.radius=homewell.radius*3;
-            sidewells.radius=homewell.radius;
-        end
+        
         for epoch=1:length(SuperRat(i).RunEpochs)
             % start with the behavior epochs
             thesecoords=coorddata(coorddata(:,6)==SuperRat(i).RunEpochs(epoch),:);
@@ -156,6 +153,7 @@ for i=1:length(SuperRat)
                     abs(mytracks{tj}(:,2)-thesecoords(thispos,3))));
             end
             goaldists(thispos,:)=[Lgdist Rgdist Hgdist];
+            % index, then distance (ind is what we want)
             lintracks=linearize([tjind; tjdist]);
             % load up this coord val
             tempLinCoords(thispos,:)=[thesecoords(thispos,1:3) nan nan SuperRat(i).RunEpochs(epoch), ...
@@ -268,12 +266,19 @@ for i=1:length(SuperRat)
             end
             AllLinCoords=[AllLinCoords; tempLinCoords];
         end
+        % frankly unnecessary, but rescales roind loind liind riind from
+        % 1-100 vs whichever pixel point it is
+        %for tj=1:length(mytracks)
+        %    AllLinCoords(:,7+2*tj)=rescale(AllLinCoords(:,7+2*tj),1,100);
+        %end
         fprintf('Session %d done in %.2f seconds \n',i,toc);
         SuperRat(i).AllLinCoords=AllLinCoords;
+        % lodist is left out distance from closest point, and loind is the
+        % point
         SuperRat(i).AllLinCoords=array2table(AllLinCoords,'VariableNames',...
-            {'ts', 'x', 'y', 'origin','destination', 'epoch','speed','Lodist',...
-            'Loind','Rodist', 'Roind','Lidist','Liind','Ridist','Riind'});
-% 12 Lidist 13 Liind 14 ridist 15 riind'}
+            {'ts', 'x', 'y', 'origin','destination', 'epoch','speed','Loind',...
+            'Lodist', 'Roind','Rodist','Liind','Lidist','Riind','Ridist'});
+        % 12 Lidist 13 Liind 14 ridist 15 riind'}
     else
         fprintf('Session %d was on a short track \n',i);
     end
@@ -294,14 +299,14 @@ for ses=1:length(SuperRat)
         myCoords.epoch(myCoords.ts>epochbreaks(i) & myCoords.ts<=epochbreaks(i+1))=i+1;
     end
     
-    % and normalize all the trajectories
-    NumTraj=(size(myCoords,2)-7)/2;
+    % and normalize all the trajectories (this was done wrong in the first
+    % run) so that the start of each trajectory is 1 and the last is 100
+
     trajNames=myCoords.Properties.VariableNames;
-    for tr=9:2:7+NumTraj*2
-        
-        [~,~,tempcoords]=histcounts(myCoords.(trajNames{tr}),100); % bin into 100 increments
+    for tr=1:length(SuperRat(ses).mazeMap.mytracks)
+        [~,~,tempcoords]=histcounts(myCoords.(trajNames{6+2*tr}),100); % bin into 100 increments
         tempcoords(tempcoords==0)=nan;
-        myCoords.(trajNames{tr})=tempcoords;
+        myCoords.(trajNames{6+2*tr})=tempcoords;
     end
     
     SuperRat(ses).AllLinCoords=myCoords;
@@ -317,7 +322,7 @@ end
 %% this is where we distill all the trajectories into the most likely traj
 verbose=0;
 CoordVarNames={'ts','x','y','originWell','destinationWell','epoch','speed',...
-    'prefTrajDist','prefTrajInd'};
+    'prefTrajInd','prefTrajDist'};
 
 for i=1:length(SuperRat)
     if SuperRat(i).longTrack==1
@@ -379,9 +384,18 @@ end
         
 rowinds=1000:2500;
 figure; subplot(5,1,1); scatter(AllLinCoords(rowinds,2),AllLinCoords(rowinds,3),15,rowinds,'filled');
+title('real x and y coords');
 sp=subplot(5,1,2);  plot(AllLinCoords(rowinds,2)); yyaxis right; plot(AllLinCoords(rowinds,3));
-sp(2)=subplot(5,1,3); plot(AllLinCoords(rowinds,8)); yyaxis right; plot(AllLinCoords(rowinds,10));
-sp(3)=subplot(5,1,4); plot(AllLinCoords(rowinds,12)); yyaxis right; plot(AllLinCoords(rowinds,14));
-sp(4)=subplot(5,1,5); plot(AllLinCoords(rowinds,7)); hold on;
+legend({'real x', 'real y'});
+
+sp(2)=subplot(5,2,5); scatter(AllLinCoords(rowinds,8),AllLinCoords(rowinds,9),15,rowinds,'filled');
+title('out left'); xlabel('index(along track'); ylabel('distance from track')
+sp(3)=subplot(5,2,6);  scatter(AllLinCoords(rowinds,10),AllLinCoords(rowinds,11),15,rowinds,'filled');
+title('out right'); xlabel('index(along track'); ylabel('distance from track')
+sp(4)=subplot(5,2,7); scatter(AllLinCoords(rowinds,12),AllLinCoords(rowinds,13),15,rowinds,'filled');
+title('out left'); xlabel('index(along track'); ylabel('distance from track')
+sp(5)=subplot(5,2,8);  scatter(AllLinCoords(rowinds,14),AllLinCoords(rowinds,15),15,rowinds,'filled');
+title('out right'); xlabel('index(along track'); ylabel('distance from track')
+sp(6)=subplot(5,1,5); plot(AllLinCoords(rowinds,7)); hold on;
 scatter(1:length(rowinds),ones(1,length(rowinds)),15,rowinds,'filled');
 linkaxes(sp,'x')

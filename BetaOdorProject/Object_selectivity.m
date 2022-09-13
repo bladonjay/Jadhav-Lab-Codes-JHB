@@ -579,6 +579,7 @@ for tp=1:2
         % tabulate the pre, post, and the diff
         % taskresponsive- 1. odor rate, 2. preodor rate, 3. signrank diff pval
         allrates=cell2mat({responders.taskResponsive}');
+        
         scatter(allrates(:,1),allrates(:,1)-allrates(:,2));
         xlabel('odor rate'); ylabel('change (odor-preodor)')
         figure; histogram((allrates(:,1)-allrates(:,2))./(allrates(:,2)+allrates(:,1)),15);
@@ -586,6 +587,15 @@ for tp=1:2
         title(sprintf('%s, %s, %.1f percent drop rate', regions{i},type{tp},...
             mean(allrates(:,1)-allrates(:,2)<0)))
 
+        figure;
+        subplot(1,2,1);
+        allBetaMVL=cell2mat({responders.betaMVL}');
+        selectivities=cellfun(@(a) a.dprime(1), {responders.OdorSelective});
+        scatter(allrates(:,1)-allrates(:,2),max(allBetaMVL,[],2));
+        xlabel('chg in rate'); ylabel('betaMVL');
+        subplot(1,2,2);
+        scatter(allrates(:,1)-allrates(:,2),abs(selectivities));
+        xlabel('chg in rate'); ylabel('abs(selectivity)');
     end
 end
 %%
