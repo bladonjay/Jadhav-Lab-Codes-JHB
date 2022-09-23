@@ -79,7 +79,10 @@ rhythm={'beta','resp'};
 % beta to gamma power (15-30) hz to 30-45 hz ratio
 %% lets see if we can get some beta to gamma ratios in tetrodes
 
-% if there is a good spread, i'll try to relate that to place fields and
+% this wasnt useful, for now, we use for each region the tetrode with the
+% most cells on it.
+
+% The hope here was to relate that to place fields and
 % odor fields
 % per igarashi et al extended data figure 5
 
@@ -147,6 +150,7 @@ allbetagamma2=cellfun(@(a) max(a), {SuperRat.betagamma},'UniformOutput',false);
 histogram(cell2mat(allbetagamma),0:.5:6);
 hold on;
 histogram(cell2mat(allbetagamma2),0:.5:6);
+
 % i think what could come next is two things:
 % 1. run the cross coherence across the tetrodes, see of betagamma coupling
 % pairs with beta cross coherence (may need to consider the amplitude
@@ -1435,7 +1439,7 @@ LECspectam=cwt(zscore(LECdata),bases,wname); % the spectrogram for ALLLLL
 %
 %
 %
-%
+% mean phase offset and phase offset variance
 %
 %
 %

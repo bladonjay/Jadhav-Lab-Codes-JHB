@@ -99,7 +99,7 @@ edit ClaireBetaAnalysis % get spike-band coherence
 % lfp only interactions
 edit ClaireCrossCoherence % run cross coherence across bands
 
-
+edit ClairePhaseOffset
 
 edit ClaireCellCellInteractions
 

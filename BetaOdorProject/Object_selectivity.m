@@ -434,7 +434,7 @@ openvar('pctTable')
 % responsetable and pctTable
 
 pcrit=1-normcdf(1.5);
-
+pcrit=.05;
 
 % and to get e and I,...
 colors=[rgbcolormap('DarkAquamarine'); rgbcolormap('LightCoral'); rgbcolormap('DarkOrange')];
