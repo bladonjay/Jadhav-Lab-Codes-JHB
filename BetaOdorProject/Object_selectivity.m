@@ -309,13 +309,14 @@ for ses=1:length(SuperRat)
     tic
     % get trial data
     trialData=SuperRat(ses).trialdata;
+    % 1 start, 2 end, 3 leftright, 4 correctincorrect, 5 epoch
     fullTrialmat=[trialData.sniffstart trialData.sniffend trialData.leftright10 trialData.CorrIncorr10 trialData.EpochInds(:,2)];
     % trials have to be in an analyzed block, and have to be >.5 seconds
     % and <2 seconds, 
     trialUse=ismember(fullTrialmat(:,5),SuperRat(ses).RunEpochs) & ...
         (fullTrialmat(:,2)-fullTrialmat(:,1))>=.5 &...
         (fullTrialmat(:,2)-fullTrialmat(:,1))<2;
-    trialMat=fullTrialmat(trialUse,:); % only take correct trials from high performing blocks
+    trialMat=fullTrialmat(trialUse,:);
 
     % just easier if these are their own variables and types
     odorID=trialMat(:,3); isCorr=trialMat(:,4)==1;
@@ -354,7 +355,7 @@ for ses=1:length(SuperRat)
 
         taskResponsive=nan(1,3); % before, after, pval of signrank
 
-        if length(nspks)>100 % active Units, 100 spikes across all run epochs
+        if length(nspks)>100 % active units, 100 spikes across all run epochs
 
             % empirically if you 'runboth' and test on each odor
             % individually you actually get fewer cells that are task
@@ -697,9 +698,12 @@ load redToBlue; % the red to blue colormap
 SIcorr=table('Size',[2 4],'VariableTypes',repmat({'double'},1,4),...
     'VariableNames',{'Pyr R2','Pyr p','IN R2','IN p'},'RowNames',{'PFC','CA1'});
 
+% first pull only active cells
 allCells=allCells([allCells.activeCell]==1);
 for t=1:2
     for i=1:2
+        % in region, taskResponsive, odorSelective, have curve, and correct
+        % celltype
         regcoders=allCells(strcmpi({allCells.area},regions{i}) &...
             cellfun(@(a) a(3)<.05, {allCells.taskResponsive}) &...
             cellfun(@(a) a{1,3}==1,{allCells.OdorSelective}) &...

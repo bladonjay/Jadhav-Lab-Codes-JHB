@@ -4,12 +4,14 @@
 
 usesaved=1;
 if usesaved==1
-
-    load('E:\Brandeis datasets\Claire Data\ClaireData-2022-08-02.mat');
-
-    % remake this so its the folder with this projects codebase
-    cd('E:\GithubCodeRepositories\Jadhav-Lab-Codes\BetaOdorProject');
-    
+    try % home computer filepath
+        load('E:\Brandeis datasets\Claire Data\ClaireData-2022-08-02.mat');
+        % remake this so its the folder with this projects codebase
+        cd('E:\GithubCodeRepositories\Jadhav-Lab-Codes\BetaOdorProject');
+    catch % work computer filepath
+        load('G:\Brandeis datasets\Claire Data\ClaireData-2022-08-02.mat');
+        cd('C:\Users\Jadhavlab\Documents\gitRepos\Jadhav-Lab-Codes\BetaOdorProject');
+    end
 else  % or to rebuild the dataset from scratch
     % take the data from the hundreds of files she gave me
     edit ClaireDataAggregator
