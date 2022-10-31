@@ -29,34 +29,7 @@ better
 3. does the ensemble code shift during beta oscillations?
 
 %}
-%% previous work on timing
-%{
-Claire did a few plots that may be informative, lets see why these were
-taken out of the analysis
-1. CA_PFC beta coherence during odor presentation was anticorrelated with
-sampling time: higher coherence==lower latency to choose
 
-2. Neural discrimination preceded decision
-    -CA1 coding occurred earlier
-
-3. Neural population discrimination correlated with subsequent choice
-    -I think the issue was that this was in the aggregate, and that one
-    animal skewed the dataset because trials were averaged across
-
-
-% so lets see if we can capture this beta timing analysis.
-% some options here:
-1. calculate on a trial to trial basis the first moment beta power is
-significantly higher than chance. then calculate when the animal releases
-his nose.  this should correlate on a trial to trial basis
-
-
-% i dont think we need to worry too much about latency during this period,
-I think correct vs incorrect may be the way to go here...  Need to see
-whether cell xcorrs are different between correct and incorrect trials....
-I think this could bear out as both cohere to beta better during correct
-trials...
-%}
 %% okay so what claire does:
 
 %{
@@ -1902,3 +1875,36 @@ for i=1:length(SuperRat)
     fprintf('Sess %d, rat %s %d done in %d, prob %d more\n',i,SuperRat(i).name,...
     SuperRat(i).daynum,round(toc(sessclock)), round(toc(allclock)/i*(length(SuperRat)-i)));
 end
+
+
+%% previous work on timing
+%{
+Claire did a few plots that may be informative, lets see why these were
+taken out of the analysis
+
+1. CA_PFC beta coherence during odor presentation was anticorrelated with
+sampling time: higher coherence==lower latency to choose
+    - this was done across sessions instead of within session
+
+2. Neural discrimination preceded decision
+    -CA1 coding occurred earlier
+    - this was also done across sessions
+
+3. Neural population discrimination correlated with subsequent choice
+    -I think the issue was that this was in the aggregate, and that one
+    animal skewed the dataset because trials were averaged across
+
+
+% so lets see if we can capture this beta timing analysis.
+% some options here:
+1. calculate on a trial to trial basis the first moment beta power is
+significantly higher than chance. then calculate when the animal releases
+his nose.  this should correlate on a trial to trial basis
+
+
+% i dont think we need to worry too much about latency during this period,
+I think correct vs incorrect may be the way to go here...  Need to see
+whether cell xcorrs are different between correct and incorrect trials....
+I think this could bear out as both cohere to beta better during correct
+trials...
+%}

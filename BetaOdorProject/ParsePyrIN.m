@@ -9,8 +9,64 @@
 % this adds the short ISI's for 1 and 2 msec, it adds the numspikes, the
 % mean rate, the burst probability, the burst index, and the theta index
 
+%% heres where I make the designation between pyrams and ins for each region
 
+% this is exactly how claire ran this analysis except that she had a method
+% for parsing cells whose rate was between 9 and 9.5 by using waveforms...
+% she never passed me waveform data so i am just letting those cells
+% through
+
+for ses= 1:length(SuperRat)
+    for j=1:length(SuperRat(ses).units)
+        if contains(SuperRat(ses).units(j).area,'CA1')
+            % I think we need to positively select PYRs and leave ins
+            % to whatever is left
+            if SuperRat(ses).units(j).meanrate<=9.5
+                SuperRat(ses).units(j).type='pyr';
+            else
+                SuperRat(ses).units(j).type='in';
+            end
+            
+        elseif contains(SuperRat(ses).units(j).area,'PFC')
+            if SuperRat(ses).units(j).meanrate<9.5
+                SuperRat(ses).units(j).type='pyr';
+            else
+                SuperRat(ses).units(j).type='in';
+            end
+            
+        end        
+    end
+end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+%%
 % dont use this code, its over the top...
+% it gives you a deep dive into burstiness, acgrams etc.
 %{
 verbose=0;
 
@@ -143,35 +199,6 @@ set(gca,'YLim',[0 10]); title('PFC units');
 % of below 3
 % for PFC it looks like INS have a firing rate above 7 Hz
 
-%% heres where I make the designation between pyrams and ins for each region
-
-for ses= 1:length(SuperRat)
-    for j=1:length(SuperRat(ses).units)
-        if contains(SuperRat(ses).units(j).area,'CA1')
-            % I think we need to positively select PYRs and leave ins
-            % to whatever is left
-            if SuperRat(ses).units(j).meanrate<=9.5
-                SuperRat(ses).units(j).type='pyr';
-            else
-                SuperRat(ses).units(j).type='in';
-            end
-            
-        elseif contains(SuperRat(ses).units(j).area,'PFC')
-            if SuperRat(ses).units(j).meanrate<9.5
-                SuperRat(ses).units(j).type='pyr';
-            else
-                SuperRat(ses).units(j).type='in';
-            end
-            
-        end
-        % but if it has more than 5% 1msec ISIs and it fires above
-        % 7 hz, its prob not an IN either
-        %if SuperRat(ses).units(j).meanrate>=7 %  && SuperRat(ses).units(j).shortISI(2)>SuperRat(ses).units(j).numspikes(1)*.01
-        %    SuperRat(ses).units(j).type='mua';
-        %end
-        
-    end
-end
 
 
 %% now the above plot but labeled correctly

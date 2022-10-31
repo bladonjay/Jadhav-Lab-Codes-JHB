@@ -47,11 +47,11 @@ dirdata=dir(parentdir);
 ratfolders=dirdata(contains({dirdata.name},'Expt'));
 
 cellmat={};
-for k=1:length(ratfolders)
-    cellmat{1,k}=ratfolders(k).name;
-    filebits=dir(fullfile(ratfolders(k).folder,ratfolders(k).name));
+for cl=1:length(ratfolders)
+    cellmat{1,cl}=ratfolders(cl).name;
+    filebits=dir(fullfile(ratfolders(cl).folder,ratfolders(cl).name));
     filenames={filebits(3:end).name}';
-    cellmat(2:(length(filenames)+1),k)=filenames;
+    cellmat(2:(length(filenames)+1),cl)=filenames;
 end
     % okay this is now a nested struct with all the filenames we'll need
 
@@ -81,24 +81,78 @@ for rt=1:length(ratfolders)
             load(spikefile);
             SuperRat(sessnum).oldspikes=spikes{i};
             % now go in and grab the unit data (across small epochs)...
-            cumct=1;
+
+                % the problem with this analysis is that if the cell doesnt
+                % exist in the first epoch, it doesnt exist at all
+
+
+                for tet=1:32  % for eahc tetrode
+                    % or is spikes what i want to pull in?
+                    % skip through to tetrode
+                    tetcells=max(cellfun(@(a) length(a{tet}), cellinfo{i}));
+                    % now for that tet generate an n cell struct
+                  
+                    for cl=1:tetcells % for each cluster
+                        % now go each epoch see if there are data
+                        spikes=[]; clear tempstruct catstruct;
+                        for ep=1:length(cellinfo{i}) % for each epoch (may or may not be empty)
+                            try % try adding our data to the struct
+                                tempstruct=MergeStructs(SuperRat(sessnum).oldspikes{ep}{tet}{cl},...
+                                    SuperRat(sessnum).cellinfo{ep}{tet}{cl},'update');
+                                tempstruct.numspikes=length(spikes);
+                                tempstruct.tet=tet;
+                                % give it room to go up from there...
+                                tempstruct.cluster=char(cl+64);
+                                if exist('catstruct','var')
+                                    catstruct=MergeStructs(catstruct,tempstruct,'addall');
+                                else
+                                    catstruct=tempstruct;
+                                end
+                            end
+                        end
+                        % if there are spikes to record, this is a cell...
+                        if exist('catstruct','var')
+                            % take a new struct
+                            clear tempstruct
+                           
+                            testing=struct2cell(catstruct);
+                            temp = squeeze(cellfun(@(a) ~isempty(a), testing));
+                            [~,fullrow]=max(sum(temp));
+                            tempstruct=catstruct(fullrow);
+                             tempstruct.ts=cell2mat({catstruct.data}');
+                            if isfield(tempstruct,'descript')
+                                %keyboard
+                                if ~exist('unitdata','var')
+                                    unitdata=tempstruct;
+                                else
+                                    unitdata=MergeStructs(unitdata,tempstruct,'addall');
+                                end
+                            end
+                        end
+                    end
+                end
+                % amd clean up
+                SuperRat(sessnum).unitdata=unitdata;
+                clear unitdata;
+%{
             try
-                % for each tetrode in that epoch
-                for j=1:length(SuperRat(sessnum).cellinfo{1}) % pull for first epoch first
+                cumct=1;
+                % for each tetrode
+                for tet=1:32 % length(SuperRat(sessnum).cellinfo{1}) % pull for first epoch first
                     % ok chain goes: epoch, tetrode, unit
                     % i think the same cells are clustered across epochs, so the cell
-                    if ~isempty(SuperRat(sessnum).cellinfo{1}{j})
+                    if ~isempty(SuperRat(sessnum).cellinfo{1}{tet})
                         % create a set of cells that are accepted
-                        for k=1:length(SuperRat(sessnum).cellinfo{1}{j})
+                        for cl=1:length(SuperRat(sessnum).cellinfo{1}{tet})
                             % the tag means its an accepted cell
-                            if isfield(SuperRat(sessnum).cellinfo{1}{j}{k},'tag')
+                            if isfield(SuperRat(sessnum).cellinfo{1}{tet}{cl},'tag')
                                 % initiate the struct
-                                tempstruct=SuperRat(sessnum).cellinfo{1}{j}{k};
-                                tempstruct.tet=j;
-                                tempstruct.ts=SuperRat(sessnum).oldspikes{1}{j}{k}.data;
+                                tempstruct=SuperRat(sessnum).cellinfo{1}{tet}{cl};
+                                tempstruct.tet=tet;
+                                tempstruct.ts=SuperRat(sessnum).oldspikes{1}{tet}{cl}.data;
                                 % now fill in subsequent days
-                                for d=2:length(SuperRat(sessnum).oldspikes)
-                                    tempstruct.ts=[tempstruct.ts; SuperRat(sessnum).oldspikes{d}{j}{k}.data];
+                                for ep=1:length(SuperRat(sessnum).oldspikes)
+                                    tempstruct.ts=[tempstruct.ts; SuperRat(sessnum).oldspikes{ep}{tet}{cl}.data];
                                 end
                                 % now a save case cause sometimes its a ref channel
                                 if isfield(tempstruct,'descrip')
@@ -118,7 +172,7 @@ for rt=1:length(ratfolders)
                 fprintf('couldnt extract Units from %s \n',spikefile);
             end
         end
-        
+%}
         % now go for position data
         posfile=[thisdir '\' ratName 'pos' sprintf('%02d',i) '.mat'];
         if exist(posfile,'file')==2
@@ -133,13 +187,13 @@ for rt=1:length(ratfolders)
             temppos.fields={'time','x','y','dir','vel','epoch'};
             temppos.filt(1)=SuperRat(sessnum).oldpos{1}.arg(2);
             temppos.descript=SuperRat(sessnum).oldpos{1}.descript;
-            for j=2:length(SuperRat(sessnum).oldpos)
+            for tet=2:length(SuperRat(sessnum).oldpos)
                 % gather all the position data
-                newpos=SuperRat(sessnum).oldpos{j}.data;
-                newpos(:,end+1)=j;
+                newpos=SuperRat(sessnum).oldpos{tet}.data;
+                newpos(:,end+1)=tet;
                 temppos.data=[temppos.data; newpos];
-                temppos.filt(j)=SuperRat(sessnum).oldpos{j}.arg(2);
-                temppos.descript(:,j)=SuperRat(sessnum).oldpos{j}.descript;
+                temppos.filt(tet)=SuperRat(sessnum).oldpos{tet}.arg(2);
+                temppos.descript(:,tet)=SuperRat(sessnum).oldpos{tet}.descript;
             end
             SuperRat(sessnum).tracking=temppos;
             SuperRat(sessnum).RunEpochs=2:2:length(SuperRat(sessnum).oldpos);
@@ -246,8 +300,8 @@ for i=1:length(cellinfo)
         SuperRat(sessnum).trialdata=trialdata;
         SuperRat(sessnum).oldbeh=thisoldbeh(:,end);
         if iscell(usedfiles)
-            for k=1:length(usedfiles)
-                fprintf('extracted behavior data from %s \n', usedfiles{k});
+            for cl=1:length(usedfiles)
+                fprintf('extracted behavior data from %s \n', usedfiles{cl});
             end
         else
             fprintf('extracted behavior data from %s \n', usedfiles);
@@ -328,28 +382,28 @@ for ses=1:length(SuperRat)
     cumct=1;
     for i=1:length(spikes) % always full
         % for each tetrode
-        for j=1:length(spikes{i}) % sometimes empty
-            if ~isempty(spikes{i}{j})
+        for tet=1:length(spikes{i}) % sometimes empty
+            if ~isempty(spikes{i}{tet})
                 % for unit on that tetrode
-                for k=1:length(spikes{i}{j}) % often empty
-                    if ~isempty(spikes{i}{j}{k})
+                for cl=1:length(spikes{i}{tet}) % often empty
+                    if ~isempty(spikes{i}{tet}{cl})
                         %fprintf('index: epoch %d, tetrode %d, unit %d  had mean rate %.2f \n',i, j, k, rawunits.spikes{i}{j}{k}.meanrate);
                         unitdata(cumct)=tempstruct; % load the blank struct
-                        unitdata(cumct).ts=spikes{i}{j}{k}.data; % add data
-                        unitdata(cumct).tet=j; unitdata(cumct).unitnum=k; % tet and unit
+                        unitdata(cumct).ts=spikes{i}{tet}{cl}.data; % add data
+                        unitdata(cumct).tet=tet; unitdata(cumct).unitnum=cl; % tet and unit
                         
                         try
-                            unitdata(cumct).tag= spikes{i}{j}{k}.tag; % the tag
+                            unitdata(cumct).tag= spikes{i}{tet}{cl}.tag; % the tag
                         end
                         if isempty(unitdata(cumct).tag)
                             try
-                                unitdata(cumct).tag=metadata{i}{j}{k}.tag;
+                                unitdata(cumct).tag=metadata{i}{tet}{cl}.tag;
                             end
                         end
                         % now pull metadata
                         try
-                            unitdata(cumct).meanrate=metadata{i}{j}{k}.meanrate; % mean rate
-                            unitdata(cumct).area=metadata{i}{j}{k}.area;
+                            unitdata(cumct).meanrate=metadata{i}{tet}{cl}.meanrate; % mean rate
+                            unitdata(cumct).area=metadata{i}{tet}{cl}.area;
                         end
                         cumct=cumct+1;
                     end
@@ -366,9 +420,9 @@ for ses=1:length(SuperRat)
         clear newunitdata; cumct=1;
         for i=1:length(activetets)
             cellcts=unique([unitdata([unitdata.tet]==activetets(i)).unitnum]);
-            for j=1:length(cellcts)
-                newunitdata(cumct)=unitdata(find([unitdata.tet]==activetets(i) & [unitdata.unitnum]==cellcts(j),1,'first'));
-                newunitdata(cumct).ts=cell2mat({unitdata([unitdata.tet]==activetets(i) & [unitdata.unitnum]==cellcts(j)).ts}');
+            for tet=1:length(cellcts)
+                newunitdata(cumct)=unitdata(find([unitdata.tet]==activetets(i) & [unitdata.unitnum]==cellcts(tet),1,'first'));
+                newunitdata(cumct).ts=cell2mat({unitdata([unitdata.tet]==activetets(i) & [unitdata.unitnum]==cellcts(tet)).ts}');
                 cumct=cumct+1;
             end
         end

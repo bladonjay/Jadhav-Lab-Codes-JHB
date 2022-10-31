@@ -1,60 +1,61 @@
 %% ClaireWrapper
 
 % first build your dataset;
-%load('E:\Claire Data\ClaireData22-Apr-2020.mat')
 
+usesaved=1;
+if usesaved==1
 
-%load('F:\Claire Data\ClaireData20220201.mat')
-load('E:\Brandeis datasets\Claire Data\ClaireData-2022-08-02.mat')
+    load('E:\Brandeis datasets\Claire Data\ClaireData-2022-08-02.mat');
 
-%% or to rebuild the dataset from scratch
-edit ClaireDataAggregator
+    % remake this so its the folder with this projects codebase
+    cd('E:\GithubCodeRepositories\Jadhav-Lab-Codes\BetaOdorProject');
+    
+else  % or to rebuild the dataset from scratch
+    % take the data from the hundreds of files she gave me
+    edit ClaireDataAggregator
 
-%% this builds the trajectories (old version)
-% now you can linearize the positional data
-% as currently is 2-10-2020 this will ask you to redraw cs39 over again
-% this is because this is a partial long track, remember no 90* angles on
-% your tracks!
+    % this builds the trajectories (old version)
+    %  edit LinearizePositionTmaze (old, replaced by code below)
 
-edit LinearizePositionTmaze
+    % This is the new version with all four trajectories (2 in, 2 outbound)
+    % algorithm:
+    % 1. draw a typical trajectory for each of the 4 run types
+    %    will ask you to redraw cs39 over again
+    %   this is because this is a partial long track, remember no 90* angles on
+    %   your tracks!
+    % 2. for each run (space between wells) gather the rats distance along and
+    %   distance from each trajectory
+    % 3. make sure that the odor port entries match which trajectory we think
+    %   the rat took (the start port and end port should match whichever
+    %   trajectory the rats position remained closest to.
+    % 4. Save those data
+    %
+    % data that are produced:
+    % allLinCoords (this contains all the linearized trajectories in a struct)
+    % rows: ts, x,y,origin, destination, epoch#, velocity, out left, out right,
+    % in left, in right
 
+    % the 4 traj is better if your runs are all wonky (like for short tracks)
+    edit LinearizePositionTmazeNTraj
+    % first parse pyrams and interneurons based on rate and burst index
+    edit ParsePyrIN
 
-%% This is the new version with all four trajectories (2 in, 2 outbound)
-% algorithm:
-% 1. draw a typical trajectory for each of the 4 run types
-% 2. for each run (space between wells) gather the rats distance along and
-% distance from each trajectory
-% 3. make sure that the odor port entries match which trajectory we think
-% the rat took (the start port and end port should match whichever
-% trajectory the rats position remained closest to.
-% 4. Save those data
-
-% data that are produced:
-% allLinCoords (this contains all the linearized trajectories in a struct)
-% rows: ts, x,y,origin, destination, epoch#, velocity, out left, out right,
-% in left, in right
-
-% the 4 traj is better if your runs are all wonky (like for short tracks)
-edit LinearizePositionTmazeNTraj
-
+end
 
 
 % some helpful fx for that:
- 
 % - one is getcoord_Tmaze, this lets you draw the trajectories, or at
 % least is a skeleton for opening a gui and drawing some mean trajectories
 %%  if you've already made linearized position data
 
-%load('E:\Claire Data\ClaireDataFull-LinPos-LongTrack.mat');
+%*** DONT RUN THIS BLOCK***
+
+% load('E:\Claire Data\ClaireDataFull-LinPos-LongTrack.mat');
 % removes short arm sessions
-SuperRat(~logical([SuperRat.longTrack]))=[];
+% SuperRat(~logical([SuperRat.longTrack]))=[];
 
 
-%%
-load('E:\Claire Data\ClaireDataFull-LinPos-LongTrack-ObjCoding.mat')
-
-% first parse pyrams and interneurons based on rate and burst index
-edit ParsePyrIN
+%% make single cell examples here:
 
 % to plot some place fields out use this:
 edit ClaireQuickPlacePlot % i dont htink this went into the paper
@@ -62,57 +63,58 @@ edit ClaireQuickPlacePlot % i dont htink this went into the paper
 % plot linearized place fields
 edit PlotLinTrajectories
 
-
+% to calculate the selectivity scores etc for space
 edit CalcLinTrajectories %
+
+%% now object coding
+
 % get object coding
 edit Object_selectivity
-
     
-% get spatial info for object cells
-edit PlotObjPlaceCells
 
-%% and the meat of the figures
-edit SummaryObjPlaceInteractions
-
-edit Claire_Odor_Routedecoder
 %%  This is the beta coherence datast
 
-%load('G:\Claire Data\ClaireData22-Apr-2020.mat')
-%load('G:\Claire Data\ClaireData30-03-2022.mat')
-
+% to calculate beta we use raw lfp files (theyre large)
 betaDir='E:\ClaireData';
-
 edit addTetInfo % get the info from tets (especially for ob tets)
 
 %edit gatherEEGdata % pull the eeg data and parse into bands (and verify, old version)
 edit gatherEEG % this is the current stable copy of that function
 
+% these figure panels are nolonger in the ms
 edit ClaireLFPspatialPlots
 
 % spike-lfp interactions
 edit ClaireBetaAnalysis % get spike-band coherence
-% rr analysis just has the same as beta but for rr
-
-% rr is defunct now, all beta and rr control analysis is in beta above
-% edit ClaireRRAnalysis % same for rr
 
 % lfp only interactions
 edit ClaireCrossCoherence % run cross coherence across bands
 
-edit ClairePhaseOffset
+% also nolonger in dataset
+edit ClairePhaseOffset % followup for reviewers
 
+% cell pair analysis, currently only cross-coherence between pfc-ca1 cells,
+% and we run it based off of an old paper
 edit ClaireCellCellInteractions
+
+%% this is all figure 7 stuff
+% get spatial info for object cells
+edit PlotObjPlaceCells
+
+edit SummaryObjPlaceInteractions
+
+edit Claire_Odor_Routedecoder
 
 %% and shantanus pca plot
 
 edit sj_save_PCA_plot.m
-%% now to analyze these data
+%% now to analyze ripples...
 % one fun question is whether odor representations are replayed with goal
 % location representations, although it may be tough as there are only four
 % options, so the basrates are very high
 edit ClaireRippleAnalysis
 
-%%
+%% clear workspace
 clearvars -except SuperRat
 
 
@@ -132,10 +134,6 @@ also use the nonreferenced
 
 * we'll use coheren
 
-%}
-%%
-
-%{
 notes for splitter:
 wenbo did a correlation type scoring across the two linearize trajectories
 One thing yu can do is run an xcorr between the two rate maps.  The other
@@ -152,9 +150,7 @@ the regression i think we're looking for is how similar the rate maps are,
 but i'll need to normalize them by maybe their rates overall?
 
 
-%}
 
-%{
 Notes from 4/10/20
 for figure 5- put letters for subpanels
 -remove odor 1 vs odor 2 rates for cells that are only responsive and not
@@ -174,17 +170,13 @@ of rates during run and rates during odor presentation
 -use claires glm code to decode routes given odor activity.
 
 
-%}
 
-%{
 notes for cross frequency coupling
 1. cfc doesnt occur between beta and rr
 2. it does occur for some very high and very low freq bands though,
 especially in the ob
 
-%}
 
-%{
 notes for cell-cell interactions
 1. cells have strong oscillations in their cross correlograms
 2. some are tightly locked, others less
@@ -196,6 +188,9 @@ unclear.
 5.  it also looks like for beta cells, their best peak is either within 0.005 sec,
 or a whole beta cycle away, like 0.035 msec.
 
+
+%}
+% GLM code
 %{
 glm code
 % ok so Cellmatrix is n events by m cells, and its the number of spikes per

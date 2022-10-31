@@ -3,38 +3,37 @@
 % first, how many cells show object selectivity, lets see if we have the
 % data in the behavior first
 
-
-%load('E:\Claire Data\ClaireDataFull-LinPos-LongTrack.mat')
-
-
 % object epochs are 'sniff' and the right and left 'correct' are the sides,
-% but if its inco0rrect, you have to flip the odor
+% but if its incorrect, you have to flip the odor
 
 % cells that were active during the recording are separated first, these
-% cells have to fire during the 'run' sessions, so basically they have to
-% fire spikes during the trial period (take the grand sum of trial start
-% and ends)
+% cells have to fire during the 'run' sessions
+
+% task responsive cells change rate from preodor to odor period for at
+% least one odor p.05
 
 % odor selective is whether the cell fires more for one odor over the other
-% (using a bootstrap with p<.05)
+% (using a bootstrap with p<1.5sd)
 
-% taskresponsive is whether they exhibited significant changes during odor
-% period (compared to a trial matched pre odor period) and this is a
-% signrank test by trial
 
 %% This plots the left and right rate for each cell locked to odor onset
-% these are single cell example files
+
+
+
+% these are single cell example plots and files
+
+
 
 for ses=1:length(SuperRat)
     
     timeedges=-2:.001:2; timebins=-2:.001:1.999;
     % so maybe something like a left plot mean rate patch, then right plot
     % a colormap of abs diff/sum?
-    trialdata=SuperRat(ses).trialdata;
+    trialData=SuperRat(ses).trialdata;
     % first grab the tuning curves during the one second delay
-    mytrialmat=[trialdata.sniffstart trialdata.sniffend trialdata.leftright10 trialdata.CorrIncorr10];
+    mytrialmat=[trialData.sniffstart trialData.sniffend trialData.leftright10 trialData.CorrIncorr10];
     mytrialmat(mytrialmat(:,4)==0,:)=[]; %remove incorrect trials
-    [temp,sortinds]=sortrows(mytrialmat,[3 1]); cutspot=find(diff(mytrialmat(sortinds,3)~=0)); odorid=mytrialmat(:,3);
+    [temp,sortinds]=sortrows(mytrialmat,[3 1]); cutspot=find(diff(mytrialmat(sortinds,3)~=0)); odorID=mytrialmat(:,3);
     % okay now get the perievent raster, lets do the buzsaki way thats a
     % 100 msec smoothing kernel for each trial and grab -2 seconds to +2
     % seconds and patch the mean curve
@@ -44,11 +43,11 @@ for ses=1:length(SuperRat)
         % get spikes
         [~,~,~,~,~,spikets]=event_spikes(SuperRat(ses).units(i).ts,mytrialmat(:,1),abs(timeedges(1)),timeedges(end));
         % now smooth each into a vector
-        startcurves=cellfun(@(a) SmoothMat2(histcounts(a,timeedges),[1000 0],100), spikets, 'UniformOutput', false);
+        startCurves=cellfun(@(a) SmoothMat2(histcounts(a,timeedges),[1000 0],100), spikets, 'UniformOutput', false);
         
         % or unsmoothed
         %curves=cellfun(@(a)histcounts(a,-2:.001:2), spikets, 'UniformOutput', false);
-        curvemat=cell2mat(startcurves');
+        curvemat=cell2mat(startCurves');
         
         % now get the trial rates for object selectivity
         [~,trspikes]=event_spikes(SuperRat(ses).units(i).ts,mytrialmat(:,1),0,mytrialmat(:,2)-mytrialmat(:,1));
@@ -57,20 +56,20 @@ for ses=1:length(SuperRat)
         
         coderp=ranksum(trspikes(mytrialmat(:,3)==1),trspikes(mytrialmat(:,3)==0));
         responderp=signrank(trspikes,pretrspikes);
-        if coderp<.05 || responderp<.05
+        if coderp<.05 || responderp<.05 % if the cell does something... plot it
             figure;
             sp(1)=subplot(2,1,1);
-            imagesc(timebins, 1:size(startcurves,2), curvemat(sortinds,:)); hold on;
+            imagesc(timebins, 1:size(startCurves,2), curvemat(sortinds,:)); hold on;
             plot([timebins(1) timebins(end)],[cutspot cutspot],'k','LineWidth',2);
             sp(2)=subplot(2,1,2);
-            plot(timebins,nanmean(curvemat(odorid==1,:)),'r','LineWidth',3);
+            plot(timebins,nanmean(curvemat(odorID==1,:)),'r','LineWidth',3);
             
-            patch([timebins fliplr(timebins)],[nanmean(curvemat(odorid==1,:))+nanstd(curvemat(odorid==1,:),0,1)...
-                fliplr(nanmean(curvemat(odorid==1,:))-nanstd(curvemat(odorid==1,:),0,1))],[.85 .325 .098],...
+            patch([timebins fliplr(timebins)],[nanmean(curvemat(odorID==1,:))+nanstd(curvemat(odorID==1,:),0,1)...
+                fliplr(nanmean(curvemat(odorID==1,:))-nanstd(curvemat(odorID==1,:),0,1))],[.85 .325 .098],...
                 'LineStyle','none','FaceAlpha',.5)
-            hold on; plot(timebins,nanmean(curvemat(odorid==0,:)),'b','LineWidth',3);
-            patch([timebins fliplr(timebins)],[nanmean(curvemat(odorid==0,:))+nanstd(curvemat(odorid==0,:),0,1)...
-                fliplr(nanmean(curvemat(odorid==0,:))-nanstd(curvemat(odorid==0,:),0,1))],[0    0.4470    0.7410],...
+            hold on; plot(timebins,nanmean(curvemat(odorID==0,:)),'b','LineWidth',3);
+            patch([timebins fliplr(timebins)],[nanmean(curvemat(odorID==0,:))+nanstd(curvemat(odorID==0,:),0,1)...
+                fliplr(nanmean(curvemat(odorID==0,:))-nanstd(curvemat(odorID==0,:),0,1))],[0    0.4470    0.7410],...
                 'LineStyle','none','FaceAlpha',.5)
             linkaxes(sp,'x');
             % now get the overall rate
@@ -81,18 +80,30 @@ for ses=1:length(SuperRat)
 end
 
 %%
+% major update breaks each of these steps into a separate loop
 % this calculates the following:
+
 % first all active cells (those who fire at all during odor period)
+
 % second all odor responsive cells (chg pre to post odor onset)
+
 % third odor selective cells (odor 1 vs odor 2 only correct trials)
+
+% so the way claire did this is to test selectivity on each 'run' and then only
+% use that run to analyze any further (in terms of coherence, odor
+% selectivity, coherence, c/i selectivity, and 
+
 % fourth odor locked tuning curves
+
 % fifth 
 
+% old way, all in one single loop
+%{
 useblocks=false;
 timeLock='end';
 maxTime=2;
 bootct=1000;
-pCrit=1-normcdf(1.5); % noted in paper!!!!
+odorPcrit=1-normcdf(1.5); % noted in paper!!!!
 timeedges=-2:.001:2; timebins=-2:.001:1.999;
 
 % generate a repeatable random seed
@@ -112,7 +123,7 @@ RandStream.setGlobalStream(rstream);
 for ses=1:length(SuperRat)
 
     tic
-    wb=waitbar(0,'Starting to run cells');
+    %wb=waitbar(0,'Starting to run cells');
 
     %%%%% grab trialmat
     trialdata=SuperRat(ses).trialdata;
@@ -123,7 +134,7 @@ for ses=1:length(SuperRat)
     trialUse=ismember(fulltrialmat(:,5),SuperRat(ses).RunEpochs) & ...
         (fulltrialmat(:,2)-fulltrialmat(:,1))>=.5;
 
-    trialmat=fulltrialmat(trialUse,:); % only take correct trials
+    trialmat=fulltrialmat(trialUse,:); % only take correct trials from high performing blocks
     trialmat(:,6)=trialmat(:,2)-trialmat(:,1); % full poke time
     % if we dont want to use the full poke time
     if ~isnan(maxTime) 
@@ -132,6 +143,12 @@ for ses=1:length(SuperRat)
     
 
     %%%%%% grab  fields
+
+    % active is changing these days...
+    try, SuperRat(ses).units=rmfield(SuperRat(ses).units,'activeCell'); end
+    % task responsive- table, odor rate, preodor rate, pval of signrank
+    % test
+    try, SuperRat(ses).units=rmfield(SuperRat(ses).units,'taskResponsive'); end
     % odorRates- table of rates by trial, rates, then odor (lr10), then
     % ci10
     try, SuperRat(ses).units=rmfield(SuperRat(ses).units,'OdorRates'); end
@@ -142,21 +159,16 @@ for ses=1:length(SuperRat)
     try, SuperRat(ses).units=rmfield(SuperRat(ses).units,'OdorMeans'); end
     % odorResponsive- unnecessary
     try, SuperRat(ses).units=rmfield(SuperRat(ses).units,'OdorResponsive'); end
-    % task responsive- table, odor rate, preodor rate, pval of signrank
-    % test
-    try, SuperRat(ses).units=rmfield(SuperRat(ses).units,'taskResponsive'); end
     % curves- vector by time, selectivity index for correct then incorret
-    try, SuperRat(ses).units=rmfield(SuperRat(ses).units,'curves'); end
-    try, SuperRat(ses).units=rmfield(SuperRat(ses).units,'startcurves','endcurves'); end
-    try, SuperRat(ses).units=rmfield(SuperRat(ses).units,'activeCell'); end
+    try, SuperRat(ses).units=rmfield(SuperRat(ses).units,{'startcurves','endcurves'}); end
+
 
     %%%%% for each cell...
     for i=1:length(SuperRat(ses).units)
         %%%%% initiate variables
-         lrmeans=table('Size',[2 2],'VariableTypes',repmat({'double'},1,2),...
-            'VariableNames',{'Left','Right'},'RowNames',{'Corr','Incorr'});
-        Selectivitydata=table('Size',[2 4],'VariableTypes',repmat({'double'},1,4),...
-            'VariableNames',{'score','pval','issig','dprime'},'RowNames',{'Corr','Incorr'});
+        
+        Selectivitydata=table('Size',[2 4],'VariableTypes',repmat({'double'},1,6),...
+            'VariableNames',{'score','pval','issig','dprime','leftmean','rightmean'},'RowNames',{'Corr','Incorr'});
         startcurves=[{},{}]; endcurves=[{},{}];
         taskResponsive=nan(1,3); % before, after, pval of signrank
         Selectivitydata.score(1)=nan;
@@ -172,8 +184,13 @@ for ses=1:length(SuperRat)
          [allspks,allspkevs,~,trspks]=event_spikes(SuperRat(ses).units(i).ts(:,1),...
                 trialmat(:,1),0,trialmat(:,2)-trialmat(:,1));
          
+         % all spikes in a +/- 2 second window surrounding odor sampling
+         % this is a new threshold for 'active cells'
+         [allspks2]=event_spikes(SuperRat(ses).units(i).ts(:,1),...
+                trialmat(:,1),2,2);
          
          % remove blocks that arent used, or dont include enough spikes
+         % its unclear whether claire ran the code this way...
          if useblocks
             % this removes blocks of trials where the cell doesnt fire,
             % this is somewhat of a bandaid if the cell isnt stable, so I
@@ -192,10 +209,12 @@ for ses=1:length(SuperRat)
 
          end
        
-         % if length(nspks)>100
-        if length(allspks)>=10 %length(mytrialmat) % cell has to have more odor spikes than there were trials
-
-
+         % this has been  modified many times- are there more spikes than trials?
+        %if length(nspks)>100 % active Units, 100 spikes across all run epochs
+        %if length(nspks)>=length(mytrialmat) % cell has to have more odor spikes than there were trials
+        %if size(SuperRat(ses).units(i).ts,1)>length(mytrialmat)
+        if length(allspks2)>=length(mytrialmat)
+        %if length(allspks)>=100
             % grab odors, and grab correct
             odorid=mytrialmat(:,3); isCorr=mytrialmat(:,4)==1;
             % get the spike rate vectors
@@ -205,21 +224,36 @@ for ses=1:length(SuperRat)
                 mytrialmat(:,1),mytrialmat(:,2)-mytrialmat(:,1),0); % matching at least -.5 to 0
             
             % this is mean rate at odor, mean rate before odor, signrank p
-            % value
-            taskResponsive=[mean(spkevs(isCorr),'omitnan') mean(prespkevs(isCorr),'omitnan'),...
-                signrank(spkevs(isCorr),prespkevs(isCorr))];
+            % value (3rd value is p)
+            % empiricallyif you 'runboth' and test on each odor
+            % individually you actually get fewer cells that are task
+            % responsive
+            runboth=1;
+            if runboth==1
+                for o=1:2
+                    taskResponsive(o,:)=[mean(spkevs(isCorr & odorid==o-1),'omitnan') mean(prespkevs(isCorr & odorid==o-1),'omitnan'),...
+                signrank(spkevs(isCorr & odorid==o-1),prespkevs(isCorr & odorid==o-1))];
+                end
+                [~,winner]=min(taskResponsive(:,3));
+                taskResponsive=taskResponsive(winner,:);
+            else
+                taskResponsive=[mean(spkevs(isCorr),'omitnan') mean(prespkevs(isCorr),'omitnan'),...
+                    signrank(spkevs(isCorr),prespkevs(isCorr))];
+            end
+            % first try left trials
+            % then try right trials
             
             % get the mean rates for each
             % LR10 left first, right second
             for k=1:2 % 1 is correct, 2 is incorrect
-                lrmeans.Left(k)=mean(spkevs(odorid==1 & isCorr==2-k),'omitnan'); % and this is spikes per second
-                lrmeans.Right(k)=mean(spkevs(odorid==0 & isCorr==2-k),'omitnan');
+                Selectivitydata.leftmean(k)=mean(spkevs(odorid==1 & isCorr==2-k),'omitnan'); % and this is spikes per second
+                Selectivitydata.rightmean(k)=mean(spkevs(odorid==0 & isCorr==2-k),'omitnan');
                 %%%%% selectivitydata
 
                 Selectivitydata.score(k)=diff(lrmeans{k,:})/sum(lrmeans{k,:}); % 
                 % and selectivity index
                 [~,Selectivitydata.pval(k)]=SelectivityIndex(spkevs(isCorr==2-k),odorid(isCorr==2-k),bootct); % 500 boots
-                Selectivitydata.issig(k)=Selectivitydata.pval(k) <= pCrit & ~isnan(Selectivitydata.score(k)); % boolean
+                Selectivitydata.issig(k)=Selectivitydata.pval(k) <= odorPcrit & ~isnan(Selectivitydata.score(k)); % boolean
                 Selectivitydata.dprime(k)=dprime(spkevs(odorid==1 & isCorr==2-k),spkevs(odorid==0 & isCorr==2-k)); % and a dprime
 
                 % Now create the curves
@@ -253,113 +287,338 @@ for ses=1:length(SuperRat)
         %SuperRat(ses).units(i).OdorResponsive=odorResponse; % this is not
         %really useful, taskResponsive is better
         SuperRat(ses).units(i).OdorRates=[allspkevs, trialmat(:,3:4)];
-        SuperRat(ses).units(i).OdorMeans=lrmeans; % upload to the struct
         SuperRat(ses).units(i).OdorSelective=Selectivitydata;
         SuperRat(ses).units(i).startcurves=startcurves;
         SuperRat(ses).units(i).endcurves=endcurves;
         
-        waitbar(i/length(SuperRat(ses).units),wb,sprintf('Running unit %d',i));
+        %waitbar(i/length(SuperRat(ses).units),wb,sprintf('Running unit %d',i));
     end
-    close(wb);
+    %close(wb);
     % record how long it took (it usually is super short)
     fprintf('Ses %d took %.2f seconds \n',ses,toc);
     
 end
+%}
 
 
 
-%% Repeat for reward poke firing
-
-%************ DONT HAVE ALL THE REWARD DATA THOUGH ****************
-
-%{
-% this is claires way
-useblocks=false;
-bootct=500;
+%% Current preprocessing pipeline
+% 1. do activeCells and taskResponsive calculations
 
 for ses=1:length(SuperRat)
     tic
-    % so maybe something like a left plot mean rate patch, then right plot
-    % a colormap of abs diff/sum?
-    trialdata=SuperRat(ses).trialdata;
-    % first grab the tuning curves during the one second delay
-    % mat is 1 start, 2 end 3 left right 4 correct incorrect and 5 epoch\
-    if isfield(trialdata,'rewardstart')
-        mytrialmat=[trialdata.rewardstart trialdata.rewardend trialdata.leftright10 trialdata.CorrIncorr10 trialdata.EpochInds(:,2)];
-        [temp,sortinds]=sortrows(mytrialmat,[3 1]); odorid=mytrialmat(:,3);
-        % okay now get the perievent raster, lets do the buzsaki way thats a
-        % 100 msec smoothing kernel for each trial and grab -2 seconds to +2
-        % seconds and patch the mean curve
-        rlmeans=nan(length(SuperRat(ses).units),2);
-        wb=waitbar(0,'Starting to run cells');
-        try, SuperRat(ses).units=rmfield(SuperRat(ses).units,'RewardRates'); end
-        try, SuperRat(ses).units=rmfield(SuperRat(ses).units,'RewardMeans'); end
-        try, SuperRat(ses).units=rmfield(SuperRat(ses).units,'RewardSelective'); end
-        
-        for i=1:length(SuperRat(ses).units)
-            
-            %build  the spikes
-            [~,spkevs,~,~,~,controls]=event_spikes(SuperRat(ses).units(i).ts(:,1),mytrialmat(:,1),0,mytrialmat(:,2)-mytrialmat(:,1));
-            %curves=cellfun(@(a) SmoothMat2(histcounts(a,0:.001:1),[1000 0],100), controls, 'UniformOutput', false);
-            %curvemat=cell2mat(curves');
-            if useblocks
-                epochcounts=unique(mytrialmat(:,5)); % how many sessions are in this recording day?
-                Selectivitydata=[]; rlmeans=[];
-                for ep=1:length(unique(epochcounts)) % calc for each session
-                    % get all the spikes for the correct trials and this epoch
-                    goodtrials=mytrialmat(:,4)==1 & mytrialmat(:,5)==epochcounts(ep); %
-                    if nanmean(any(spkevs(goodtrials)))>=0.5 % if the cell spikes on at least half the trials
-                        % get the mean rates for each
-                        % LR10 left first, right second
-                        rlmeans(ep,1)=nanmean(spkevs(goodtrials & mytrialmat(:,3)==1)); % and this is spikes per second
-                        rlmeans(ep,2)=nanmean(spkevs(goodtrials & mytrialmat(:,3)==0));
-                        % and an effect size just to see
-                        %rlmeans(ep,3)=dprime(spkevs(usetrials & trialmat(:,3)==1),spkevs(usetrials & trialmat(:,3)==0));
-                        % and selectivity index
-                        [Selectivitydata(ep,1),Selectivitydata(ep,2)]=SelectivityIndex(spkevs(goodtrials),mytrialmat(goodtrials,3),bootct); % 500 boots
-                        Selectivitydata(ep,3)=Selectivitydata(ep,2) <= 0.05 & ~isnan(Selectivitydata(ep,1)); % how many boots
-                    else
-                        rlmeans(ep,1:3)=nan; Selectivitydata(ep,1:3)=nan; % if not enouch spikes, its nanned out
-                    end
-                    SuperRat(ses).units(i).RewardRates{ep}=[spkevs(goodtrials) mytrialmat(goodtrials,3)];
-                    SuperRat(ses).units(i).RewardMeans(ep,:)=rlmeans; % upload to the struct
-                    SuperRat(ses).units(i).RewardSelective(ep,:)=Selectivitydata;
-                end
-            else
-                goodtrials=mytrialmat(:,4)==1;  % only correct trials
-                if nanmean(any(spkevs))>=0.5 % if the cell spikes on at least half the trials
-                    % get the mean rates for each
-                    % LR10 left first, right second
-                    rlmeans=nanmean(spkevs(goodtrials & mytrialmat(:,3)==1)); % and this is spikes per second
-                    rlmeans(1,2)=nanmean(spkevs(goodtrials & mytrialmat(:,3)==0));
-                    % and an effect size just to see
-                    %rlmeans(ep,3)=dprime(spkevs(usetrials & trialmat(:,3)==1),spkevs(usetrials & trialmat(:,3)==0));
-                    % and selectivity index
-                    [Selectivitydata,Selectivitydata(1,2)]=SelectivityIndex(spkevs(goodtrials),mytrialmat(goodtrials,3),bootct); % 500 boots
-                    Selectivitydata(1,3)=Selectivitydata(2) <= 0.05 & ~isnan(Selectivitydata(1)); % how many boots
-                else
-                    rlmeans(1,1:3)=nan; Selectivitydata(1,1:3)=nan; % if not enouch spikes, its nanned out
-                end
-                SuperRat(ses).units(i).RewardRates=[spkevs(goodtrials)' mytrialmat((goodtrials),3)];
-                SuperRat(ses).units(i).RewardMeans=rlmeans; % upload to the struct
-                SuperRat(ses).units(i).RewardSelective=Selectivitydata;
-            end
-            
-            waitbar(i/length(SuperRat(ses).units),wb,sprintf('Running unit %d',i));
-        end
-        close(wb);
-        % record how long it took (it usually is super short)
-        fprintf('Ses %d took %.2f seconds \n',ses,toc);
-    else
-        fprintf('Ses %d doesnt have reward events \n',ses);
-        SuperRat(ses).units(:).RewardRates=nan(1,3);
-        
-    end
+    % get trial data
+    trialData=SuperRat(ses).trialdata;
+    fullTrialmat=[trialData.sniffstart trialData.sniffend trialData.leftright10 trialData.CorrIncorr10 trialData.EpochInds(:,2)];
+    % trials have to be in an analyzed block, and have to be >.5 seconds
+    % and <2 seconds, 
+    trialUse=ismember(fullTrialmat(:,5),SuperRat(ses).RunEpochs) & ...
+        (fullTrialmat(:,2)-fullTrialmat(:,1))>=.5 &...
+        (fullTrialmat(:,2)-fullTrialmat(:,1))<2;
+    trialMat=fullTrialmat(trialUse,:); % only take correct trials from high performing blocks
+
+    % just easier if these are their own variables and types
+    odorID=trialMat(:,3); isCorr=trialMat(:,4)==1;
+
+
+    % now get epochs, basically when the coordinate data transitions
+    % between blocks
+    transitions=diff(ismember([0; SuperRat(ses).tracking.data(1:end-1,6);0],SuperRat(ses).RunEpochs));
+    % find when it goes from 0 to 1 (start run epoch) and from 1 to 0 (end run
+    % epoch)
+    epochTimes=[SuperRat(ses).tracking.data(transitions>0,1) SuperRat(ses).tracking.data(transitions<0,1)];
     
+    try, SuperRat(ses).units=rmfield(SuperRat(ses).units,'taskResponsive'); end
+    try, SuperRat(ses).units=rmfield(SuperRat(ses).units,'activeCell'); end
+
+    for i=1:length(SuperRat(ses).units)
+        % preallocate variables
+        taskResponsive=nan(1,3); % before, after, pval of signrank
+
+
+        % all spikes during each block
+        [nspks,~,~,~,blockspikes]=event_spikes(SuperRat(ses).units(i).ts(:,1),...
+        epochTimes(:,1),0,diff(epochTimes,1,2));
+
+        % gather the spkevs and trialspikes
+        [allspks,spkevs,~,trspks]=event_spikes(SuperRat(ses).units(i).ts(:,1),...
+            trialMat(:,1),0,trialMat(:,2)-trialMat(:,1));
+
+        % gather prespkevs for taskResponsive
+        [~,prespkevs]=event_spikes(SuperRat(ses).units(i).ts(:,1),...
+            trialMat(:,1),trialMat(:,2)-trialMat(:,1),0); % matching at least -.5 to 0
+
+        % all spikes in a +/- 2 second window surrounding odor sampling
+        [allspks2,spkevs2]=event_spikes(SuperRat(ses).units(i).ts(:,1),...
+                trialMat(:,1),2,2);
+
+        taskResponsive=nan(1,3); % before, after, pval of signrank
+
+        if length(nspks)>100 % active Units, 100 spikes across all run epochs
+
+            % empirically if you 'runboth' and test on each odor
+            % individually you actually get fewer cells that are task
+            % responsive
+            runboth=1; % try each odor separately?
+            if runboth==1
+                % first try left trials
+                % then try right trials
+                for o=1:2
+                    taskResponsive(o,:)=[mean(spkevs(isCorr & odorID==o-1),'omitnan') mean(prespkevs(isCorr & odorID==o-1),'omitnan'),...
+                        signrank(spkevs(isCorr & odorID==o-1),prespkevs(isCorr & odorID==o-1))];
+
+                     %taskResponsive(o,:)=[mean(spkevs(odorID==o-1),'omitnan') mean(prespkevs(odorID==o-1),'omitnan'),...
+                     %   signrank(spkevs(odorID==o-1),prespkevs( odorID==o-1))];
+                end
+                [~,winner]=min(taskResponsive(:,3));
+                taskResponsive=taskResponsive(winner,:);
+            else
+                taskResponsive=[mean(spkevs(isCorr),'omitnan') mean(prespkevs(isCorr),'omitnan'),...
+                    signrank(spkevs(isCorr),prespkevs(isCorr))];
+            end
+
+            SuperRat(ses).units(i).activeCell=true;
+        else
+            SuperRat(ses).units(i).activeCell=false;
+        end
+        SuperRat(ses).units(i).taskResponsive=taskResponsive;
+    end
+    fprintf('session %d done, took %.2f seconds \n', ses,toc)
+end
+
+%% now run odor selectivy calculations (this runs on all blocks as if they were one)
+
+
+% generate a repeatable random seed
+rstream = RandStream('dsfmt19937','Seed',16);
+RandStream.setGlobalStream(rstream);
+bootct=1000;
+odorPcrit=1-normcdf(1.5); % noted in paper!!!!
+timeedges=-2:.001:2; timebins=-2:.001:1.999;
+testing={'correct','incorrect'};
+
+for ses=1:length(SuperRat)
+    tic
+    % get trial data
+    trialData=SuperRat(ses).trialdata;
+    fullTrialmat=[trialData.sniffstart trialData.sniffend trialData.leftright10 trialData.CorrIncorr10 trialData.EpochInds(:,2)];
+    % trials have to be in an analyzed block, and have to be >.5 seconds
+    trialUse=ismember(fullTrialmat(:,5),SuperRat(ses).RunEpochs) & ...
+        (fullTrialmat(:,2)-fullTrialmat(:,1))>=.5 &...
+        (fullTrialmat(:,2)-fullTrialmat(:,1))<2;
+    trialMat=fullTrialmat(trialUse,:); % only take correct trials from high performing blocks
+    odorID=trialMat(:,3); isCorr=trialMat(:,4)==1;
+
+    % now get epochs
+    transitions=diff(ismember([0; SuperRat(ses).tracking.data(1:end-1,6);0],SuperRat(ses).RunEpochs));
+    epochTimes=[SuperRat(ses).tracking.data(transitions>0,1) SuperRat(ses).tracking.data(transitions<0,1)];
+
+    try, SuperRat(ses).units=rmfield(SuperRat(ses).units,'OdorRates'); end
+    % odorSelective- score (diff/sum), pval, is sig, dprime effect size
+    % first row is correct, second is incorrect
+    try, SuperRat(ses).units=rmfield(SuperRat(ses).units,'OdorSelective'); end
+    % odorMeans- unnecessary
+    try, SuperRat(ses).units=rmfield(SuperRat(ses).units,'OdorMeans'); end
+    % odorResponsive- unnecessary
+    try, SuperRat(ses).units=rmfield(SuperRat(ses).units,'OdorResponsive'); end
+    try, SuperRat(ses).units=rmfield(SuperRat(ses).units,{'startcurves','endcurves'}); end
+
+    for i=1:length(SuperRat(ses).units)
+
+        % preallocate variables
+        Selectivitydata=array2table(nan(2,6),'VariableNames',{'score','pval','issig','dprime','leftmean','rightmean'},...
+            'RowNames',{'Corr','Incorr'});
+
+        startCurves=[{},{}]; endCurves=[{},{}];
+        taskResponsive=nan(1,3); % before, after, pval of signrank
+
+
+        % gather the spkevs and trialspikes
+        [allspks,spkevs,~,trspks]=event_spikes(SuperRat(ses).units(i).ts(:,1),...
+            trialMat(:,1),0,trialMat(:,2)-trialMat(:,1));
+
+        % spikes in trial matched pre odor period
+        [~,prespkevs]=event_spikes(SuperRat(ses).units(i).ts(:,1),...
+            trialMat(:,1),trialMat(:,2)-trialMat(:,1),0); % matching at least -.5 to 0
+
+
+        for k=1:2 % 1 is correct, 2 is incorrect
+            try
+                Selectivitydata.leftmean(k)=mean(spkevs(odorID==1 & isCorr==2-k),'omitnan'); % and this is spikes per second
+                Selectivitydata.rightmean(k)=mean(spkevs(odorID==0 & isCorr==2-k),'omitnan');
+                %%%%% selectivitydata
+                rlmeans=[Selectivitydata.leftmean(k) Selectivitydata.rightmean(k)];
+                Selectivitydata.score(k)=diff(rlmeans)/sum(rlmeans);
+
+                % and selectivity index
+                [~,Selectivitydata.pval(k)]=SelectivityIndex(spkevs(isCorr==2-k),odorID(isCorr==2-k),bootct); % 500 boots
+                Selectivitydata.issig(k)=Selectivitydata.pval(k) <= odorPcrit & ~isnan(Selectivitydata.score(k)); % boolean
+                Selectivitydata.dprime(k)=dprime(spkevs(odorID==1 & isCorr==2-k),spkevs(odorID==0 & isCorr==2-k)); % and a dprime
+
+                % Now create the curves
+                [~,~,~,~,~,spikets]=event_spikes(SuperRat(ses).units(i).ts,...
+                    trialMat(:,1),abs(timeedges(1)),timeedges(end));
+
+                % now smooth each into a rate vector for correct and incorrect
+                % I only need to correct for ntrials (cause bins are the
+                % same
+                rawCurves=SmoothMat2(histcounts(cell2mat(spikets(odorID==1 & isCorr==2-k)'),...
+                    timeedges)./sum(odorID==1 & isCorr==2-k),[1000 0],50);
+                rawCurves(2,:)=SmoothMat2(histcounts(cell2mat(spikets(odorID==0 & isCorr==2-k)'),...
+                    timeedges)./sum(odorID==0 & isCorr==2-k),[1000 0],50);
+                % this is the SI value here for k=1 correct and k=2
+                % incorrect
+                startCurves{k}=diff(rawCurves)./sum(rawCurves);
+                % repeat for withdrawal locked curves (always in msec,
+                % always centered around 0
+                [~,~,~,~,~,spikets]=event_spikes(SuperRat(ses).units(i).ts,...
+                    trialMat(:,2),abs(timeedges(1)),timeedges(end));
+                rawCurves=SmoothMat2(histcounts(cell2mat(spikets(odorID==1 & isCorr==2-k)'),...
+                    timeedges)./sum(odorID==1 & isCorr==2-k),[1000 0],50);
+                rawCurves(2,:)=SmoothMat2(histcounts(cell2mat(spikets(odorID==0 & isCorr==2-k)'),...
+                    timeedges)./sum(odorID==0 & isCorr==2-k),[1000 0],50);
+                endCurves{k}=diff(rawCurves)./sum(rawCurves);
+            catch
+                fprintf('sess %d, cell %d didnt work for %s', ses, i, testing{k})
+            end
+        end
+        SuperRat(ses).units(i).OdorRates=[spkevs, trialMat(:,3:4)];
+        SuperRat(ses).units(i).OdorSelective=Selectivitydata;
+        SuperRat(ses).units(i).startcurves=startCurves;
+        SuperRat(ses).units(i).endcurves=endCurves;
+    end
+    fprintf('session %d done, took %.2f seconds \n', ses,toc)
+
+end
+%% this runs each block separately and chooses the best block
+% if you run this block of code you cannot add any more cell filters that
+% include the field OdorRates, because these data are across blocks still
+
+%%%%%%%%%%%%%%%%%%%%%%
+%%%%% Claire may have used this method, I dont
+%%%%%%%%%%%%%%%%%%%
+
+
+%{
+% generate a repeatable random seed
+rstream = RandStream('dsfmt19937','Seed',16);
+RandStream.setGlobalStream(rstream);
+bootct=500; % twice as fast as 1k for trial runs
+odorPcrit=1-normcdf(1.5); % noted in paper!!!!
+timeedges=-2:.001:2; timebins=-2:.001:1.999;
+testing={'correct','incorrect'};
+
+
+for ses=1:length(SuperRat)
+    tic
+    % get trial data
+    trialdata=SuperRat(ses).trialdata;
+    fulltrialmat=[trialdata.sniffstart trialdata.sniffend trialdata.leftright10 trialdata.CorrIncorr10 trialdata.EpochInds(:,2)];
+    % trials have to be in an analyzed block, and have to be >.5 seconds
+    trialUse=ismember(fulltrialmat(:,5),SuperRat(ses).RunEpochs) & ...
+        (fulltrialmat(:,2)-fulltrialmat(:,1))>=.5 &...
+        (fulltrialmat(:,2)-fulltrialmat(:,1))<2;
+    trialmat=fulltrialmat(trialUse,:); % only take correct trials from high performing blocks
+    odorid=trialmat(:,3); isCorr=trialmat(:,4)==1;
+    trialBlocks=trialmat(:,5);
+    % now get epochs
+    transitions=diff(ismember([0; SuperRat(ses).tracking.data(1:end-1,6);0],SuperRat(ses).RunEpochs));
+    epochTimes=[SuperRat(ses).tracking.data(transitions>0,1) SuperRat(ses).tracking.data(transitions<0,1)];
+
+
+    mytrialmat=trialmat;
+    try, SuperRat(ses).units=rmfield(SuperRat(ses).units,'OdorRates'); end
+    % odorSelective- score (diff/sum), pval, is sig, dprime effect size
+    % first row is correct, second is incorrect
+    try, SuperRat(ses).units=rmfield(SuperRat(ses).units,'OdorSelective'); end
+    % odorMeans- unnecessary
+    try, SuperRat(ses).units=rmfield(SuperRat(ses).units,'OdorMeans'); end
+    % odorResponsive- unnecessary
+    try, SuperRat(ses).units=rmfield(SuperRat(ses).units,'OdorResponsive'); end
+    try, SuperRat(ses).units=rmfield(SuperRat(ses).units,{'startcurves','endcurves'}); end
+
+    for i=1:length(SuperRat(ses).units)
+
+        % preallocate variables
+        Selectivitydata={array2table(nan(2,6),'VariableNames',{'score','pval','issig','dprime','leftmean','rightmean'},...
+            'RowNames',{'Corr','Incorr'})};
+
+        startcurves={nan,nan}; endcurves=startcurves;
+
+        blockStruct=struct('Selectivitydata',Selectivitydata,'startcurves',{startcurves},...
+            'endcurves',{endcurves});
+        % gather the spkevs and trialspikes
+        [allspks,spkevs,~,trspks]=event_spikes(SuperRat(ses).units(i).ts(:,1),...
+            trialmat(:,1),0,trialmat(:,2)-trialmat(:,1));
+
+        uniqueblocks=unique(trialBlocks);
+        clear blockData;
+        for bl=1:length(uniqueblocks)
+            blockData(bl)=blockStruct;
+            blockevs=spkevs(trialBlocks==uniqueblocks(bl));
+            blockOdor=odorid(trialBlocks==uniqueblocks(bl));
+            blockcorrect=isCorr(trialBlocks==uniqueblocks(bl));
+            for k=1:2 % 1 is correct, 2 is incorrect
+                try
+                    blockData(bl).Selectivitydata.leftmean(k)=mean(blockevs(blockOdor==1 & blockcorrect==2-k),'omitnan'); % and this is spikes per second
+                    blockData(bl).Selectivitydata.rightmean(k)=mean(blockevs(blockOdor==0 & blockcorrect==2-k),'omitnan');
+                    %%%%% selectivitydata
+                    rlmeans=[blockData(bl).Selectivitydata.leftmean(k) blockData(bl).Selectivitydata.rightmean(k)];
+                    blockData(bl).Selectivitydata.score(k)=diff(rlmeans)/sum(rlmeans);
+
+                    % and selectivity index
+                    [~,blockData(bl).Selectivitydata.pval(k)]=SelectivityIndex(blockevs(blockcorrect==2-k),blockOdor(blockcorrect==2-k),bootct); % 500 boots
+                    blockData(bl).Selectivitydata.issig(k)=blockData(bl).Selectivitydata.pval(k) <= odorPcrit & ~isnan(blockData(bl).Selectivitydata.score(k)); % boolean
+                    blockData(bl).Selectivitydata.dprime(k)=dprime(blockevs(blockOdor==1 & blockcorrect==2-k),blockevs(blockOdor==0 & blockcorrect==2-k)); % and a dprime
+
+                    % Now create the curves
+                    [~,~,~,~,~,spikets]=event_spikes(SuperRat(ses).units(i).ts,...
+                        trialmat(:,1),abs(timeedges(1)),timeedges(end));
+
+                    % now smooth each into a rate vector for correct and incorrect
+                    % I only need to correct for ntrials (cause bins are the
+                    % same
+                    rawCurves=SmoothMat2(histcounts(cell2mat(spikets(blockOdor==1 & blockcorrect==2-k)'),...
+                        timeedges)./sum(blockOdor==1 & blockcorrect==2-k),[1000 0],50);
+                    rawCurves(2,:)=SmoothMat2(histcounts(cell2mat(spikets(blockOdor==0 & blockcorrect==2-k)'),...
+                        timeedges)./sum(blockOdor==0 & blockcorrect==2-k),[1000 0],50);
+                    % this is the SI value here for k=1 correct and k=2
+                    % incorrect
+                    startcurves{k}=diff(rawCurves)./sum(rawCurves);
+                    % repeat for withdrawal locked curves (always in msec,
+                    % always centered around 0
+                    [~,~,~,~,~,spikets]=event_spikes(SuperRat(ses).units(i).ts,...
+                        trialmat(:,2),abs(timeedges(1)),timeedges(end));
+                    rawCurves=SmoothMat2(histcounts(cell2mat(spikets(blockOdor==1 & blockcorrect==2-k)'),...
+                        timeedges)./sum(blockOdor==1 & blockcorrect==2-k),[1000 0],50);
+                    rawCurves(2,:)=SmoothMat2(histcounts(cell2mat(spikets(blockOdor==0 & blockcorrect==2-k)'),...
+                        timeedges)./sum(blockOdor==0 & blockcorrect==2-k),[1000 0],50);
+                    endcurves{k}=diff(rawCurves)./sum(rawCurves);
+                    blockData(bl).startcurves=startcurves;
+                    blockData(bl).endcurves=endcurves;
+                catch
+                    fprintf('sess %d, cell %d didnt work for %s', ses, i, testing{k})
+                end
+            end
+        end
+        blockP=cellfun(@(a) a.pval(1), {blockData.Selectivitydata});
+        [~,bestblock]=min(blockP);
+        SuperRat(ses).units(i).OdorRates=[spkevs, trialmat(:,3:4)];
+        SuperRat(ses).units(i).OdorSelective=blockData(bestblock).Selectivitydata;
+        SuperRat(ses).units(i).startcurves=blockData(bestblock).startcurves;
+        SuperRat(ses).units(i).endcurves=blockData(bestblock).endcurves;
+    end
+    fprintf('session %d done, took %.2f seconds \n', ses,toc)
+
 end
 %}
-
-%% there is a discrepancy basically and i dont remember how we reconsiled it....
+%%
+%
+%
+%
+%
+%
+%                    plotting starts here
 %
 %
 %
@@ -367,84 +626,85 @@ end
 %
 %
 %
-%
-%
-%
-%
-%
-%
-%
-% analysis starts here
+% 
 
 
 
 
-%% here is my total number of pyrams and INS that are responsive and selective
-varTypes=repmat({'double'},1,7);
-responseTable=table('size',[2 7],'VariableTypes',varTypes,'VariableNames',{'allTot','pyrTot','pyrResp','pyrSel','inTot','inResp','inSel'},...
+% here is my total number of pyrams and INS that are responsive and selective
+varTypes=repmat({'double'},1,8);
+responseTable=table('size',[2 8],'VariableTypes',varTypes,'VariableNames',{'allTot','allActive',...
+    'pyrTot','pyrResp','pyrSel','inTot','inResp','inSel'},...
     'RowNames',{'PFC','CA1'});
-allcells=cell2mat({SuperRat.units});
-allcells=allcells([allcells.activeCell]==1);
+allCells=cell2mat({SuperRat.units});
+%
 regions={'PFC','CA1'};
+
+
+pcrit=.05;
+
 for i=1:2
-    Pcells=allcells(strcmpi({allcells.area},regions{i}));
-    responseTable.allTot(i)=length(Pcells);
-    Ppyrams=Pcells(strcmpi({Pcells.type},'pyr'));
-    responseTable.pyrTot(i)=length(Ppyrams); % total number of cells
-    responseTable.pyrResp(i)=sum(cellfun(@(a) a(3)<.05, {Ppyrams.taskResponsive})); % of tot that are task responsive
+    regCells=allCells(strcmpi({allCells.area},regions{i}));
+    responseTable.allTot(i)=length(regCells); % all cells
+    activeCells=regCells(cell2mat({regCells.activeCell})==1);
+    responseTable.allActive(i)=length(activeCells);
+
+    pyrams=activeCells(strcmpi({activeCells.type},'pyr'));
+    responseTable.pyrTot(i)=length(pyrams); % all pyrams
+    % active that are responsive
+    myResp=cellfun(@(a) a(3)<pcrit, {pyrams.taskResponsive});
+    responseTable.pyrResp(i)=sum(myResp);
 
     % now % of task responsive that are odor selective
-    responseTable.pyrSel(i)=sum(cellfun(@(a) a{1,3}==1, {Ppyrams(cellfun(@(a) a(3)<.05, {Ppyrams.taskResponsive})).OdorSelective}));
+    responseTable.pyrSel(i)=sum(cellfun(@(a) a{1,3}==1, {pyrams(myResp).OdorSelective}));
 
-    Pins=Pcells(cellfun(@(a) contains(a,'in'), {Pcells.type}));
-    responseTable.inTot(i)=length(Pins);
-    responseTable.inResp(i)=sum(cellfun(@(a) a(3)<.05, {Pins.taskResponsive}));
-    responseTable.inSel(i)=sum(cellfun(@(a) a{1,3}==1, {Pins(cellfun(@(a) a(3)<.05, {Pins.taskResponsive})).OdorSelective}));
+    ins=activeCells(cellfun(@(a) contains(a,'in'), {activeCells.type}));
+    responseTable.inTot(i)=length(ins); % all ins
+    myResp=cellfun(@(a) a(3)<pcrit, {ins.taskResponsive});
+    responseTable.inResp(i)=sum(myResp);
+
+    responseTable.inSel(i)=sum(cellfun(@(a) a{1,3}==1, {ins(myResp).OdorSelective}));
 end
 
-pctTable=responseTable;
+pctTable=responseTable; pctTable.Properties.RowNames={'PFC%%','CA1%%'};
 for i=1:2
     pctTable{i,2}=responseTable{i,2}/responseTable{i,1};
     pctTable{i,3}=responseTable{i,3}/responseTable{i,2};
     pctTable{i,4}=responseTable{i,4}/responseTable{i,3};
-    pctTable{i,5}=responseTable{i,5}/responseTable{i,1};
-    pctTable{i,6}=responseTable{i,6}/responseTable{i,5};
+    pctTable{i,5}=responseTable{i,5}/responseTable{i,4};
+
+    pctTable{i,6}=responseTable{i,6}/responseTable{i,2};
     pctTable{i,7}=responseTable{i,7}/responseTable{i,6};
+    pctTable{i,8}=responseTable{i,8}/responseTable{i,7};
+    
 end
 
 
-
-openvar('responseTable');
-openvar('pctTable')
-
-%% now a retabulation of all the task responsive and task selective units
-% claire grossly overestimated the number of task responsive and task
+alltable=[responseTable;pctTable];
+openvar('alltable')
+% now a retabulation of all the task responsive and task selective units
+% claire grossly overestimated the number of task
 % selective units, and its unclear why... one possibility is that she used
 % a strikingly low threshold of 1.5 sd above the null distribution
 
 
 
-
-%% I need to redo claires figure 2e and i- will need to make Selective a table
-% also get the rates asa table
-% need to recalc f and J and also show that SI for incorrect is weaker than
-% for correct
-
-% okay so we can reshape figure 2a and b using the above tables
-% responsetable and pctTable
-
-pcrit=1-normcdf(1.5);
-pcrit=.05;
-
 % and to get e and I,...
 colors=[rgbcolormap('DarkAquamarine'); rgbcolormap('LightCoral'); rgbcolormap('DarkOrange')];
 type={'pyr','in'};
 load redToBlue; % the red to blue colormap
+
+SIcorr=table('Size',[2 4],'VariableTypes',repmat({'double'},1,4),...
+    'VariableNames',{'Pyr R2','Pyr p','IN R2','IN p'},'RowNames',{'PFC','CA1'});
+
+allCells=allCells([allCells.activeCell]==1);
 for t=1:2
     for i=1:2
-        regcoders=allcells(strcmpi({allcells.area},regions{i}) &...
-            cellfun(@(a) a{1,2}<pcrit,{allcells.OdorSelective}) &...
-            strcmpi({allcells.type},type{t}));
+        regcoders=allCells(strcmpi({allCells.area},regions{i}) &...
+            cellfun(@(a) a(3)<.05, {allCells.taskResponsive}) &...
+            cellfun(@(a) a{1,3}==1,{allCells.OdorSelective}) &...
+            cellfun(@(a) ~isempty(a),{allCells.startcurves}) &...
+            strcmpi({allCells.type},type{t}));
         corrCurves=cell2mat(cellfun(@(a) a{1}, {regcoders.startcurves},'UniformOutput',false)');
         incCurves=cell2mat(cellfun(@(a) a{2}, {regcoders.startcurves},'UniformOutput',false)');
         % 2000 to 3000 is 0 to 1 second following the flag start
@@ -477,36 +737,46 @@ for t=1:2
         set(gca,'Colormap',redToBlue); xlabel(sprintf('seconds from \n odor exit'))
         cmax=max(abs(get(gca,'CLim'))); set(gca,'CLim',[-cmax cmax]);
 
+        % need to add a threshold for incorrect trials too, many cells dont
+        % fire at all because there are so few of these trials
+        enoughSpikes=cellfun(@(a) mean(a(a(:,3)==1,1)>0)>.25 && mean(a(a(:,3)==0,1)>0)>.25, {regcoders.OdorRates});
+        
+%         enoughSpikes=cellfun(@(a) sum(a(a(:,3)==1 & a(:,2)==1,1)>0)>2 &&...
+%             sum(a(a(:,3)==1 & a(:,2)==0,1)>0)>2 &&...
+%             sum(a(a(:,3)==0 & a(:,2)==1,1)>0)>2 &&...
+%             sum(a(a(:,3)==0 & a(:,2)==0,1)>0)>2, {regcoders.OdorRates});
 
-        SIvals=cell2mat(cellfun(@(a) a.score, {regcoders.OdorSelective},'UniformOutput',false));
-        %Weights=cell2mat(cellfun(@(a) -log10(a.pval(1)), {regcoders.OdorSelective},'UniformOutput',false));
-        %Weights(Weights==inf | Weights==-inf)=5; % this happens if its beyond precision i think...
+
+        SIvals=cell2mat(cellfun(@(a) a.score, {regcoders(enoughSpikes).OdorSelective},'UniformOutput',false));
+        %SIvals=cell2mat(cellfun(@(a) a.score, {regcoders.OdorSelective},'UniformOutput',false));
         sp=subplot(3,3,6);
-        %mdl=fitlm(SIvals(1,:),SIvals(2,:),'Weights',Weights);
         mdl=fitlm(SIvals(1,:),SIvals(2,:));
         [r2]=corr(SIvals(1,:)',SIvals(2,:)','rows','complete');
         plot(sp,mdl); kids=get(gca,'Children');
         set(kids(4),'Marker','none'); hold on;
-        %scatter(SIvals(1,:),SIvals(2,:),rescale(Weights,10, 32),colors(i,:),'filled');
         scatter(SIvals(1,:),SIvals(2,:),16,colors(i,:),'filled');
         kids=get(gca,'Children'); legend(kids([1 3 4]))
         title(sprintf('Slope %.2f \n P %.2e',r2,mdl.Coefficients.pValue(2)));
         legend off;
         for cl=2:4, set(kids(cl),'color','k'); end
-        %scatter(SIvals(1,:),SIvals(2,:),10,colors(i,:),'filled');
         axis tight; xlabel('Correct SI'); ylabel('Incorrect SI');
          box off;
         sgtitle([regions{i} ' ' type{t}]);
+        SIcorr{i,(t*2)-1}=r2;
+        SIcorr{i,(t*2)}=mdl.Coefficients.pValue(2);
+
     end
 end
-
+%kill
+openvar('SIcorr');
 %% and for noncoder pyrams
+% allCells are all active cells
 for t=1:2
     for i=1:2
-        regcoders=allcells(strcmpi({allcells.area},regions{i}) &...
-            cellfun(@(a) a{1,2}>pcrit,{allcells.OdorSelective}) &...
-            cellfun(@(a) a(3)<.05,{allcells.taskResponsive}) & ...
-            strcmpi({allcells.type},type{t}));
+        regcoders=allCells(strcmpi({allCells.area},regions{i}) &...
+            cellfun(@(a) a{1,2}>odorPcrit,{allCells.OdorSelective}) &...
+            cellfun(@(a) a(3)<.05,{allCells.taskResponsive}) & ...
+            strcmpi({allCells.type},type{t}));
         corrCurves=cell2mat(cellfun(@(a) a{1}, {regcoders.startcurves},'UniformOutput',false)');
         incCurves=cell2mat(cellfun(@(a) a{2}, {regcoders.startcurves},'UniformOutput',false)');
         % 2000 to 3000 is 0 to 1 second following the flag start
@@ -541,21 +811,17 @@ for t=1:2
 
 
         SIvals=cell2mat(cellfun(@(a) a.score, {regcoders.OdorSelective},'UniformOutput',false));
-        %Weights=cell2mat(cellfun(@(a) -log10(a.pval(1)), {regcoders.OdorSelective},'UniformOutput',false));
-        %Weights(Weights==inf | Weights==-inf)=5; % this happens if its beyond precision i think...
+
         sp=subplot(3,3,6);
-        %mdl=fitlm(SIvals(1,:),SIvals(2,:),'Weights',Weights);
         mdl=fitlm(SIvals(1,:),SIvals(2,:));
         [r2]=corr(SIvals(1,:)',SIvals(2,:)','rows','complete');
         plot(sp,mdl); kids=get(gca,'Children');
         set(kids(4),'Marker','none'); hold on;
-        %scatter(SIvals(1,:),SIvals(2,:),rescale(Weights,10, 32),colors(i,:),'filled');
         scatter(SIvals(1,:),SIvals(2,:),16,colors(i,:),'filled');
         kids=get(gca,'Children'); legend(kids([1 3 4]))
-        title(sprintf('Slope %.2f \n P %.2e P %.2e',r2,mdl.Coefficients.pValue(2)));
+        title(sprintf('Slope %.2f \n P %.2e',r2,mdl.Coefficients.pValue(2)));
         legend off;
         for cl=2:4, set(kids(cl),'color','k'); end
-        %scatter(SIvals(1,:),SIvals(2,:),10,colors(i,:),'filled');
         axis tight; xlabel('Correct SI'); ylabel('Incorrect SI');
         sgtitle(['Noncoders ' regions{i} ' ' type{t}]);
     end
@@ -563,19 +829,20 @@ end
 
 % massive variable to clear
 clear regcoders;
-%% and now some dicing of what the hell is goign on with 'taskresponsive'
+%% and now some comparing of responsiveness, selectivity and spiking rate 
+% during odor period
 
-% this is a problem, a large proportion of 'task responsive' cells dont
-% fire at all during the odor period.  I will have to cut these cells out
-% back in the normal analysis.  This ought to only mess with a few
-% statistics though....
+% this is a problem, a proportion of 'task responsive' cells dont
+% fire at all during the odor period. maybe I will cut these cells out
+% back in the normal analysis?  This ought to only mess with a few
+% statistics though.... (I havent yet)
 for tp=1:2
     for i=1:2
         figure;
         % gather all task responsive cells
-        responders=allcells(cellfun(@(a) a(3)<.05,{allcells.taskResponsive}) &...
-            strcmpi({allcells.type},type{tp}) & strcmpi({allcells.area},regions{i}) &...
-            [allcells.activeCell]);
+        responders=allCells(cellfun(@(a) a(3)<.05,{allCells.taskResponsive}) &...
+            strcmpi({allCells.type},type{tp}) & strcmpi({allCells.area},regions{i}) &...
+            [allCells.activeCell]);
         % tabulate the pre, post, and the diff
         % taskresponsive- 1. odor rate, 2. preodor rate, 3. signrank diff pval
         allrates=cell2mat({responders.taskResponsive}');
@@ -663,10 +930,14 @@ openvar('TableS1')
 
 %% lets get a list of each cells session and name and crossreference
 % with claires tabulations
+% basically she found many odor selective cells that either i dont have at
+% all (as in the raw data are missing) or the cells appear definitely not
+% selective in my hands.
 
 
 % reconsiliation work with Claire
 %{
+
 SuperUnits=orderfields(SuperRat(1).units);
 %SuperUnits=rmfield(SuperUnits,'csi');
 thisdate=repmat({[SuperRat(1).name ' day ' num2str(SuperRat(1).daynum)]},length(SuperUnits),1);
@@ -791,4 +1062,108 @@ for i=1:length(clairedata.selectivePFC)
     end
 end
 
+%}
+
+
+
+
+%%
+%
+%
+%
+%               Future directions
+%
+%
+%
+%%
+% Now trying to find cells that are selective to each reward port, we would
+%  likely find alot because the ports are in different lockations...
+
+%************ DONT HAVE ALL THE REWARD DATA THOUGH ****************
+
+%{
+% this is claires way
+useblocks=false;
+bootct=500;
+
+for ses=1:length(SuperRat)
+    tic
+    % so maybe something like a left plot mean rate patch, then right plot
+    % a colormap of abs diff/sum?
+    trialdata=SuperRat(ses).trialdata;
+    % first grab the tuning curves during the one second delay
+    % mat is 1 start, 2 end 3 left right 4 correct incorrect and 5 epoch\
+    if isfield(trialdata,'rewardstart')
+        mytrialmat=[trialdata.rewardstart trialdata.rewardend trialdata.leftright10 trialdata.CorrIncorr10 trialdata.EpochInds(:,2)];
+        [temp,sortinds]=sortrows(mytrialmat,[3 1]); odorid=mytrialmat(:,3);
+        % okay now get the perievent raster, lets do the buzsaki way thats a
+        % 100 msec smoothing kernel for each trial and grab -2 seconds to +2
+        % seconds and patch the mean curve
+        rlmeans=nan(length(SuperRat(ses).units),2);
+        wb=waitbar(0,'Starting to run cells');
+        try, SuperRat(ses).units=rmfield(SuperRat(ses).units,'RewardRates'); end
+        try, SuperRat(ses).units=rmfield(SuperRat(ses).units,'RewardMeans'); end
+        try, SuperRat(ses).units=rmfield(SuperRat(ses).units,'RewardSelective'); end
+        
+        for i=1:length(SuperRat(ses).units)
+            
+            %build  the spikes
+            [~,spkevs,~,~,~,controls]=event_spikes(SuperRat(ses).units(i).ts(:,1),mytrialmat(:,1),0,mytrialmat(:,2)-mytrialmat(:,1));
+            %curves=cellfun(@(a) SmoothMat2(histcounts(a,0:.001:1),[1000 0],100), controls, 'UniformOutput', false);
+            %curvemat=cell2mat(curves');
+            if useblocks
+                epochcounts=unique(mytrialmat(:,5)); % how many sessions are in this recording day?
+                Selectivitydata=[]; rlmeans=[];
+                for ep=1:length(unique(epochcounts)) % calc for each session
+                    % get all the spikes for the correct trials and this epoch
+                    goodtrials=mytrialmat(:,4)==1 & mytrialmat(:,5)==epochcounts(ep); %
+                    if nanmean(any(spkevs(goodtrials)))>=0.5 % if the cell spikes on at least half the trials
+                        % get the mean rates for each
+                        % LR10 left first, right second
+                        rlmeans(ep,1)=nanmean(spkevs(goodtrials & mytrialmat(:,3)==1)); % and this is spikes per second
+                        rlmeans(ep,2)=nanmean(spkevs(goodtrials & mytrialmat(:,3)==0));
+                        % and an effect size just to see
+                        %rlmeans(ep,3)=dprime(spkevs(usetrials & trialmat(:,3)==1),spkevs(usetrials & trialmat(:,3)==0));
+                        % and selectivity index
+                        [Selectivitydata(ep,1),Selectivitydata(ep,2)]=SelectivityIndex(spkevs(goodtrials),mytrialmat(goodtrials,3),bootct); % 500 boots
+                        Selectivitydata(ep,3)=Selectivitydata(ep,2) <= 0.05 & ~isnan(Selectivitydata(ep,1)); % how many boots
+                    else
+                        rlmeans(ep,1:3)=nan; Selectivitydata(ep,1:3)=nan; % if not enouch spikes, its nanned out
+                    end
+                    SuperRat(ses).units(i).RewardRates{ep}=[spkevs(goodtrials) mytrialmat(goodtrials,3)];
+                    SuperRat(ses).units(i).RewardMeans(ep,:)=rlmeans; % upload to the struct
+                    SuperRat(ses).units(i).RewardSelective(ep,:)=Selectivitydata;
+                end
+            else
+                goodtrials=mytrialmat(:,4)==1;  % only correct trials
+                if nanmean(any(spkevs))>=0.5 % if the cell spikes on at least half the trials
+                    % get the mean rates for each
+                    % LR10 left first, right second
+                    rlmeans=nanmean(spkevs(goodtrials & mytrialmat(:,3)==1)); % and this is spikes per second
+                    rlmeans(1,2)=nanmean(spkevs(goodtrials & mytrialmat(:,3)==0));
+                    % and an effect size just to see
+                    %rlmeans(ep,3)=dprime(spkevs(usetrials & trialmat(:,3)==1),spkevs(usetrials & trialmat(:,3)==0));
+                    % and selectivity index
+                    [Selectivitydata,Selectivitydata(1,2)]=SelectivityIndex(spkevs(goodtrials),mytrialmat(goodtrials,3),bootct); % 500 boots
+                    Selectivitydata(1,3)=Selectivitydata(2) <= 0.05 & ~isnan(Selectivitydata(1)); % how many boots
+                else
+                    rlmeans(1,1:3)=nan; Selectivitydata(1,1:3)=nan; % if not enouch spikes, its nanned out
+                end
+                SuperRat(ses).units(i).RewardRates=[spkevs(goodtrials)' mytrialmat((goodtrials),3)];
+                SuperRat(ses).units(i).RewardMeans=rlmeans; % upload to the struct
+                SuperRat(ses).units(i).RewardSelective=Selectivitydata;
+            end
+            
+            waitbar(i/length(SuperRat(ses).units),wb,sprintf('Running unit %d',i));
+        end
+        close(wb);
+        % record how long it took (it usually is super short)
+        fprintf('Ses %d took %.2f seconds \n',ses,toc);
+    else
+        fprintf('Ses %d doesnt have reward events \n',ses);
+        SuperRat(ses).units(:).RewardRates=nan(1,3);
+        
+    end
+    
+end
 %}

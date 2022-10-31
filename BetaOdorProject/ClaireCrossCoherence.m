@@ -68,7 +68,7 @@ params=struct('tapers',[3 5],'fs',1500,'pad',1,'Fpass',[2 40]);
 
 regions={'PFC','CA1','OB'};
 colors=[rgbcolormap('DarkAquamarine'); rgbcolormap('LightCoral'); rgbcolormap('DarkOrange')];
-rhythmcolors=[rgbcolormap('navy'); rgbcolormap('DeepPink')]; % BETA IS BLUE
+rhythmcolors=[rgbcolormap('DeepPink'); rgbcolormap('navy')]; % BETA IS BLUE
 types={'pyr','in'};
 rhythm={'beta','resp'};
 

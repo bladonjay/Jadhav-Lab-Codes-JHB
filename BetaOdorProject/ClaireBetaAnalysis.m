@@ -42,7 +42,7 @@ c.
 regions={'PFC','CA1','OB'};
 colors=[rgbcolormap('DarkAquamarine'); rgbcolormap('LightCoral'); rgbcolormap('DarkOrange')];
 rhythmcolors=[rgbcolormap('navy'); rgbcolormap('DeepPink')]; % BETA IS BLUE
-types={'pyr','in'};
+type={'pyr','in'};
 rhythm={'beta','resp'};
 %% Overall beta coherence using whole odor period and just the correct trials
 % we should be using stats only on local beta, but we can do all
@@ -189,7 +189,7 @@ end
 rstream = RandStream('dsfmt19937','Seed',16);
 RandStream.setGlobalStream(rstream);
 nboots=200; bootclock=tic;
-for i=13:length(SuperRat)
+for i=1:length(SuperRat)
     myclock=tic;
     snifftimes=[SuperRat(i).trialdata.sniffstart SuperRat(i).trialdata.sniffend];
     oktimes=diff(snifftimes,1,2)>=.5 & diff(snifftimes,1,2)<2.5;
@@ -239,7 +239,8 @@ for i=13:length(SuperRat)
         SuperRat(i).daynum, round(toc(bootclock)/i/60), round((toc(bootclock)/i/60)*(length(SuperRat)-i)))
 end
 
-save('E:\Brandeis datasets\Claire Data\ClaireData-2022-07-21.mat','SuperRat','-v7.3')
+fileName=sprintf('E:\\Brandeis datasets\\Claire Data\\ClaireData-%s.mat',date);
+save(fileName,'SuperRat','-v7.3')
 
 %%
 %
@@ -288,7 +289,7 @@ for rh=1:2
         for j=1:length(regions) % cell region
             mycells=SuperRat(i).units(contains({SuperRat(i).units.area},regions{j}) &...
                 cellfun(@(a) a(3)<.05, {SuperRat(i).units.taskResponsive}) &...
-                contains({SuperRat(i).units.type},types{celltype}));
+                contains({SuperRat(i).units.type},type{celltype}));
             for k=1:length(regions2) % lfp region
                 allcount.([regions{j} 'tot'])(k)=allcount.([regions{j} 'tot'])(k)+length(mycells);
                 % add the specific lfp rstat you want here (a(k))
@@ -300,8 +301,8 @@ for rh=1:2
     allcount.PFCpct=allcount.PFClocked./allcount.PFCtot;
     allcount.CA1pct=allcount.CA1locked./allcount.CA1tot;
     
-    eval([types{celltype} rhythm{rh} 'coherence=allcount;']);
-    eval(['openvar ' types{celltype} rhythm{rh} 'coherence']);
+    eval([type{celltype} rhythm{rh} 'coherence=allcount;']);
+    eval(['openvar ' type{celltype} rhythm{rh} 'coherence']);
 end
 end
 
@@ -347,8 +348,8 @@ for celltype=1:2
         allcount.PFCtot(4)=allcount.PFCtot(3);
         allcount.CA1tot(4)=allcount.CA1tot(3);
 
-        eval([types{celltype} rhythm{rh} 'coherence=allcount;']);
-        eval(['openvar ' types{celltype} rhythm{rh} 'coherence']);
+        eval([type{celltype} rhythm{rh} 'coherence=allcount;']);
+        eval(['openvar ' type{celltype} rhythm{rh} 'coherence']);
     end
 end
 
@@ -411,7 +412,7 @@ bary=[mean(cellTable.betaCoh(cellTable.isCA1==1 & cellTable.isPYR==2-i));...
 subplot(2,3,i);
 bar([.9 1.1 1.4 1.6 2.4 2.6 2.9 3.1],bary');
 set(gca,'XTick',[]), xlabel('CA1                    PFC');
-ylabel(sprintf('Percentage of Task- \nResponsive %s Cells',types{i}))
+ylabel(sprintf('Percentage of Task- \nResponsive %s Cells',type{i}))
 % need to errorbar the grey bars (4 and 8)
 % these can come from boostraps or just the bernoulli 95% likelihoods
 % so binofit is the 95% conf, and binocdf is the likelihood
@@ -432,7 +433,7 @@ bary=[mean(cellTable.odorP(cellTable.isCA1==1 & cellTable.isPYR==1));...
 bar([.9 1.1 1.4 1.6],bary');
 set(gca,'XTick',[]), xlabel(sprintf('Pyr IN         Pyr IN \nCA1                    PFC'));
 ylabel(sprintf('Percentage of Task- \nResponsive Pyramidal Cells'));
-ylim([0 .5])
+ylim([0 .5]); title(sprintf('%% of task responsive cells that are \n odor selective'));
 
 
 % c: beta locked vs choice selective pyramidal cells
@@ -531,16 +532,16 @@ title(sprintf('Beta and odorSelective overlap \n Interneurons'));
 
 %% for pyrams vs ins
 regions={'PFC','CA1'};
-types={'pyr','in'};
+type={'pyr','in'};
 respLockPct=table([0;0],[0;0],[0;0],[0;0],'VariableNames',{'PFCtot','PFClocked','CA1tot','CA1locked'},...
-    'RowNames',types);
+    'RowNames',type);
 %contains({SuperRat(i).units.type},'in') & ...
 for i=1:length(SuperRat)
     for j=1:length(regions)
-        for k=1:length(types)
+        for k=1:length(type)
             mycells=SuperRat(i).units(contains({SuperRat(i).units.area},regions{j}) &...
             cellfun(@(a) a(3)<.05, {SuperRat(i).units.taskResponsive}) &...
-            contains({SuperRat(i).units.type},types{k}));
+            contains({SuperRat(i).units.type},type{k}));
        
             respLockPct.([regions{j} 'tot'])(k)=respLockPct.([regions{j} 'tot'])(k)+length(mycells);
             respLockPct.([regions{j} 'locked'])(k)=respLockPct.([regions{j} 'locked'])(k)+...
@@ -554,19 +555,19 @@ openvar('respLockPct')
 
 
 regions={'PFC','CA1'};
-types={'pyr','in'};
+type={'pyr','in'};
 betaLockPct=table([0;0],[0;0],[0;0],[0;0],'VariableNames',{'PFCtot','PFClocked','CA1tot','CA1locked'},...
-    'RowNames',types);
+    'RowNames',type);
 %contains({SuperRat(i).units.type},'in') & ...
 for i=1:length(SuperRat)
     for j=1:length(regions)
-        for k=1:length(types)
+        for k=1:length(type)
             mycells=SuperRat(i).units(contains({SuperRat(i).units.area},regions{j}) &...
             cellfun(@(a) a(3)<.05, {SuperRat(i).units.taskResponsive}) &...
-            contains({SuperRat(i).units.type},types{k}));
+            contains({SuperRat(i).units.type},type{k}));
        
             betaLockPct.([regions{j} 'tot'])(k)=betaLockPct.([regions{j} 'tot'])(k)+length(mycells);
-            respLobetaLockPctckPct.([regions{j} 'locked'])(k)=betaLockPct.([regions{j} 'locked'])(k)+...
+            betaLockPct.([regions{j} 'locked'])(k)=betaLockPct.([regions{j} 'locked'])(k)+...
                 sum(cellfun(@(a) any(a<pcrit),{mycells.respRstat}));
         end
     end
@@ -578,7 +579,7 @@ openvar('betaLockPct')
 regions={'PFC','CA1'}; 
 cctype={'pyr','in'};
 rhythm={'beta','resp'};
-
+runTaskR=1;
 
 
 % now replicate claires analyses:
@@ -595,10 +596,15 @@ for i=1:length(SuperRat)
     for j=1:length(regions)
         % now for locating the table cells
         for k=1:2 % k is cell type
-            mycells=SuperRat(i).units(contains({SuperRat(i).units.area},regions{j}) &...
-            cellfun(@(a) a(3)<pcrit, {SuperRat(i).units.taskResponsive}) & ...
-            cellfun(@(a) contains(a,cctype{k}), {SuperRat(i).units.type}));       
-        
+            if runTaskR==1
+                mycells=SuperRat(i).units(contains({SuperRat(i).units.area},regions{j}) &...
+                    cellfun(@(a) a(3)<pcrit, {SuperRat(i).units.taskResponsive}) & ...
+                    cellfun(@(a) contains(a,cctype{k}), {SuperRat(i).units.type}));
+            else
+                mycells=SuperRat(i).units(contains({SuperRat(i).units.area},regions{j}) &...
+                    cellfun(@(a) contains(a,cctype{k}), {SuperRat(i).units.type}));
+            end
+
             allcount.([regions{j} 'tot'])(k)=allcount.([regions{j} 'tot'])(k)+length(mycells);  % add this sess cells        
             for r=1:length(rhythm)
                 allcount.([regions{j} rhythm{r}])(k)=allcount.([regions{j} rhythm{r}])(k)+sum(cellfun(@(a) a(j),{mycells.([rhythm{r} 'Rstat'])})<pcrit);
@@ -611,7 +617,7 @@ end
  % now plot this as paired bars 
 % so it will be ca1 pyr beta/resp, ca1 in beta/resp, pfc pyr beta/rsp
 barpairs=[(allcount{:,[5 6]}./allcount{:,4})',(allcount{:,[2 3]}./allcount{:,1})' ];
- 
+ figure;
 hb=bar([0.9 1.1 1.4 1.6],barpairs',1,'LineStyle','none','FaceColor','flat');
 hold on; plot([0.75 1.75],[pcrit pcrit],'k--')
 for k=1:2, hb(k).CData=rhythmcolors(k,:); end
@@ -630,73 +636,73 @@ xlim([.75 1.75]);
 % task responsive is odor responsive (last row in odorresponsive)
 rhythm={'beta','resp'};
 regions={'PFC','CA1'};
+regionsLFP={'PFC','CA1','OB'};
 for r=1:2
     figure;
-cohtable=table({[];[]},{[];[]},{[];[]},{[];[]},'VariableNames',{'PFCmean','PFCmvl','CA1mean','CA1mvl'});
-pcrit=.05;
-% this is all units and just for beta... we need to split pyr and in, and
-% we need to run this for beta and RR
+    cohtable=table({[];[];[]},{[];[];[]},{[];[];[]},{[];[];[]},'VariableNames',{'PFCmean','PFCmvl','CA1mean','CA1mvl'});
+    pcrit=.05;
+    % this is all units and just for beta... we need to split pyr and in, and
+    % we need to run this for beta and RR
 
-for i=1:length(SuperRat)
-    for loc=1:length(regions) % for cell location
-        % pull all cells in a location
-        cellpool=SuperRat(i).units(contains({SuperRat(i).units.area},regions{loc}) &...
-            cellfun(@(a) a(3)<pcrit,{SuperRat(i).units.taskResponsive}));
-        % for LFP location
-        if ~isempty(cellpool)
-            for lfploc=1:length(regions)
-                % get all task responsive cells
-                respp=cellfun(@(a) a(3)<pcrit,{cellpool.taskResponsive});
-                % get all cells with significant locking
-                %betap=cellfun(@(a) a(betaloc),{cellpool.betaRstat});
-                cohtable.([regions{loc} 'mean']){lfploc}=[cohtable.([regions{loc} 'mean']){lfploc}...
-                    cellfun(@(a) a(lfploc),{cellpool(respp).([rhythm{r} 'mean'])})];
-                cohtable.([regions{loc} 'mvl']){lfploc}=[cohtable.([regions{loc} 'mvl']){lfploc}...
-                    cellfun(@(a) a(lfploc),{cellpool(respp).([rhythm{r} 'MVL'])})];
+    for i=1:length(SuperRat)
+        for loc=1:length(regions) % for cell location
+            % pull all cells in a location
+            cellpool=SuperRat(i).units(contains({SuperRat(i).units.area},regions{loc}) &...
+                cellfun(@(a) a(3)<pcrit,{SuperRat(i).units.taskResponsive}));
+            % for LFP location
+            if ~isempty(cellpool)
+                for lfploc=1:length(regionsLFP)
+                    % a chance to get all coherent cells here
+                    respp=cellfun(@(a) a(3)<pcrit,{cellpool.taskResponsive});
+                    % get all cells with significant locking
+                    %betap=cellfun(@(a) a(betaloc),{cellpool.betaRstat});
+                    cohtable.([regions{loc} 'mean']){lfploc}=[cohtable.([regions{loc} 'mean']){lfploc}...
+                        cellfun(@(a) a(lfploc),{cellpool(respp).([rhythm{r} 'mean'])})];
+                    cohtable.([regions{loc} 'mvl']){lfploc}=[cohtable.([regions{loc} 'mvl']){lfploc}...
+                        cellfun(@(a) a(lfploc),{cellpool(respp).([rhythm{r} 'MVL'])})];
+                end
             end
         end
     end
-end
 
-% for each cell location and for each tetrode location
+    % for each cell location and for each tetrode location
 
-for i=1:2
-    for k=1:2
-        subplot(2,2,(i-1)*2+k);
-        cohvals=cell2mat(cohtable.([regions{k} 'mean'])(i));
-        p=polarhistogram(cohvals(~isnan(cohvals)),12,'Normalization','pdf');
-        
-        set(p,'LineStyle','none','FaceColor',colors(k,:));       
-        hold on; set(gca,'ThetaTick',[0 90 180 270],'Rtick',[.1 .2 .3],'RTickLabel',{});
-        [rho]=circ_mean(cohvals(~isnan(cohvals)));
-        [mvl]=circ_r(cohvals(~isnan(cohvals)));
-        [pval, z]=circ_rtest(cohvals(~isnan(cohvals)));
-        PolarArrow(rho,mvl,[],colors(i,:).*.6);
-        title(sprintf('Cells %s, %s %s \n n=%d mvl=%.2f p=%.2e',regions{k},rhythm{r}, regions{i},length(cohvals),z, pval));
+    for i=1:2
+        for k=1:2
+            subplot(2,2,(i-1)*2+k);
+            cohvals=cell2mat(cohtable.([regions{k} 'mean'])(i));
+            p=polarhistogram(cohvals(~isnan(cohvals)),12,'Normalization','pdf');
+
+            set(p,'LineStyle','none','FaceColor',colors(k,:));
+            hold on; set(gca,'ThetaTick',[0 90 180 270],'Rtick',[.1 .2 .3],'RTickLabel',{});
+            [rho]=circ_mean(cohvals(~isnan(cohvals)));
+            [mvl]=circ_r(cohvals(~isnan(cohvals)));
+            [pval, z]=circ_rtest(cohvals(~isnan(cohvals)));
+            PolarArrow(rho,mvl,[],colors(i,:).*.6);
+            title(sprintf('Cells %s, %s %s \n n=%d mvl=%.2f p=%.2e',regions{k},rhythm{r}, regions{i},length(cohvals),z, pval));
+        end
     end
-end
-sgtitle(rhythm{r});
+    sgtitle(rhythm{r});
 end
 %% dial plots split out by pyrams and INs
 % does beta coherence across cells group?
 
 pcrit=.05;
-useLocking=false;
+useLocking=true;
 for m=1:length(rhythm)
     for k=1:2
-        cohtable=table({[];[]},{[];[]},{[];[]},{[];[]},'VariableNames',{'PFCmean','PFCmvl','CA1mean','CA1mvl'},...
-            'RowNames',{'PFCbeta','CA1beta'});
+        cohtable=table({[];[];[]},{[];[];[]},{[];[];[]},{[];[];[]},'VariableNames',{'PFCmean','PFCmvl','CA1mean','CA1mvl'},...
+            'RowNames',{'PFCbeta','CA1beta','OBbeta'});
         for i=1:length(SuperRat)
             for loc=1:length(regions) % for cell location
                 % pull all cells in a location
                 cellpool=SuperRat(i).units(contains({SuperRat(i).units.area},regions{loc}) & ...
-                    contains({SuperRat(i).units.type},types{k}));
+                    contains({SuperRat(i).units.type},type{k}));
                 % for LFP location
                 if ~isempty(cellpool)
-                    for betaloc=1:length(regions)
+                    for betaloc=1:length(regionsLFP)
                         % get all task responsive cells
                         okpool=cellfun(@(a) a(3)<pcrit,{cellpool.taskResponsive});
-
                         % get all cells with significant locking
                         if useLocking
                             okpool=okpool & cellfun(@(a) a(betaloc)<pcrit,{cellpool.([rhythm{m} 'Rstat'])});
@@ -712,9 +718,9 @@ for m=1:length(rhythm)
 
         % for each cell location and for each tetrode location
         figure;
-        for i=1:2
+        for i=1:3
             for j=1:2
-                subplot(2,2,(i-1)*2+j);
+                subplot(3,2,(i-1)*2+j);
                 betavals=cell2mat(cohtable.([regions{j} 'mean'])(i));
                 p=polarhistogram(betavals(~isnan(betavals)),12,'Normalization','pdf');
                 set(p,'LineStyle','none','FaceColor',colors(j,:));
@@ -725,11 +731,11 @@ for m=1:length(rhythm)
                 pval=circ_rtest(betavals(~isnan(betavals)));
                 set(gca,'ThetaTick',[0 90 180 270],'Rtick',[.1 .2 .3],'RTickLabel',{});
 
-                title(sprintf('Cells %s, %s %s \n n=%d, p=%.2e',regions{j}, rhythm{m}, regions{i},length(betavals),pval));
+                title(sprintf('Cells %s, %s %s \n n=%d, p=%.2e',regions{j}, rhythm{m}, regionsLFP{i},length(betavals),pval));
 
             end
         end
-        sgtitle(sprintf('%s Coherence %s',rhythm{m}, types{k}));
+        sgtitle(sprintf('%s Coherence %s',rhythm{m}, type{k}));
     end
 end
 
@@ -758,7 +764,7 @@ for ct=1:2
             for loc=1:length(regions) % for cell location
                 % pull all cells in a location
                 cellpool=SuperRat(i).units(contains({SuperRat(i).units.area},regions{loc}) &...
-                    contains({SuperRat(i).units.type},types{ct}));
+                    contains({SuperRat(i).units.type},type{ct}));
                 % for LFP location
                 if ~isempty(cellpool)
                     for lfploc=1:length(regions)
@@ -794,7 +800,7 @@ for ct=1:2
                 
             end
         end
-        sgtitle(sprintf('%s %s',rhythm{r},types{ct}));
+        sgtitle(sprintf('%s %s',rhythm{r},type{ct}));
     end
 end
 %%
@@ -826,7 +832,7 @@ not meaningfully change the main result.
 
 
 %}
-onlysig=0; saveout=0;
+onlysig=1; saveout=0;
 pcrit=.05;
 if saveout, savefolder=uigetdir; end
 
@@ -880,7 +886,10 @@ for r=1:2 % rhythm
                     barh(x(2:end),y,'LineStyle','none','BarWidth',1,'FaceColor',colors(i,:));
                     box off; hold on; plot(get(gca,'XLim'),[0 0],'k'); %repmat(mean(allcount.([regions{i} 'dprimes']){k},'omitnan'),1,2),'k');
                     xlabel('Proportion of units'); ylabel('Change in MVL'); box off;
-                    [p]=signrank(diff(allcount.([regions{i} 'vals']){k}'));
+                    %[p]=ranksum(allcount.([regions{i} 'vals']){k}(:,1),allcount.([regions{i} 'vals']){k}(:,2));
+                    [p]=signrank(diff(allcount.([regions{i} 'vals']){k},[],2));
+                    [~,p]=ttest(diff(allcount.([regions{i} 'vals']){k},[],2));
+
                     mymeans=mean(allcount.([regions{i} 'vals']){k},'omitnan');
                     title(sprintf('%s type:%s n=%d,\n %s LFP in %s \n C=%.2f I=%.2f, \n signrank=%.2e',...
                         regions{i},celltype{ct},length((allcount.([regions{i} 'vals']){k})),...
@@ -927,13 +936,13 @@ for ct=1:2 % celltype
     for cellReg=1:2 % source region
         mycells=allCells(contains({allCells.area},regions{cellReg}) &...
             cellfun(@(a) any(a<=pcrit), {allCells.betaRstat}) &...
-            contains({allCells.type},types{ct}));
+            contains({allCells.type},type{ct}));
         % what index is the max mvl?
         allMVL=cell2mat({mycells.betaRstat}');
         [~,favind]=min(allMVL,[],2);
         subplot(2,2,(ct-1)*2+cellReg);
         pie(histcounts(favind,[.5:1:3.5])); 
-        title(sprintf('%s units in %s \n n=%d',types{ct},regions{cellReg},length(favind)))
+        title(sprintf('%s units in %s \n n=%d',type{ct},regions{cellReg},length(favind)))
     end
 end
 legend({'PFCbeta','CA1beta','OBbeta'});
@@ -943,13 +952,13 @@ for ct=1:2 % celltype
     for cellReg=1:2 % source region
         mycells=allCells(contains({allCells.area},regions{cellReg}) &...
             cellfun(@(a) any(a<=pcrit), {allCells.respRstat}) &...
-            contains({allCells.type},types{ct}));
+            contains({allCells.type},type{ct}));
         % what index is the max mvl?
         allMVL=cell2mat({mycells.respRstat}');
         [~,favind]=min(allMVL,[],2);
         subplot(2,2,(ct-1)*2+cellReg);
         pie(histcounts(favind,[.5:1:3.5])); 
-        title(sprintf('%s units in %s \n n=%d',types{ct},regions{cellReg},length(favind)))
+        title(sprintf('%s units in %s \n n=%d',type{ct},regions{cellReg},length(favind)))
     end
 end
 legend({'PFCrr','CA1rr','OBrr'});
@@ -963,7 +972,7 @@ for ct=1:2 % celltype
     for cellReg=1:2 % source region
         mycells=allcells(contains({allCells.area},regions{cellReg}) &...
             cellfun(@(a) any(a<=pcrit), {allCells.betaRstat}) &...
-            contains({allCells.type},types{ct}));
+            contains({allCells.type},type{ct}));
         allMVL=cell2mat({mycells.betaMVL}');
         means=mean(allMVL); errs=SEM(allMVL,1);
         for pr=1:length(orders)
@@ -976,7 +985,7 @@ for ct=1:2 % celltype
                 'color','r')
             plot((means(orders(pr,1))+[errs(orders(pr,1)), -errs(orders(pr,1))]),...
                 means([orders(pr,2) orders(pr,2)]),'color','r')
-            title(sprintf('%s units in %s \n p=%.2e',types{ct},regions{cellReg},...
+            title(sprintf('%s units in %s \n p=%.2e',type{ct},regions{cellReg},...
                 signrank(allMVL(:,orders(pr,1))-allMVL(:,orders(pr,2)))));
             xlabel(regions2{orders(pr,1)}); ylabel(regions2{orders(pr,2)});
             % grab coding depth for first pair
@@ -990,7 +999,7 @@ for ct=1:2 % celltype
     for cellReg=1:2 % source region
         mycells=allcells(contains({allCells.area},regions{cellReg}) &...
             cellfun(@(a) any(a<=pcrit), {allCells.respRstat}) &...
-            contains({allCells.type},types{ct}));
+            contains({allCells.type},type{ct}));
         allMVL=cell2mat({mycells.respMVL}');
         means=mean(allMVL); errs=SEM(allMVL,1);
         for pr=1:length(orders)
@@ -1003,7 +1012,7 @@ for ct=1:2 % celltype
                 'color','r')
             plot((means(orders(pr,1))+[errs(orders(pr,1)), -errs(orders(pr,1))]),...
                 means([orders(pr,2) orders(pr,2)]),'color','r')
-            title(sprintf('%s units in %s \n p=%.2e',types{ct},regions{cellReg},...
+            title(sprintf('%s units in %s \n p=%.2e',type{ct},regions{cellReg},...
                 signrank(allMVL(:,orders(pr,1))-allMVL(:,orders(pr,2)))));
             xlabel(regions2{orders(pr,1)}); ylabel(regions2{orders(pr,2)});
             % grab coding depth for first pair
