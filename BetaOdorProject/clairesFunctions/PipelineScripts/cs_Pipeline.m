@@ -48,7 +48,7 @@ cs_listNPCells;
 cs_cellSelectivityTag;
 cs_listSelectiveCells;
 
-cs_odorSelectivity_v2;
+cs_odorSelectivity_v2; % this makes the rasters and generates the anticorrelation
 
 cs_plotRasterPSTH_v3
 cs_plotRasterPSTH_specifiedCells_v2

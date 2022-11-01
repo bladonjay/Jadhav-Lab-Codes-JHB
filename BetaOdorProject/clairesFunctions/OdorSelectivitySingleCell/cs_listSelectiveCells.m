@@ -28,7 +28,7 @@ region = regions{r};
         cells = [animvector, cells];
         selectivecells = [selectivecells; cells];
     end
-    
+    fprintf('There are %d odor selective cells in %s \n', length(selectivecells),regions{r})
     save([dataDir,'selectiveCells_',region,'.mat'], 'selectivecells');
 end
 

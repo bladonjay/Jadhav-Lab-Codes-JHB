@@ -12,7 +12,7 @@ animals = {'CS31','CS33','CS34','CS35','CS39','CS41','CS42','CS44'};
 regions = {'CA1','PFC'};
 winsize = win(2) + win(1);
 
-load([figDir, 'cmap_selectivity.mat']);
+%load([figDir, 'cmap_selectivity.mat']);
 
 %%
 
@@ -171,6 +171,8 @@ region = regions{r};
     imagesc([-(win(1))+binsize/5:binsize:win(2)], [length(selectivityAllCells):1],smoothed);
     colorbar
 %     [cmap]=buildcmap('rkg'); 
+    load('redToBlue');
+    cmap=redToBlue;
     colormap(cmap) %will use the output colormap
     colorbar('YTick', [-1 0 1]);
     caxis([-1 1])
@@ -180,9 +182,9 @@ region = regions{r};
     
     %save
        figfile = [figDir,'IgarashiReplication\4a_OdorSelectivity_',region,'_Correct'];
-       saveas(gcf,figfile,'fig');
-       print('-dpdf', figfile);
-       print('-djpeg',figfile);
+       %saveas(gcf,figfile,'fig');
+       %print('-dpdf', figfile);
+       %print('-djpeg',figfile);
     
     
     %Compare to Incorrect using same cell order
@@ -221,10 +223,10 @@ region = regions{r};
     ylabel('Cell Number');
     
     %save
-       figfile = [figDir,'IgarashiReplication\4a_OdorSelectivity_',region,'_Incorrect'];
+       %figfile = [figDir,'IgarashiReplication\4a_OdorSelectivity_',region,'_Incorrect'];
        %saveas(gcf,figfile,'fig');
-       print('-dpdf', figfile);
-       print('-djpeg',figfile);
+      % print('-dpdf', figfile);
+      % print('-djpeg',figfile);
 
        
     %% Calculate correlation 
@@ -245,10 +247,10 @@ region = regions{r};
     txt = {['R = ',num2str(R)],['p = ' num2str(p)]};
     text(0.4,0.5,txt)
      
-    figfile = [figDir,'IgarashiReplication\4a_OdorSelectivity_',region,'_SICorrelation'];
+    %figfile = [figDir,'IgarashiReplication\4a_OdorSelectivity_',region,'_SICorrelation'];
        %saveas(gcf,figfile,'fig');
-       print('-dpdf', figfile);
-       print('-djpeg',figfile);
+      % print('-dpdf', figfile);
+      % print('-djpeg',figfile);
        
        
     %% save data

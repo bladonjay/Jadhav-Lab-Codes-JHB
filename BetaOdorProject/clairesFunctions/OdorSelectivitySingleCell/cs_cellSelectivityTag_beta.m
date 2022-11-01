@@ -4,12 +4,11 @@ clear
 topDir = cs_setPaths;
 
 animals = {'CS31','CS33','CS34','CS35','CS39','CS41','CS42','CS44'};
-%animals = {'CS34'};
+
 regions = {'CA1','PFC'};
-%win = [0 1];
+
 iterations = 1000;
 
-%winsize = win(2) + win(1);
 
 for r = 1:length(regions)
     selectiveCT=0;
@@ -37,7 +36,7 @@ for r = 1:length(regions)
                 cellinfo{cell(1)}{cell(2)}{cell(3)}{cell(4)} = rmfield(cellinfo{cell(1)}{cell(2)}{cell(3)}{cell(4)}, 'SI');
             end
         end
-        
+        %        % this is i'm not sure....
         %         filt = ['(~isempty($SI))'];
         %         test = evaluatefilter(cellinfo,filt);
         %          for f = 1:size(test,1)
@@ -68,6 +67,7 @@ for r = 1:length(regions)
             runeps = cs_getRunEpochs(animDir,animal,'odorplace',day);
             runeps = runeps(:,2);
             
+            % this runs beta windows as well, not good
             trigs_all= []; correct_left_all = []; correct_right_all = [];
             for ep = 1:length(runeps)
                 epoch = runeps(ep);

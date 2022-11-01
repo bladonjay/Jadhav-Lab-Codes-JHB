@@ -13,12 +13,13 @@ regions = {'CA1','PFC'};
 [topDir] = cs_setPaths();
 
 dataDir = [topDir,'AnalysesAcrossAnimals\'];
-cnt_new=0;
+
 
 for r = 1:length(regions)
+    cellct=0; activect=0;
     region = regions{r};
     
-    npCells =[];
+    npCells =[]; activeCells=[];
     for a = 1:length(animals)
         animal = animals{a};
         animDir = [topDir, animal, 'Expt\',animal,'_direct\'];
@@ -26,6 +27,7 @@ for r = 1:length(regions)
         % get all cells for animal
         load([animDir,animal,'cellinfo.mat'])
         
+        % this is for pyramidal cells in the area with more than 100 spikes
         cellfilter = ['isequal($area,''',region,''') && isequal($type, ''pyr'') && $numspikes > 100'];
         cells = evaluatefilter(cellinfo,cellfilter);
         
@@ -57,9 +59,7 @@ for r = 1:length(regions)
                 totaltrigs = 0;
                 cell = daycells(c,:);
                 triallabels = [];
-%                 if a ==3 && day == 3 && cell(2) == 30 && cell(3) == 1
-%                      disp('found cell')
-%                 end
+
                  
                 for ep = 1:length(eps)
                     epoch = eps(ep);
@@ -98,7 +98,7 @@ for r = 1:length(regions)
                     end
                     
                 end
-                
+                cellct=cellct+1;
                 
                 if ~isempty(npspikes) || ~isempty(prespikes)
                     correctleft = find(triallabels(:,1) == 1 & triallabels(:,2) == 1);
@@ -110,10 +110,10 @@ for r = 1:length(regions)
                     %do signrank tests
                     p1 = signrank(lspikes(:,1),lspikes(:,2));
                     p2 = signrank(rspikes(:,1),rspikes(:,2));
-                    p3 = signrank(allspikes(:,1),allspikes(:,2));
+                    p3 = signrank(allspikes(:,1),allspikes(:,2)); % or both combined...
                     
                     if sum(npspikes)/totaltrigs >=1 %at least 1 spike per trial during NP
-                        cnt_new=cnt_new+1;
+                        activeCells=[activeCells; a, cell];
                         if p1 < 0.05 || p2 <0.05 || p3 < 0.05%at least one odor response must be significant
                             npCells = [npCells; a, cell]; %if it meets criteria, add the cell to the list
                         end
@@ -124,8 +124,9 @@ for r = 1:length(regions)
             end
         end
     end
-    fprintf('%d np cells in %s\n',length(npCells),regions{r});
-    fprintf('%d cntnew in %s\n',cnt_new,regions{r});
-    save([dataDir,'npCells_',region,'.mat'], 'npCells')
+    fprintf('%d total pyrams in %s\n', cellct,regions{r})
+    fprintf('%d active pyrams in %s\n',length(activeCells),regions{r});
+    fprintf('%d np pyrams in %s\n',length(npCells),regions{r});
+    save([dataDir,'npCells_',region,'.mat'], 'npCells','activeCells');
 end
 %clear

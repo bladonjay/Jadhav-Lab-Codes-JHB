@@ -23,55 +23,45 @@ end
 
 for r = 1:length(regions)
     region = regions{r};
-        
-    %start with all cells
-    % run vs sleep
-        load([topDir,'AnalysesAcrossAnimals\runCells_',region]);
-        allcells = runcells;
-        cellpops.runCells = allcells;
-        
-%         sleepCells = pyrcells(~ismember(pyrcells,runcells,'rows'),:);
-%         cellpops.sleepCells = sleepCells;
-        
-        
-        
-    
-%     load([topDir,'AnalysesAcrossAnimals\allCells_',region]);
-%         
-         sessions = unique(allcells(:,[1,2]),'rows');
-         sessions = sessions(ismember(sessions,goodsessions,'rows'),:);
-%         N = ismember(allcells(:,[1,2]),sessions,'rows');
-%         allcells = allcells(N,:);
-%         cellpops.allCells = allcells;
-        
-        %pyr vs int
-        load([topDir,'AnalysesAcrossAnimals\pyrCells_',region]);
-%         N = ismember(pyrcells(:,[1,2]),sessions,'rows');
-%         pyrcells = pyrcells(N,:);
-        pyrcells = allcells(ismember(allcells,pyrcells,'rows'),:);
-        cellpops.pyrCells = pyrcells;
-        
-        intCells = allcells(~ismember(allcells,pyrcells,'rows'),:);
-        N = ismember(intCells(:,[1,2]),sessions,'rows');
-        intCells = intCells(N,:);
-        intCells = runcells(ismember(runcells,intCells,'rows'),:);
-        cellpops.intCells = intCells;
 
-        
-        % np vs non-np
-        load([topDir,'AnalysesAcrossAnimals\npCells_',region]);
-        cellpops.npCells = npCells;
-        npCells = pyrcells(ismember(pyrcells,npCells,'rows'),:);
-        nonNPCells = pyrcells(~ismember(pyrcells,npCells,'rows'),:);
-        cellpops.nonNPCells = nonNPCells;
-        
-        
-        %selective vs nonselective
-        load([topDir,'AnalysesAcrossAnimals\selectiveCells_',region]);
-        cellpops.selectiveCells = selectivecells;
-        nonselective = npCells(~ismember(npCells,selectivecells,'rows'),:);
-        cellpops.nonselectiveCells = nonselective;
+    % runCells are those that spike at least once during run epochs
+    % uses function CS_listrRunCells
+    load([topDir,'AnalysesAcrossAnimals\runCells_',region]);
+    allcells = runcells;
+    % has to spike at least once during run epochs
+    cellpops.runCells = allcells;
 
-        save([topDir,'AnalysesAcrossAnimals\cellPopulations_',region],'cellpops');
-        clear cellpops
+    sessions = unique(allcells(:,[1,2]),'rows');
+    sessions = sessions(ismember(sessions,goodsessions,'rows'),:);
+
+
+    %pyr vs int, using the filter function (
+    load([topDir,'AnalysesAcrossAnimals\pyrCells_',region]);
+
+    pyrcells = allcells(ismember(allcells,pyrcells,'rows'),:);
+    cellpops.pyrCells = pyrcells;
+
+    intCells = allcells(~ismember(allcells,pyrcells,'rows'),:);
+    N = ismember(intCells(:,[1,2]),sessions,'rows');
+    intCells = intCells(N,:);
+    intCells = runcells(ismember(runcells,intCells,'rows'),:);
+    cellpops.intCells = intCells;
+
+
+    % np vs non-np
+    load([topDir,'AnalysesAcrossAnimals\npCells_',region]);
+    cellpops.npCells = npCells;
+    npCells = pyrcells(ismember(pyrcells,npCells,'rows'),:);
+    nonNPCells = pyrcells(~ismember(pyrcells,npCells,'rows'),:);
+    cellpops.nonNPCells = nonNPCells;
+
+
+    %selective vs nonselective
+    load([topDir,'AnalysesAcrossAnimals\selectiveCells_',region]);
+    cellpops.selectiveCells = selectivecells;
+    nonselective = npCells(~ismember(npCells,selectivecells,'rows'),:);
+    cellpops.nonselectiveCells = nonselective;
+
+    save([topDir,'AnalysesAcrossAnimals\cellPopulations_',region],'cellpops');
+    clear cellpops
 end

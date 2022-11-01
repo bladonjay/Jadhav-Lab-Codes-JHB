@@ -72,22 +72,22 @@ for r = 1:length(regions)
                             totaltrigs = totaltrigs + size(trigs,1);
                             for tr = 1:size(trigs,1)
                                 winlength = trigs(tr,2) - trigs(tr,1);
-                            winspikesraw = epspikes(isExcluded(epspikes, trigs(tr,:)));
-                            npfr = [npfr; length(winspikesraw)/winlength];
-                            winspikes = winspikesraw - trigs(tr,1);
+                                winspikesraw = epspikes(isExcluded(epspikes, trigs(tr,:)));
+                                npfr = [npfr; length(winspikesraw)/winlength];
+                                winspikes = winspikesraw - trigs(tr,1);
 
-                            ctrlspikesraw = epspikes(isExcluded(epspikes,baselinetrigs(tr,:)));
-                            ctrlfr = [ctrlfr; length(ctrlspikesraw)/winlength];
-                            ctrlspikes = ctrlspikesraw- trigs(tr,1);
-                            psthspikes = [psthspikes; winspikes; ctrlspikes];
-                            
-                            %also get pos, check where spikes are actually
-                            %occuring
-                            epspikes = [winspikesraw;ctrlspikesraw];
-                            npposind = lookup(epspikes,pos{cell(1)}{epoch}.data(:,1));
-                            nppos = pos{cell(1)}{epoch}.data(npposind,[2,3]);
-                            npposall = [npposall;nppos];
-                            posall = [posall; pos{cell(1)}{epoch}.data(:,[2,3])];
+                                ctrlspikesraw = epspikes(isExcluded(epspikes,baselinetrigs(tr,:)));
+                                ctrlfr = [ctrlfr; length(ctrlspikesraw)/winlength];
+                                ctrlspikes = ctrlspikesraw- trigs(tr,1);
+                                psthspikes = [psthspikes; winspikes; ctrlspikes];
+
+                                %also get pos, check where spikes are actually
+                                %occuring
+                                epspikes = [winspikesraw;ctrlspikesraw];
+                                npposind = lookup(epspikes,pos{cell(1)}{epoch}.data(:,1));
+                                nppos = pos{cell(1)}{epoch}.data(npposind,[2,3]);
+                                npposall = [npposall;nppos];
+                                posall = [posall; pos{cell(1)}{epoch}.data(:,[2,3])];
                             end
                         
                     end

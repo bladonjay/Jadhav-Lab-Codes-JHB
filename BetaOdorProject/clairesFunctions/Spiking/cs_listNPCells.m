@@ -19,8 +19,7 @@ for r = 1:length(regions)
         load([animDir,animal,'cellinfo.mat'])
         
         cellfilter = ['isequal($area,''',region,''') && isequal($type, ''pyr'')'];
-%         cellfilter = ['isequal($type, ''pyr'')']
-%         cellfilter = ['isequal($area,''',region,''')']
+
         cells = evaluatefilter(cellinfo,cellfilter);
         
         noeps = cells(:,[1 3 4]);
@@ -63,19 +62,10 @@ for r = 1:length(regions)
                            
                         end
 
-                        
-                        
-%                         for t = 1:size(trigs,1)
-%                         trigwin = trigs(t,:);
-%                         winspikes = epspikes(epspikes > trigwin(1) & epspikes <= trigwin(2));
-%                         npspikes = npspikes + length(winspikes);
-% 
-%                         end
-                        
                     end
 
                 end
-                
+                cellct=cellct+1;
                 avgSpikesPerTrial = npspikes/totaltrigs;
                 
                 if avgSpikesPerTrial >= 1
