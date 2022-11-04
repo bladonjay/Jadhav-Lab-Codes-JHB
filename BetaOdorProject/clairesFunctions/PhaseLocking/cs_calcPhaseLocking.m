@@ -3,6 +3,8 @@ function out = cs_calcPhaseLocking(sph)
 if length(sph) > 10
     stats = rayleigh_test(sph); 
     [moddepth, peakphase] = modulation(sph);
+    % jay is adding a field here, for the mean vector length
+    mvl=circ_r(sph);
     peakphase_deg = peakphase*(180/pi);
     
     % Von Mises Distribution - From Circular Stats toolbox
@@ -20,7 +22,7 @@ else
     prefdir_deg=NaN;
     prayl=NaN;
     zrayl=0; 
-    
+    mvl=nan;
 end
 
 out.sph = sph;
@@ -33,5 +35,6 @@ out.prefdir = prefdir;
 out.prefdir_deg = prefdir_deg;
 out.prayl = prayl;
 out.zrayl = zrayl;
+out.mvl=mvl;
 
 end

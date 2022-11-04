@@ -73,8 +73,8 @@ for r = 1:size(regions,1)
     xlim([0 3])
     ylim([0 inf])
     figfile = [figDir,'PhaseLocking\betaRRcomp_kappa_',cellregion];
-    print('-dpdf', figfile);
-    print('-djpeg', figfile);
+    %print('-dpdf', figfile);
+    %print('-djpeg', figfile);
     
     figure, hold on
     p = ranksum(zrayl(:,1),zrayl(:,2));
@@ -89,8 +89,8 @@ for r = 1:size(regions,1)
     xlim([0 3])
     ylim([0 inf])
     figfile = [figDir,'PhaseLocking\betaRRcomp_zrayl_',cellregion];
-    print('-dpdf', figfile);
-    print('-djpeg', figfile);
+    %print('-dpdf', figfile);
+    %print('-djpeg', figfile);
     
 end
 

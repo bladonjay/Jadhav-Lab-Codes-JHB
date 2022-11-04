@@ -2,22 +2,24 @@
 clear
 [topDir, figDir] = cs_setPaths();
 
-win = [0.5 1];
+win = [0 1];
+endwin= [1 0];
 binsize = 0.05;
 % cs_odorSelectivity_v2(topDir, figDir, win,binsize)
+saveout=0;
 
-
+odorStartEnd='start';
 
 animals = {'CS31','CS33','CS34','CS35','CS39','CS41','CS42','CS44'};
 regions = {'CA1','PFC'};
-winsize = win(2) + win(1);
+winsize = win(2) + win(1); % unused
 
-load([figDir, 'cmap_selectivity.mat']);
-
+%load([figDir, 'cmap_selectivity.mat']);
+load('redToBlue.mat')
 %%
 
 for r = 1:length(regions)
-region = regions{r};
+    region = regions{r};
     %find cells that meet selection criteria (pyramidal cells in area of
     %interest)
     selectivityAllCells = []; inds =[];
@@ -35,7 +37,7 @@ region = regions{r};
         load([animDir,animal,'cellinfo.mat'])
         
         %Take previously defined selective cells
-        cellfilter = ['((strcmp($type, ''pyr'')) && (isequal($area,''',region, ... 
+        cellfilter = ['((strcmp($type, ''pyr'')) && (isequal($area,''',region, ...
             ''')) && (strcmp($selectivity, ''leftSelective'') || strcmp($selectivity, ''rightSelective'')))'];
         
         cells = evaluatefilter(cellinfo,cellfilter);
@@ -53,11 +55,12 @@ region = regions{r};
             load([animDir,animal,'spikes',daystr,'.mat'])
             load([animDir,animal,'odorTriggers',daystr,'.mat'])
             %runeps = find(~cellfun(@isempty,odorTriggers{day}));
+            load([animDir, animal,'nosepokeWindow',daystr,'.mat'])
             
-           
+            
             for c = 1:size(daycells,1)
-
-                correctleftspikes = []; 
+                
+                correctleftspikes = [];
                 correctrightspikes = [];
                 incorrectleftspikes = [];
                 incorrectrightspikes = [];
@@ -73,16 +76,24 @@ region = regions{r};
                         
                         [correct_left, correct_right, incorrect_left, incorrect_right] = cs_getSpecificTrialTypeInds(odorTriggers{day}{epoch});
                         %triginds = sort([correct_left; correct_right]);
-
+                        
                         trigs = odorTriggers{day}{epoch}.allTriggers;
-%% Find Spikes on each trial
+                        endtrigs=nosepokeWindow{day}{epoch}(:,2);
+                        %% Find Spikes on each trial
                         for t = 1:length(trigs)
-                        trigwin = [trigs(t)-win(1), trigs(t)+win(2)];
-                        winspikes = epspikes(epspikes > trigwin(1) & epspikes <= trigwin(2));
-                        bins = (trigs(t)-win(1):binsize:trigs(t)+win(2));
-                        binspikecount = histcounts(winspikes,bins);
-                            
-                        %classify into trial type
+                            switch odorStartEnd
+                                case 'start'
+                                    trigwin = [trigs(t)-win(1), trigs(t)+win(2)];
+                                    winspikes = epspikes(epspikes > trigwin(1) & epspikes <= trigwin(2));
+                                    bins = (trigs(t)-win(1):binsize:trigs(t)+win(2));
+                                    binspikecount = histcounts(winspikes,bins);
+                                case 'end'
+                                    trigwin = [endtrigs(t)-endwin(1), endtrigs(t)+endwin(2)];
+                                    winspikes = epspikes(epspikes > trigwin(1) & epspikes <= trigwin(2));
+                                    bins = (endtrigs(t)-endwin(1):binsize:endtrigs(t)+endwin(2));
+                                    binspikecount = histcounts(winspikes,bins);
+                            end
+                            %classify into trial type
                             if ismember(t, correct_left)
                                 correctleftspikes = [correctleftspikes; binspikecount];
                             elseif ismember(t, correct_right)
@@ -92,63 +103,73 @@ region = regions{r};
                             elseif ismember(t, incorrect_right)
                                 incorrectrightspikes = [incorrectrightspikes; binspikecount];
                             end
-                        
+                            
                         end
-                        
                     end
-
+                    
                 end
-
-                    cleftbinfr = mean(correctleftspikes,1)./binsize;
-                    crightbinfr = mean(correctrightspikes,1)./binsize;
+                
+                
+                
+                cleftbinfr = mean(correctleftspikes,1)./binsize;
+                crightbinfr = mean(correctrightspikes,1)./binsize;
+                
+                psth_left_correct = [psth_left_correct;cleftbinfr];
+                psth_right_correct = [psth_right_correct;crightbinfr];
+                
+                seldat = (cleftbinfr - crightbinfr)./(cleftbinfr + crightbinfr);
+                
+                selectivityAllCells = [selectivityAllCells;seldat];
+                
+                inds = [inds; a, cell];
+                
+                
+                ileftbinfr = mean(incorrectleftspikes,1)./binsize;
+                if isempty(ileftbinfr)
+                    ileftbinfr = zeros(1,length(bins)-1);
+                end
+                irightbinfr = mean(incorrectrightspikes,1)./binsize;
+                if isempty(irightbinfr)
+                    ibinfr = zeros(1,length(bins)-1);
+                end
+                
+                
+                if isempty(ileftbinfr) && isempty(irightbinfr)
+                    i_SelectivityAllCells = [i_SelectivityAllCells; zeros(1,length(bins)-1)];
+                else
                     
-                    psth_left_correct = [psth_left_correct;cleftbinfr];
-                    psth_right_correct = [psth_right_correct;crightbinfr];
-                    
-                    seldat = (cleftbinfr - crightbinfr)./(cleftbinfr + crightbinfr);
-                    
-                    selectivityAllCells = [selectivityAllCells;seldat];
-                    
-                    inds = [inds; a, cell];
-  
-                    
-                    ileftbinfr = mean(incorrectleftspikes,1)./binsize;
-                        if isempty(ileftbinfr) 
-                            ileftbinfr = zeros(1,length(bins)-1);
-                        end
-                    irightbinfr = mean(incorrectrightspikes,1)./binsize;
-                        if isempty(irightbinfr) 
-                            ibinfr = zeros(1,length(bins)-1);
-                        end
-                    
-                    
-                    if isempty(ileftbinfr) && isempty(irightbinfr)
-                        i_SelectivityAllCells = [i_SelectivityAllCells; zeros(1,length(bins)-1)];
-                    else
-                     
                     psth_left_incorrect = [psth_left_incorrect;ileftbinfr];
                     psth_right_incorrect = [psth_right_incorrect;irightbinfr];
                     
                     i_selectivity = (ileftbinfr - irightbinfr)./(ileftbinfr + irightbinfr);
-                    i_SelectivityAllCells = [i_SelectivityAllCells; i_selectivity]; 
-                    end
-                    
+                    i_SelectivityAllCells = [i_SelectivityAllCells; i_selectivity];
+                end
+                
                 allSI = [allSI; cellinfo{cell(1)}{runeps(1)}{cell(2)}{cell(3)}.SI];
                 
             end
             
         end
-       
-
+        
+        
     end
     selectivityAllCells(isnan(selectivityAllCells))=0;
     
-    bins = -win(1):binsize:win(2);
-    trigbins = (bins >= 0.2 & bins < 1); 
+    switch odorStartEnd
+        case 'start'
+            bins = -win(1):binsize:win(2);
+            centers=-(win(1))+binsize/5:binsize:win(2);
+            trigbins = (bins >= 0.2 & bins < 1);
+            
+        case 'end'
+            bins = -endwin(1):binsize:endwin(2);
+            centers=-(endwin(1))+binsize/5:binsize:endwin(2);
+            trigbins = (bins >= -0.2 & bins < -1);
+    end
     mn = mean(selectivityAllCells(:,trigbins), 2);
     [corr,sortmean] = sort(mn,'descend');
     cellinds = inds(sortmean,:);
-   
+    
     
     %validinds = 1+((numpoints-1)/2):size(selectivityAllCells,2)-((numpoints-1)/2);
     %smoothed = zeros(length(validinds));
@@ -157,20 +178,20 @@ region = regions{r};
     smoothed = zeros(size(selectivityAllCells,1),length(newbins));
     
     for c = 1:size(selectivityAllCells,1)
-         
-          %rather than smoothing, use interpolation instead. 
-         %smoothed(c,:) = smoothdata(selectivityAllCells(c,:),'gaussian',5); 
-         smoothed(c,:) = smoothdata(interp1(bins(2:end),selectivityAllCells(c,:),newbins),'gaussian',15);
-         
+        
+        %rather than smoothing, use interpolation instead.
+        %smoothed(c,:) = smoothdata(selectivityAllCells(c,:),'gaussian',5);
+        smoothed(c,:) = smoothdata(interp1(bins(2:end),selectivityAllCells(c,:),newbins),'gaussian',15);
+        
     end
-   
-   
+    
+    
     smoothed = smoothed(sortmean,:);
     figure,
     set(gcf,'Position',[300 100 300 500]);
-    imagesc([-(win(1))+binsize/5:binsize:win(2)], [length(selectivityAllCells):1],smoothed);
+    imagesc(centers, length(selectivityAllCells):1,smoothed);
     colorbar
-%     [cmap]=buildcmap('rkg'); 
+    [cmap]=buildcmap('rkg');
     colormap(cmap) %will use the output colormap
     colorbar('YTick', [-1 0 1]);
     caxis([-1 1])
@@ -179,11 +200,12 @@ region = regions{r};
     ylabel('Cell Number');
     
     %save
-       figfile = [figDir,'IgarashiReplication\4a_OdorSelectivity_',region,'_Correct'];
-       saveas(gcf,figfile,'fig');
-       print('-dpdf', figfile);
-       print('-djpeg',figfile);
-    
+    if saveout==1
+        figfile = [figDir,'IgarashiReplication\4a_OdorSelectivity_',region,'_Correct'];
+        saveas(gcf,figfile,'fig');
+        print('-dpdf', figfile);
+        print('-djpeg',figfile);
+    end
     
     %Compare to Incorrect using same cell order
     
@@ -193,27 +215,27 @@ region = regions{r};
     
     
     i_SelectivityAllCells(isnan(i_SelectivityAllCells))=0;
-%     buffer = [repmat(i_SelectivityAllCells(:,1), [1, buffersize]), repmat(i_SelectivityAllCells(:,end), [1, buffersize])];
-%     i_SelectivityAllCells = [buffer(:,1:buffersize), i_SelectivityAllCells, buffer(:,buffersize+1:end)]; 
-%     i_smoothed = zeros(length(validinds));
+    %     buffer = [repmat(i_SelectivityAllCells(:,1), [1, buffersize]), repmat(i_SelectivityAllCells(:,end), [1, buffersize])];
+    %     i_SelectivityAllCells = [buffer(:,1:buffersize), i_SelectivityAllCells, buffer(:,buffersize+1:end)];
+    %     i_smoothed = zeros(length(validinds));
     i_smoothed = zeros(size(i_SelectivityAllCells,1),length(newbins));
     
     
     for c = 1:size(i_SelectivityAllCells,1)
-         %i_smoothed(c,:) = filter2(s,i_SelectivityAllCells(c,:),'valid'); 
-         %i_smoothed(c,:) = smoothdata(i_SelectivityAllCells(c,:),'gaussian',5); 
-         i_smoothed(c,:) = smoothdata(interp1(bins(2:end),i_SelectivityAllCells(c,:),newbins),'gaussian',15);
+        %i_smoothed(c,:) = filter2(s,i_SelectivityAllCells(c,:),'valid');
+        %i_smoothed(c,:) = smoothdata(i_SelectivityAllCells(c,:),'gaussian',5);
+        i_smoothed(c,:) = smoothdata(interp1(bins(2:end),i_SelectivityAllCells(c,:),newbins),'gaussian',15);
     end
     i_smoothed = i_smoothed(sortmean,:);
     mn_i = mean(i_SelectivityAllCells(:,trigbins), 2);
     incorr = mn_i(sortmean);
     figure,
     set(gcf,'Position',[300 100 300 500]);
-    imagesc([-(win(1)):binsize:win(2)], [length(i_SelectivityAllCells):1],i_smoothed);
+    imagesc(centers, length(i_SelectivityAllCells):1,i_smoothed);
     colorbar
     colorbar('YTick', [-1 0 1]);
     caxis([-1 1])
-    %[cmap]=buildcmap('rkg'); 
+    %[cmap]=buildcmap('rkg');
     %colormap(cmap) %will use the output colormap
     colormap(cmap)
     title([region, ' Incorrect Trials']);
@@ -221,14 +243,15 @@ region = regions{r};
     ylabel('Cell Number');
     
     %save
-       figfile = [figDir,'IgarashiReplication\4a_OdorSelectivity_',region,'_Incorrect'];
-       %saveas(gcf,figfile,'fig');
-       print('-dpdf', figfile);
-       print('-djpeg',figfile);
-
-       
-    %% Calculate correlation 
-    figure, 
+    if saveout==1
+        figfile = [figDir,'IgarashiReplication\4a_OdorSelectivity_',region,'_Incorrect'];
+        %saveas(gcf,figfile,'fig');
+        print('-dpdf', figfile);
+        print('-djpeg',figfile);
+    end
+    
+    %% Calculate correlation
+    figure,
     plot(corr,incorr,'k.','MarkerSize',20)
     hold on
     fit = polyfit(corr, incorr,1);
@@ -237,41 +260,42 @@ region = regions{r};
     ylabel('Incorrect Trial Selectivity Index');
     axis([-1 1 -1 1]);
     
-
+    
     [CC,p] = corrcoef(corr, incorr);
     R = CC(1,2);
     p = p(1,2);
     
     txt = {['R = ',num2str(R)],['p = ' num2str(p)]};
     text(0.4,0.5,txt)
-     
-    figfile = [figDir,'IgarashiReplication\4a_OdorSelectivity_',region,'_SICorrelation'];
-       %saveas(gcf,figfile,'fig');
-       print('-dpdf', figfile);
-       print('-djpeg',figfile);
-       
-       
+    
+    if saveout==1
+        figfile = [figDir,'IgarashiReplication\4a_OdorSelectivity_',region,'_SICorrelation'];
+        %saveas(gcf,figfile,'fig');
+        print('-dpdf', figfile);
+        print('-djpeg',figfile);
+    end
+    
     %% save data
     
-     %sort psth before saving
-     psth_left_correct = psth_left_correct(sortmean,:);
-     psth_right_correct = psth_right_correct(sortmean,:);
-     psth_left_incorrect = psth_left_incorrect(sortmean,:);
-     psth_right_incorrect = psth_right_incorrect(sortmean,:);
-      
-       
-     selectivityData.psth_left_correct = psth_left_correct;
-     selectivityData.psth_right_correct = psth_right_correct;
-     selectivityData.psth_left_incorrect = psth_left_incorrect;
-     selectivityData.psth_right_incorrect = psth_right_incorrect;
-     selectivityData.SI_correct = smoothed;
-     selectivityData.SI_incorrect = i_smoothed;
-     selectivityData.SI_correct_mean = corr;
-     selectivityData.SI_incorrect_mean = incorr;
-     selectivityData.cellinds = cellinds;
-     selectivityData.win = newbins;
-     save([topDir,'AnalysesAcrossAnimals\selectivityData_',region],'selectivityData');
-     clear selectivityData
+    %sort psth before saving
+    psth_left_correct = psth_left_correct(sortmean,:);
+    psth_right_correct = psth_right_correct(sortmean,:);
+    psth_left_incorrect = psth_left_incorrect(sortmean,:);
+    psth_right_incorrect = psth_right_incorrect(sortmean,:);
+    
+    
+    selectivityData.psth_left_correct = psth_left_correct;
+    selectivityData.psth_right_correct = psth_right_correct;
+    selectivityData.psth_left_incorrect = psth_left_incorrect;
+    selectivityData.psth_right_incorrect = psth_right_incorrect;
+    selectivityData.SI_correct = smoothed;
+    selectivityData.SI_incorrect = i_smoothed;
+    selectivityData.SI_correct_mean = corr;
+    selectivityData.SI_incorrect_mean = incorr;
+    selectivityData.cellinds = cellinds;
+    selectivityData.win = newbins;
+    save([topDir,'AnalysesAcrossAnimals\selectivityData_',region],'selectivityData');
+    clear selectivityData
 end
 
 

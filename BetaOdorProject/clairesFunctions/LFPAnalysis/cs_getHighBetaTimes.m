@@ -15,7 +15,7 @@
 
 %CORRECT TRIALS ONLY
 
-clear all
+clear
 topDir = cs_setPaths();
 animals = {'CS31','CS33','CS34','CS35','CS39','CS41','CS42','CS44'};
 
@@ -56,7 +56,7 @@ for tt = 1:length(trialtypes)
             
             load([dataDir, animal, 'nosepokeWindow',daystr,'.mat'])
             load([dataDir, animal, 'odorTriggers',daystr,'.mat'])
-            disp(['Doing ', animal,' Day', daystr]);
+            disp(['Doing ', animal,' Day ', daystr]);
             
             for e = 1:length(epochs)
                 epoch = epochs(e);
@@ -77,10 +77,11 @@ for tt = 1:length(trialtypes)
                 
                tet = cs_getMostCellsTet(animal,day,epoch,region);
                tetstr = getTwoDigitNumber(tet);
-%                 %for r = 1:length(regions)
-%                 %region = regions{r};
-%                 tetfilter = ['((strcmp($area, ''',region,''')) && (strcmp($descrip2, ''betatet'')))'];
-%                 tet = evaluatefilter(tetinfo{1,day}{1,epoch}, tetfilter);
+               % now build beta and theta for that tetrode
+%                  for r = 1:length(regions)
+%                  region = regions{r};
+%                  tetfilter = ['((strcmp($area, ''',region,''')) && (strcmp($descrip2, ''betatet'')))'];
+%                  tet = evaluatefilter(tetinfo{1,day}{1,epoch}, tetfilter);
 %                 
                 if ~isempty(tet)
                     

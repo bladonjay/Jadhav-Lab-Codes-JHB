@@ -9,7 +9,7 @@ clairesPath=genpath(cd);
 addpath(clairesPath);
 
 % start with the pipeline
-cs_Pipeline
+edit cs_Pipeline
 %% first lets generate our taskResponsive cells and Selective cells
 
 % these are the cells that fire during run epochs (at least 1 spike)

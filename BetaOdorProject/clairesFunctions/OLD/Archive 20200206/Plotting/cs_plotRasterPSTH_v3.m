@@ -1,5 +1,7 @@
-function cs_plotRasterPSTH_v3(win, binsize)
-%win = 
+% cs_plotRasterPSTH_v3
+
+win = [0.5 1];
+binsize = 0.05;
 [topDir, figDir] = cs_setPaths;
 animals = {'CS31','CS33','CS34','CS35','CS39','CS41','CS42','CS44'};
 bins = (-win(1):binsize:win(2));

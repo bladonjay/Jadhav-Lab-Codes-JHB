@@ -1,4 +1,4 @@
-function [k_dist, z_dist] = cs_phaselockBootstrap(s, lfptime, phase, wins, nwins_incorr, iterations)
+function [k_dist, z_dist, mvl_dist] = cs_phaselockBootstrap_v2(s, lfptime, phase, wins, nwins_incorr, iterations)
 
 %inputs: 
 % s = all spikes for cell
@@ -9,6 +9,7 @@ function [k_dist, z_dist] = cs_phaselockBootstrap(s, lfptime, phase, wins, nwins
 
 k_dist = [];
 z_dist = [];
+mvl_dist = [];
 
 for i = 1:iterations
     samp = datasample(1:size(wins,1),nwins_incorr);
@@ -22,16 +23,17 @@ for i = 1:iterations
         % Von Mises Distribution - From Circular Stats toolbox
         [~, k] = circ_vmpar(sph); % Better to give raw data. Can also give binned data.
         [~, z] = circ_rtest(sph); % Rayleigh test for non-uniformity of circular data
-        
+        mvl = circ_r(sph);
     else
         k=0;
         z=0;
+        mvl=0;
         
     end
     
     k_dist = [k_dist;k];
     z_dist = [z_dist;z];
-    
+    mvl_dist = [mvl_dist; mvl];
 end
 
 

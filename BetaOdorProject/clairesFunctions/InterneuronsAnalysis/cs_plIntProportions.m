@@ -53,7 +53,14 @@ for r = 1:length(regions)
         
     %saveas(gcf,figfile,'fig');
 end
+set(gca,'XTick',[1 1.2 2 2.2],'XTickLabel',{'Beta','RR'});
+xlabel(regions);
 
+
+
+
+
+%%
 figfile = [figDir, 'pl_proportions'];
         print('-djpeg', figfile);
     print('-dpdf', figfile);

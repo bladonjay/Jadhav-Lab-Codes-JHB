@@ -58,7 +58,7 @@ for r = 1:length(regions)
                             trigs = nosepokeWindow{day}{epoch};
                             totaltrigs = totaltrigs + size(trigs,1);
                             
-                            winspikes = epspikes(isExcluded(epspikes, trigs));
+                            winspikes = epspikes(logical(isExcluded(epspikes, trigs)));
                             npspikes = npspikes + length(winspikes);
                            
                         end

@@ -14,6 +14,9 @@ regions = {'CA1','PFC'};
 %win = [0 1];
 iterations = 1000;
 
+rstream = RandStream('dsfmt19937','Seed',16);
+RandStream.setGlobalStream(rstream);
+
 %winsize = win(2) + win(1);
 
 for r = 1:length(regions)
@@ -58,7 +61,6 @@ for r = 1:length(regions)
             load([animDir,animal,'spikes',daystr,'.mat'])
             load([animDir,animal,'odorTriggers',daystr,'.mat'])
             load([animDir, animal,'nosepokeWindow',daystr,'.mat'])
-            %runeps = find(~cellfun(@isempty,nosepokeWindow{day}));
             runeps = cs_getRunEpochs(animDir, animal, 'odorplace',day);
             runeps = runeps(:,2);
             
@@ -67,7 +69,6 @@ for r = 1:length(regions)
             for ep = 1:length(runeps)
                 epoch = runeps(ep);
                 [correct_left, correct_right, ~, ~] = cs_getSpecificTrialTypeInds(odorTriggers{day}{epoch});
-                %trigs = odorTriggers{day}{epoch}.allTriggers;
                 npwins = nosepokeWindow{day}{epoch};
                 
                 correct_left_all = [correct_left_all; npwins(correct_left,:)];

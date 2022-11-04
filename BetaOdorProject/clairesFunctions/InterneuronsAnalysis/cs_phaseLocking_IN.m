@@ -12,16 +12,19 @@ clear
 topDir = cs_setPaths();
 animals = {'CS31','CS33','CS34','CS35','CS39','CS41','CS42','CS44'};
 cellregions = {'CA1','PFC'};
-eegregions = {'OB'};
+eegregions = {'CA1','PFC','OB'};
 freqs = {'beta','resp'};
 trialtypes = {'correct','incorrect'};
 
 %% get NP cells
-load([topDir,'AnalysesAcrossAnimals\npInt_CA1']);
+load([topDir,'AnalysesAcrossAnimals\npInt_CA1_old']);
 cells_CA1 = npInt;
-load([topDir,'AnalysesAcrossAnimals\npInt_PFC']);
+load([topDir,'AnalysesAcrossAnimals\npInt_PFC_old']);
 cells_PFC = npInt; clear npInt
 
+
+rstream = RandStream('dsfmt19937','Seed',16);
+RandStream.setGlobalStream(rstream);
 
 for a = 1:length(animals)
     animal = animals{a};
@@ -30,28 +33,19 @@ for a = 1:length(animals)
     %% get animal data
     odorTriggers = loaddatastruct(animDir, animal,'odorTriggers');
     nosepokeWindow = loaddatastruct(animDir, animal, 'nosepokeWindow');
-    
-    load([animDir,animal,'highBeta']);
-    windows = highBeta;
-    load([animDir,animal,'highBeta_incorrect']);
-    wins_incorr = highBeta; clear highBeta
+
     
     spikes = loaddatastruct(animDir, animal, 'spikes');
-    
     days = cs_getRunEpochs(animDir, animal, 'odorplace');
     days = unique(days(:,1));
     
     for f = 1:length(freqs)
         freq = freqs{f};
-        for cr = 1:length(cellregions)
-            cellregion = cellregions{cr};
+        for crg = 1:length(cellregions)
+            cellregion = cellregions{crg};
             
             for er = 1:length(eegregions)
                 eegregion = eegregions{er};
-                
-                %                 if strcmp(cellregion,eegregion)
-                %                     continue
-                %                 end
                 disp(['Doing ',animal, ' ',freq,' ',cellregion,'-',eegregion])
                 for tt = 1:length(trialtypes)
                     trialtype = trialtypes{tt};
@@ -79,12 +73,7 @@ for a = 1:length(animals)
                             epoch = epochs(ep);
                             epstr = getTwoDigitNumber(epoch);
                             
-%                             if strcmp(trialtype,'correct')
-%                                 list = windows{day}{epoch}.OB;
-%                             elseif strcmp(trialtype,'incorrect')
-%                                 list = wins_incorr{day}{epoch}.OB;
-%                             end
-                            %
+
                             [cl,cr,il,ir] = cs_getSpecificTrialTypeInds(odorTriggers{day}{epoch});
                             wins_incorr = nosepokeWindow{day}{epoch}(sort([il;ir]),:);
                             if strcmp(trialtype,'correct')
@@ -102,7 +91,21 @@ for a = 1:length(animals)
                             tet = cs_getMostCellsTet(animal,day,epoch,eegregion);
                             tetstr = getTwoDigitNumber(tet);
                             
-                            load([animDir, 'EEG/', animal, freq,daystr,'-',epstr,'-',tetstr,'.mat'],freq);
+                            % JHB inserted a way to create an eegfile if it
+                            % doesnt exist
+                            eegfile=[animDir, 'EEG\', animal, freq,daystr,'-',epstr,'-',tetstr,'.mat'];
+                            if ~exist(eegfile,'file')
+                                try
+                                    filterFile=sprintf('C:\\Users\\Jadhavlab\\Documents\\gitRepos\\LFP-analysis\\JadhavEEGFilter\\%sfilter.mat',...
+                                        freqs{f});
+                                catch
+                                    fprintf('cant load the eeg file');
+                                    return
+                                end
+                                [filtered]=jhb_LFPtetprocess(animDir,animal,day,epoch,tet,'f',filterFile,'band',freqs{f});
+                            end
+                            load([animDir, 'EEG\', animal, freq,daystr,'-',epstr,'-',tetstr,'.mat'],freq);
+                            
                             eval(['lfp = ',freq,';']);
                             
                             t = geteegtimes(lfp{day}{epoch}{tet});
@@ -136,46 +139,12 @@ for a = 1:length(animals)
                             sph = double(sph_tmp(find(goodspikes))) / 10000;  % If no spikes, this will be empty
                             
                             
-%                             phase_tmp = double(phase)/10000;
-%                             time_tmp = lfptime(isExcluded(lfptime,[8287 8290]));                          sp = allspikes(goodspikes);
-%                             phase_tmp = phase_tmp(isExcluded(lfptime,[8287 8290]));
-%                             
-%                             plot(time_tmp, phase_tmp);
-%                             bad = find(sph == 1.5706);
-%                             badtime = sp(bad);
-%                             
-%                             plotphase = double(phase)/10000;
-%                             
-                            %remove noise
-                                %occasionally, long trains of consecutive
-                                %"spikes" will have exactly the same phase.
-                                %This is likely noise? 
+
                             
                             %calc stats
                             out = cs_calcPhaseLocking(sph);
                             
-%                             %check result
-%                             if ~isempty(sph)
-%                                 binedges = -pi:(2*pi/20):pi;
-%                                 count = histcounts(sph, binedges);
-%                                 pct = (count./sum(count))*100;
-%                                 newcount = [pct,pct];
-%                                 
-%                                 newbinedges = [binedges - pi, binedges(2:end) + pi];
-%                                 newbins = newbinedges(2:end)-((binedges(2)-binedges(1))/2);
-%                                 
-%                                 figure, hold on
-%                                 bar(newbins, newcount,1);
-%                                 plot([0 0], [0 max(newcount+2)], 'k--');
-%                                 axis([-2*pi, 2*pi, 0 max(newcount+2)])
-%                                 xticks([-2*pi -pi 0 pi 2*pi])
-%                                 xticklabels({'-2\pi','-\pi','0','\pi','2\pi'})
-%                                 xlabel('Phase')
-%                                 ylabel('% of spikes')
-%                                 
-%                                 
-%                             end
-%                             close all
+
                             
                             %store data in first epoch
                             phaselock{day}{1}{cell(1)}{cell(2)} = out;
@@ -184,9 +153,11 @@ for a = 1:length(animals)
                             
                             %do bootstrap for correct trials
                             if strcmp(trialtype,'correct')
-                                [k_dist, z_dist] = cs_phaselockBootstrap(allspikes, lfptime, phase, timelist, numincorrtrials, 500);
+                                [k_dist, z_dist, mvl_dist] = cs_phaselockBootstrap_v2(allspikes, lfptime, phase, timelist, numincorrtrials, 500);
                                 phaselock{day}{1}{cell(1)}{cell(2)}.kappa_dist = k_dist;
                                 phaselock{day}{1}{cell(1)}{cell(2)}.zrayl_dist = z_dist;
+                                phaselock{day}{1}{cell(1)}{cell(2)}.mvl_dist = mvl_dist;
+
                             end
                             
                             
@@ -198,8 +169,14 @@ for a = 1:length(animals)
                     
                     if strcmp(trialtype,'correct')
                         plDir = [animDir,'PhaseLocking\Interneurons\'];
+                        if exist(plDir,'dir')~=7
+                            mkdir(plDir);
+                        end
                     elseif strcmp(trialtype,'incorrect')
                         plDir = [animDir, 'PhaseLocking\Interneurons\Incorrect\'];
+                         if exist(plDir,'dir')~=7
+                            mkdir(plDir);
+                        end
                     end
                     
                     %if phaselocking variable does not exist, then there

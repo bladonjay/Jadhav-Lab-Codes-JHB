@@ -38,9 +38,7 @@ for tt = 1:length(trialtypes)
             animal = animals{a};
             
             animDir = ([topDir, animal,'Expt\',animal, '_direct\']);
-%             dm1 = cs_getRunEpochs(animDir, animal, 'novelodor');
-%             dm2 = cs_getRunEpochs(animDir, animal, 'novelodor2');
-            %daymatrix = sortrows([dm1;dm2],1);
+
             daymatrix = cs_getRunEpochs(animDir, animal, 'odorplace');
 
             load([animDir,animal,'highBeta',trialstr,'.mat']);

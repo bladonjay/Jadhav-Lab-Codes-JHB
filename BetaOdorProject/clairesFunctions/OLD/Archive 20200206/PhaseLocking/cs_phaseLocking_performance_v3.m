@@ -1,4 +1,9 @@
-%cs_phaseLocking_performance_v2
+%cs_phaseLocking_performance_v3
+
+%
+% Jay edited to work with cs_phaseLocking current version
+%
+%
 %compare rayleigh z and kappa values for correct vs incorrect trials
 %already have phase locking for all cells on correct/incorrect trials, just
 %load files and get distributions
@@ -8,13 +13,15 @@
 clear
 [topDir, figDir] = cs_setPaths();
 animals = {'CS31','CS33','CS34','CS35','CS39','CS41','CS42','CS44'};
-
+saveout=0;
 
 %do all regions separately?
 cellregions = {'CA1','PFC'};
+cellcolors=[rgbcolormap('LightSalmon'); rgbcolormap('DarkTurquoise')];
 eegregions = {'CA1','PFC','OB'};
 
 band='beta';
+
 for cr = 1:length(cellregions)
     
     cellregion = cellregions{cr};
@@ -44,7 +51,7 @@ for cr = 1:length(cellregions)
             load([animDir,'PhaseLocking\',plfiles_c.name]);
             eval('phaselock_c = phaselock;');
             clear phaselock;
-            load([animDir,'PhaseLocking\',plfiles_i.name]);
+            load([animDir,'PhaseLocking\Incorrect\',plfiles_i.name]);
             eval('phaselock_i = phaselock;');
             clear phaselock;
             
@@ -58,45 +65,32 @@ for cr = 1:length(cellregions)
             cells = unique(allcells(:,[1 3 4]),'rows');
             %For each cell, get avg kappa and zrayl.
             for c = 1:size(cells,1)
-
-                        load([animDir,'PhaseLocking\',animal,'betaphaselock_',cellregion,'-',eegregion,'_',daystr])
-                        eval(['pl_c = beta_phaselock',cellregion,';']);
-                        eps_c = cs_findGoodEpochs(pl_c{ind(1)},{'zrayl'},ind([2,3]));
-                        
-                        load([animDir,'PhaseLocking\Incorrect\',animal,'betaphaselock_',cellregion,'-',eegregion,'_incorrect_',daystr])
-                        eval(['pl_i = beta_phaselock',cellregion,';']);
-                        eps_i = cs_findGoodEpochs(pl_i{ind(1)},{'zrayl'},ind([2,3]));
-                        
-                        eps = intersect(eps_c, eps_i);
-                        
-                        % data for this struct are saved in first epoch(so
-                        % 1), because data are collapsed across epochs
-                        
-                            %get kappa and zrayl scores for comparison
-                            k_ep = [pl_c{ind(1)}{1}{ind(2)}{ind(3)}.kappa, mean(pl_i{ind(1)}{epoch}{ind(2)}{ind(3)}.kappa)];
-                            z_ep = [pl_c{ind(1)}{1}{ind(2)}{ind(3)}.zrayl, mean(pl_i{ind(1)}{epoch}{ind(2)}{ind(3)}.zrayl)];
-                            mvl_ep=[pl_c{ind(1)}{1}{ind(2)}{ind(3)}.zrayl, mean(pl_i{ind(1)}{epoch}{ind(2)}{ind(3)}.mvl)];
-                            
-                            k = [k;k_ep];
-                            z = [z;z_ep];
-                            mvl=[mvl; mvl_ep];
-                            
-                        end
-                    end
-                    kappa = [kappa; mean(k,1)];
-                    zrayl = [zrayl; mean(z,1)];
-                    meanVecL = [meanVecL; mean(mvl,1)];
-                end
+                ind=cells(c,:);
+                
+                
+                %get kappa and zrayl scores for comparison
+                k_ep = [mean(phaselock_c{ind(1)}{1}{ind(2)}{ind(3)}.kappa_dist), phaselock_i{ind(1)}{1}{ind(2)}{ind(3)}.kappa];
+                z_ep = [mean(phaselock_c{ind(1)}{1}{ind(2)}{ind(3)}.zrayl_dist), phaselock_i{ind(1)}{1}{ind(2)}{ind(3)}.zrayl];
+                mvl_ep=[mean(phaselock_c{ind(1)}{1}{ind(2)}{ind(3)}.mvl_dist), phaselock_i{ind(1)}{1}{ind(2)}{ind(3)}.mvl];
+                
+                kappa = [kappa; k_ep];
+                zrayl = [zrayl;z_ep];
+                meanVecL = [meanVecL; mvl_ep];
+                
+                
             end
         end
         
         %%
         % Kappa figure
+        %{
         figure;
         k_std = std(kappa,1);
         k_mean = mean(kappa,1);
+        plot(repmat([1 2],length(kappa),1)',kappa','-');
+        hold on
         errorbar(k_mean,k_std,'k.')
-        figtitle = [cellregion,' kappa'];
+        figtitle = sprintf('Pyrs %s, LFP %s kappa',cellregion,eegregion);
         k_std = std(kappa,1);
         k_mean = mean(kappa,1);
         errorbar(k_mean,k_std,'k.')
@@ -113,9 +107,11 @@ for cr = 1:length(cellregions)
         end
         % Zrayl figure
         figure;
-        figtitle = [cellregion,' zrayl'];
+        figtitle = sprintf('Pyrs %s, LFP %s zrayl',cellregion,eegregion);
         z_std = std(zrayl,1);
         z_mean = mean(zrayl,1);
+        plot(repmat([1 2],length(zrayl),1)',zrayl','-');
+        hold on;
         errorbar(z_mean,z_std,'k.')
         axis([0 3 0 (max(z_mean(:)) +2*(max(z_std(:))))])
         xticks([1 2])
@@ -128,18 +124,38 @@ for cr = 1:length(cellregions)
             print('-dpdf', figfile);
             print('-djpeg', figfile);
         end
-        % Zrayl figure
-        figure;
-        figtitle = [cellregion,' MVL'];
+        %}
+        % MVL figure
+        figure('Position',[1474+360*(cr-1) 880-460*(er-1) 360 460]);
+
+        subplot(2,1,1);
+        figtitle = sprintf('Pyrs %s, LFP %s band in %s MVL',cellregion,band,eegregion);
         z_std = std(meanVecL,1);
         z_mean = mean(meanVecL,1);
-        errorbar(z_mean,z_std,'k.')
-        axis([0 3 0 (max(z_mean(:)) +2*(max(z_std(:))))])
+        plot(repmat([1 2],length(meanVecL),1)',meanVecL','-','color',...
+            rgbcolormap('MidnightBlue'),'LineWidth',2);
+        hold on;
+        %errorbar(z_mean,z_std,'k.')
+        %axis([0 3 0 (max(z_mean(:)) +2*(max(z_std(:))))])
+        xlim([0 3]); ylim([0 max(meanVecL(:))*1.1]);
         xticks([1 2])
         xticklabels({'Correct','Incorrect'})
         [~,p] = ttest(meanVecL(:,1),meanVecL(:,2));
-        text(1.5, 3*(max(z_std(:))),['p = ',num2str(p)]);
-        title(figtitle)
+        if p<.05
+           text(2.1, 3*(max(z_std(:))),{'ttest', ['p = ',num2str(p)]},'Color','red');
+        else
+           text(2.1, 3*(max(z_std(:))),{'ttest', ['p = ',num2str(p)]});
+        end
+        title(figtitle); box off
+        subplot(2,1,2);
+        % col1 minus col2
+        [hc,edges]=histcounts(-diff(meanVecL,1,2),-.2:.03:.2);
+        centers=mean([edges(2:end); edges(1:end-1)]);
+        %title(sprintf('ranksum p= %.2e',ranksum(meanVecL(:,1),meanVecL(:,2))));
+        barh(centers,hc,1,'LineStyle','none','FaceColor',cellcolors(cr,:)); 
+        title(sprintf('signrank p= %.2e',signrank(meanVecL(:,1)-meanVecL(:,2))));
+        xlabel('Cmvl-Imvl'); ylabel('rel Proportion');
+        box off;
         if saveout==1
             figfile = [figDir,'PhaseLocking\plPerf ',figtitle];
             print('-dpdf', figfile);

@@ -1,42 +1,59 @@
+%cs_listPhaseLockedCells
+
 %make list of phase locked cells
-function cs_listPhaseLockedCells(freq,eegregion,trialstr)
+
+%% first set up our data
+clear
 topDir = cs_setPaths();
 dataDir = [topDir,'AnalysesAcrossAnimals\'];
 animals = {'CS31','CS33','CS34','CS35','CS39','CS41','CS42','CS44'};
-%betaregion = 'OB';
+eegregions = {'CA1','PFC','OB'};
 regions = {'CA1','PFC'};
+trialstr=[];
+rhythms={'resp','beta'};
+%trialstr='Incorrect';
 
 
-for r = 1:length(regions)
-    region = regions{r};
-    plcells = [];
-    
-    for a = 1:length(animals)
-        animal = animals{a};
-        animDir = [topDir, animal, 'Expt\',animal,'_direct\'];
-        
-        files = dir([animDir,'PhaseLocking\',animal,freq,'phaselock_',region,'-',eegregion,trialstr,'_0*']);
-        
-        for d = 1:length(files)
-            load([animDir, 'PhaseLocking\',files(d).name])
-            eval(['phaselock = ',freq,'_phaselock',region,';']);
-            day = length(phaselock);
+%% run the code
+for rh=1:length(rhythms) 
+    for cr = 1:length(regions) % cell region
+        for er=1:length(eegregions) % eeg region
             
-            cellfilter = '($prayl < 0.05) && ($Nspikes > 0)';
-            cells = evaluatefilter(phaselock{day},cellfilter);
-       
-            if ~isempty(cells)
-                noeps = cells(:,[2 3]);
-                cells = unique(noeps,'rows');
-                cells = [repmat(a, size(cells,1),1), repmat(day, size(cells,1),1), cells];
+            plcells = [];            
+            for a = 1:length(animals)
+                animal = animals{a};
+                animDir = [topDir, animal, 'Expt\',animal,'_direct\'];
+                fullDir=[animDir,'PhaseLocking\' trialstr];
 
-                plcells = [plcells; cells];
-            end
+                fileNames=[animal,'phaselock_', rhythms{rh}, '_', regions{cr}, '-', eegregions{er}, '*'];
+                files = dir(fullfile(fullDir,fileNames));
+                % there ought to be a single file
+                load(fullfile(files(d).folder,files(d).name))
+                
+                for d = 1:length(length(phaselock))
+                    
+                    % i already save the variable out as phaselock
+                    %eval(['phaselock = ',rhythms{rh},'_phaselock',regions{cr},';']);
+                    
+                    cellfilter = '($prayl < 0.05) && ($Nspikes > 0)';
+                    cells = evaluatefilter(phaselock{d},cellfilter);                    
+                    if ~isempty(cells)
+                        noeps = cells(:,[2 3]);
+                        cells = unique(noeps,'rows');
+                        cells = [repmat(a, size(cells,1),1), repmat(day, size(cells,1),1), cells];
+                        
+                        plcells = [plcells; cells];
+                    end
+                end
+            end            
+            save([dataDir,'PhaseLocking\plCells_',rhythms{rh},'_',regions{cr},'-',eegregions{er},'.mat'], 'plcells');
         end
     end
-    
-    save([dataDir,'PhaseLocking\plCells_',freq,'_',region,'-',eegregion,trialstr,'.mat'], 'plcells');
 end
+
+
+
+
 
 
         

@@ -117,7 +117,7 @@ for r = 1:size(regions,1)
     
     
     % Zrayl figure
-    figure(1)
+    figure
     hold on
     
     p = signrank(zrayl(:,1),zrayl(:,2));
@@ -148,7 +148,7 @@ end
 % print('-djpeg', figfile);
 
 
-figure(1)
+figure
 title('zrayl')
 xlim([0 3])
 xticks([0:size(regions,1)]);
@@ -160,6 +160,6 @@ xticklabels(xlabelstr)
 % if strcmp(freq,'resp')
 %     ylim([0 30])
 % end
-figfile = [figDir,'PhaseLocking\',freq,'plPerf_zrayl'];
-print('-dpdf', figfile);
-print('-djpeg', figfile);
+%figfile = [figDir,'PhaseLocking\',freq,'plPerf_zrayl'];
+%print('-dpdf', figfile);
+%print('-djpeg', figfile);

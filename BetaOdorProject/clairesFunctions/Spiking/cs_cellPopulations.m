@@ -9,59 +9,105 @@
 clear
 topDir = cs_setPaths();
 regions = {'CA1','PFC'};
-
-animals = {'CS31','CS33','CS34','CS35','CS39','CS41','CS42','CS44'};
-goodsessions = [];
-for a = 1:length(animals)
-    animal = animals{a};
-    animDir = [topDir,animal,'Expt\',animal,'_direct\'];
-    runeps = cs_getRunEpochs(animDir, animal,'odorplace');
-    days = unique(runeps(:,1));
-    an = repmat(a,length(days),1);
-    goodsessions = [goodsessions;an,days];
-end
+eegregions={'CA1','PFC','OB'};
 
 for r = 1:length(regions)
     region = regions{r};
-
-    % runCells are those that spike at least once during run epochs
-    % uses function CS_listrRunCells
+    
+    %start with all cells, at least 100 spikes
+    load([topDir,'AnalysesAcrossAnimals\allCells_',region]);
+    cellpops.allCells = allcells;
+    
+    % run vs sleep: at least 1 spike in run
     load([topDir,'AnalysesAcrossAnimals\runCells_',region]);
-    allcells = runcells;
-    % has to spike at least once during run epochs
-    cellpops.runCells = allcells;
-
-    sessions = unique(allcells(:,[1,2]),'rows');
-    sessions = sessions(ismember(sessions,goodsessions,'rows'),:);
-
-
-    %pyr vs int, using the filter function (
+    cellpops.runCells = runcells;
+    
+    sleepCells = allcells(~ismember(allcells,runcells,'rows'),:);
+    cellpops.sleepCells = sleepCells;
+    
+    %test = npCells(~ismember(npCells,test,'rows'),:);
+    
+    
+    %run pyrs and run INs 
     load([topDir,'AnalysesAcrossAnimals\pyrCells_',region]);
-
-    pyrcells = allcells(ismember(allcells,pyrcells,'rows'),:);
-    cellpops.pyrCells = pyrcells;
-
-    intCells = allcells(~ismember(allcells,pyrcells,'rows'),:);
-    N = ismember(intCells(:,[1,2]),sessions,'rows');
-    intCells = intCells(N,:);
-    intCells = runcells(ismember(runcells,intCells,'rows'),:);
+    pyrCells = runcells(ismember(runcells,pyrcells,'rows'),:); %run cells that are pyr
+    cellpops.pyrCells = pyrCells;
+    intCells = runcells(~ismember(runcells,pyrCells,'rows'),:);
     cellpops.intCells = intCells;
-
-
-    % np vs non-np
+    
+    
+    
+    % np pyrs and non np pyrs
+    %load([topDir,'AnalysesAcrossAnimals\npCells_',region,'_old']);
     load([topDir,'AnalysesAcrossAnimals\npCells_',region]);
-    cellpops.npCells = npCells;
-    npCells = pyrcells(ismember(pyrcells,npCells,'rows'),:);
-    nonNPCells = pyrcells(~ismember(pyrcells,npCells,'rows'),:);
+    npPyrams= pyrCells(ismember(pyrCells,npCells,'rows'),:);
+    cellpops.npPyrams = npPyrams;
+    nonNPCells = pyrCells(~ismember(pyrCells,npPyrams,'rows'),:);
     cellpops.nonNPCells = nonNPCells;
-
-
-    %selective vs nonselective
-    load([topDir,'AnalysesAcrossAnimals\selectiveCells_',region]);
-    cellpops.selectiveCells = selectivecells;
-    nonselective = npCells(~ismember(npCells,selectivecells,'rows'),:);
+    clear npCells;
+    
+    % np vs non-np INs
+    %load([topDir,'AnalysesAcrossAnimals\npInt_',region,'_old']);
+    load([topDir,'AnalysesAcrossAnimals\npInt_',region]);
+    npInt= intCells(ismember(intCells,npInt,'rows'),:);
+    cellpops.npInt = npInt;
+    nonNPInt = pyrCells(~ismember(intCells,npInt,'rows'),:);
+    cellpops.nonNPInt = nonNPInt;
+    
+    
+    %selective vs nonselective Pyrams 
+    load([topDir,'AnalysesAcrossAnimals\selectiveCells_',region, '_new']);
+    selectivePyram= npPyrams(ismember(npPyrams,selectivecells,'rows'),:);
+    cellpops.selectiveCells = selectivePyram; % NOT TRUE, these are pyrams and INTs
+    nonselective = npPyrams(~ismember(npPyrams,selectivecells,'rows'),:);
     cellpops.nonselectiveCells = nonselective;
+    
+     %selective vs nonselective Int 
+    load([topDir,'AnalysesAcrossAnimals\selectiveINs_',region]);
+    selectiveINs= npInt(ismember(npInt,selectivecells,'rows'),:);
+    cellpops.selectiveCells = selectivePyram; % NOT TRUE, these are pyrams and INTs
+    nonselective = npPyrams(~ismember(npPyrams,selectivecells,'rows'),:);
+    cellpops.nonselectiveCells = nonselective;
+    
+    
+    
+    
+    % now beta phaselocked pyrams from npCells
+    % use npPyrams and npInt
+    % have to pull data from all three and then can union them
+    
+    plAll=[];
+    for er=1:length(eegregions)
+        load([topDir,'AnalysesAcrossAnimals\PhaseLocking\plCells_',...
+            'beta_',regions{r},'-',eegregions{er},'.mat'], 'plcells');
+        plAll=[plAll; plcells];
+        cellpops.(['betaPhaseLockedTo', eegregions{er}])=plcells;
+    end
+       plAll=unique(plAll,'rows');
+       cellpops.betaPhaseLockedAny=plAll;
 
+    
+    plAll=[];
+    for er=1:length(eegregions)
+        load([topDir,'AnalysesAcrossAnimals\PhaseLocking\plCells_',...
+            'resp_',regions{r},'-',eegregions{er},'.mat'], 'plcells');
+        plAll=[plAll; plcells];
+        cellpops.(['respPhaseLockedTo', eegregions{er}])=plcells;
+    end
+       plAll=unique(plAll,'rows');
+       cellpops.respPhaseLockedAny=plAll;
+    
+    
     save([topDir,'AnalysesAcrossAnimals\cellPopulations_',region],'cellpops');
     clear cellpops
 end
+%%
+clear
+topDir = cs_setPaths();
+regions = {'CA1','PFC'};
+
+for r=1:length(regions)
+    load([topDir,'AnalysesAcrossAnimals\cellPopulations_',regions{r}],'cellpops');
+    eval(['cellpops_',regions{r}, '=cellpops; clear cellpops']);
+end
+openvar('cellpops_CA1')

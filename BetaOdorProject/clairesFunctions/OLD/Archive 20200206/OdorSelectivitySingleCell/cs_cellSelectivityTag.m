@@ -3,6 +3,8 @@
 %combine spiketimes across run epochs
 %combine trig times across run epochs
 
+% doesnt consider beta at all
+
 %tag cells with selectivity index #, then can find these cells again and
 %plot.
 clear
@@ -14,6 +16,9 @@ regions = {'CA1','PFC'};
 %win = [0 1];
 iterations = 1000;
 
+rstream = RandStream('dsfmt19937','Seed',16);
+RandStream.setGlobalStream(rstream);
+
 %winsize = win(2) + win(1);
 
 for r = 1:length(regions)
@@ -21,6 +26,7 @@ for r = 1:length(regions)
     npCellsSelectivity = []; inds =[];
     i_npCellSelectivity = [];
     
+    % so these should be pyrams? % use the current version
     load([topDir,'AnalysesAcrossAnimals\npCells_',region,'.mat']);
     
     for a = 1:length(animals)
@@ -43,22 +49,10 @@ for r = 1:length(regions)
             end
         end
         
-        %         filt = ['(~isempty($SI))'];
-        %         test = evaluatefilter(cellinfo,filt);
-        %          for f = 1:size(test,1)
-        %             cell = test(f,:);
-        %             if isfield(cellinfo{cell(1)}{cell(2)}{cell(3)}{cell(4)},'SI')
-        %                 cellinfo{cell(1)}{cell(2)}{cell(3)}{cell(4)} = rmfield(cellinfo{cell(1)}{cell(2)}{cell(3)}{cell(4)}, 'SI');
-        %             end
-        %         end
-        %
+
         cells = npCells(npCells(:,1) ==  a,[2,3,4]);
         
-%         filt = ['isequal($area,''',region,''') && strcmp($tag, ''accepted'')'];
-%         singleunit = evaluatefilter(cellinfo,filt);
-%         
-%         cells = intersect(cells, singleunit(:,[1 3 4]),'rows');
-        
+
         days = unique(cells(:,1));
         for d = 1:length(days)
             day = days(d);
@@ -167,10 +161,10 @@ for r = 1:length(regions)
                     trueIndexZ = (selectivity - shuffMean)/shuffStd;
                     
                     
-                    
+                    % for each epoch
                     for e = 1:length(runeps)
                         epoch = runeps(e);
-                        if length(cellinfo{cell(1)}{epoch}{cell(2)}) >= cell(3)
+                        %if length(cellinfo{cell(1)}{epoch}{cell(2)}) >= cell(3) % if the cellinfo file has that many cells on its tetrode???
                             if trueIndexZ >= 1.5 
                                 cellinfo{cell(1)}{epoch}{cell(2)}{cell(3)}.selectivity = 'leftSelective';
                                 
@@ -179,7 +173,7 @@ for r = 1:length(regions)
                                 
                             end
                             cellinfo{cell(1)}{epoch}{cell(2)}{cell(3)}.SI = selectivity;
-                        end
+                        %end
                     end
                 end
                 

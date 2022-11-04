@@ -67,13 +67,7 @@ for ep = 1:length(epochs)
             load([topDir,'AnalysesAcrossAnimals\npCells_PFC.mat']);
             ctxidx = npCells(ismember(npCells(:,[1,2]),[a, day], 'rows'),[3 4]);
         end
-        %                 cellfilter = 'isequal($area,''CA1'') && strcmp($tag, ''accepted'')' ;
-        %                 CA1cells = evaluatefilter(cellinfo{day}{epoch},cellfilter);
-        %                 cellfilter = 'isequal($area,''PFC'') && strcmp($tag, ''accepted'')' ;
-        %                 PFCcells = evaluatefilter(cellinfo{day}{epoch},cellfilter);
-        %
-        %                 ctxidx = intersect(ctxidx, PFCcells, 'rows');
-        %                 hpidx = intersect(hpidx, CA1cells, 'rows');
+
         
         
         % %

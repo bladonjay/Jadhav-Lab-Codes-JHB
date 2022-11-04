@@ -11,16 +11,19 @@ clear
 %% Params
 topDir = cs_setPaths();
 animals = {'CS31','CS33','CS34','CS35','CS39','CS41','CS42','CS44'};
-cellregions = {'CA1'};
-eegregions = {'CA1'};
+cellregions = {'CA1','PFC'};
+eegregions = {'CA1','PFC','OB'};
 freqs = {'beta','resp'};
 trialtypes = {'correct','incorrect'};
 
 %% get NP cells
-load([topDir,'AnalysesAcrossAnimals\npCells_CA1']);
+load([topDir,'AnalysesAcrossAnimals\npCells_CA1_old']);
 cells_CA1 = npCells;
-load([topDir,'AnalysesAcrossAnimals\npCells_PFC']);
+load([topDir,'AnalysesAcrossAnimals\npCells_PFC_old']);
 cells_PFC = npCells; clear npCells
+
+rstream = RandStream('dsfmt19937','Seed',16);
+RandStream.setGlobalStream(rstream);
 
 
 for a = 1:length(animals)
@@ -31,20 +34,15 @@ for a = 1:length(animals)
     odorTriggers = loaddatastruct(animDir, animal,'odorTriggers');
     nosepokeWindow = loaddatastruct(animDir, animal, 'nosepokeWindow');
     
-    load([animDir,animal,'highBeta']);
-    windows = highBeta;
-    load([animDir,animal,'highBeta_incorrect']);
-    wins_incorr = highBeta; clear highBeta
     
     spikes = loaddatastruct(animDir, animal, 'spikes');
-    
     days = cs_getRunEpochs(animDir, animal, 'odorplace');
     days = unique(days(:,1));
     
     for f = 1:length(freqs)
         freq = freqs{f};
-        for cr = 1:length(cellregions)
-            cellregion = cellregions{cr};
+        for crg = 1:length(cellregions)
+            cellregion = cellregions{crg};
             
             for er = 1:length(eegregions)
                 eegregion = eegregions{er};
@@ -74,14 +72,8 @@ for a = 1:length(animals)
                         for ep = 1:length(epochs)
                             epoch = epochs(ep);
                             epstr = getTwoDigitNumber(epoch);
-                            
-%                             if strcmp(trialtype,'correct')
-%                                 list = windows{day}{epoch}.OB;
-%                             elseif strcmp(trialtype,'incorrect')
-%                                 list = wins_incorr{day}{epoch}.OB;
-%                             end
-                            
-                              [cl,cr,il,ir] = cs_getSpecificTrialTypeInds(odorTriggers{day}{epoch});
+
+                            [cl,cr,il,ir] = cs_getSpecificTrialTypeInds(odorTriggers{day}{epoch});
                             wins_incorr = nosepokeWindow{day}{epoch}(sort([il;ir]),:);
                             if strcmp(trialtype,'correct')
                                 list = nosepokeWindow{day}{epoch}(sort([cl;cr]),:);
@@ -97,8 +89,21 @@ for a = 1:length(animals)
                             
                             tet = cs_getMostCellsTet(animal,day,epoch,eegregion);
                             tetstr = getTwoDigitNumber(tet);
+                            % here I insert a way to reconstitute the
+                            % filtered data
+                            eegfile=[animDir, 'EEG\', animal, freq,daystr,'-',epstr,'-',tetstr,'.mat'];
+                            if ~exist(eegfile,'file')
+                                try
+                                    filterFile=sprintf('C:\\Users\\Jadhavlab\\Documents\\gitRepos\\LFP-analysis\\JadhavEEGFilter\\%sfilter.mat',...
+                                        freqs{f});
+                                catch
+                                    fprintf('cant load the eeg file');
+                                    return
+                                end
+                                [filtered]=jhb_LFPtetprocess(animDir,animal,day,epoch,tet,'f',filterFile,'band',freqs{f});
+                            end
+                            load([animDir, 'EEG\', animal, freq,daystr,'-',epstr,'-',tetstr,'.mat'],freq);
                             
-                            load([animDir, 'EEG/', animal, freq,daystr,'-',epstr,'-',tetstr,'.mat'],freq);
                             eval(['lfp = ',freq,';']);
                             
                             t = geteegtimes(lfp{day}{epoch}{tet});
@@ -141,9 +146,11 @@ for a = 1:length(animals)
                             
                             %do bootstrap for correct trials
                             if strcmp(trialtype,'correct')
-                                [k_dist, z_dist] = cs_phaselockBootstrap(allspikes, lfptime, phase, timelist, numincorrtrials, 500);
+                                [k_dist, z_dist, mvl_dist] = cs_phaselockBootstrap_v2(allspikes, lfptime, phase, timelist, numincorrtrials, 500);
                                 phaselock{day}{1}{cell(1)}{cell(2)}.kappa_dist = k_dist;
                                 phaselock{day}{1}{cell(1)}{cell(2)}.zrayl_dist = z_dist;
+                                phaselock{day}{1}{cell(1)}{cell(2)}.mvl_dist = mvl_dist;
+
                             end
                             
                             
@@ -155,8 +162,14 @@ for a = 1:length(animals)
                     
                     if strcmp(trialtype,'correct')
                         plDir = [animDir,'PhaseLocking\'];
+                        if ~exist(plDir,'dir')
+                            mkdir(plDir);
+                        end
                     elseif strcmp(trialtype,'incorrect')
                         plDir = [animDir, 'PhaseLocking\Incorrect\'];
+                         if ~exist(plDir,'dir')
+                            mkdir(plDir);
+                        end
                     end
                     
                     %if phaselocking variable does not exist, then there
@@ -180,4 +193,3 @@ for a = 1:length(animals)
         end
     end
 end
-cs_listPhaseLockedCells
