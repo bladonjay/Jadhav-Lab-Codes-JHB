@@ -20,8 +20,9 @@ cellregions = {'CA1','PFC'};
 cellcolors=[rgbcolormap('LightSalmon'); rgbcolormap('DarkTurquoise')];
 eegregions = {'CA1','PFC','OB'};
 
-band='beta';
-
+band='resp';
+%bandcolors=[rgbcolormap('MidNightBlue'); rgbcolormap('Magenta')];
+bandcolor=rgbcolormap('Magenta');
 for cr = 1:length(cellregions)
     
     cellregion = cellregions{cr};
@@ -133,11 +134,11 @@ for cr = 1:length(cellregions)
         z_std = std(meanVecL,1);
         z_mean = mean(meanVecL,1);
         plot(repmat([1 2],length(meanVecL),1)',meanVecL','-','color',...
-            rgbcolormap('MidnightBlue'),'LineWidth',2);
+            bandcolor,'LineWidth',2);
         hold on;
         %errorbar(z_mean,z_std,'k.')
         %axis([0 3 0 (max(z_mean(:)) +2*(max(z_std(:))))])
-        xlim([0 3]); ylim([0 max(meanVecL(:))*1.1]);
+        xlim([0 3]); ylim([0 .75]);
         xticks([1 2])
         xticklabels({'Correct','Incorrect'})
         [~,p] = ttest(meanVecL(:,1),meanVecL(:,2));
@@ -153,6 +154,7 @@ for cr = 1:length(cellregions)
         centers=mean([edges(2:end); edges(1:end-1)]);
         %title(sprintf('ranksum p= %.2e',ranksum(meanVecL(:,1),meanVecL(:,2))));
         barh(centers,hc,1,'LineStyle','none','FaceColor',cellcolors(cr,:)); 
+        hold on; plot([0 max(hc)],[0 0],'k-'); set(gca,'XLim',[0 max(hc)]);
         title(sprintf('signrank p= %.2e',signrank(meanVecL(:,1)-meanVecL(:,2))));
         xlabel('Cmvl-Imvl'); ylabel('rel Proportion');
         box off;
