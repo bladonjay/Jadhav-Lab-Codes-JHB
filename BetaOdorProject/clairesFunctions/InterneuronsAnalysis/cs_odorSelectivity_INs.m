@@ -3,15 +3,19 @@ clear
 [topDir, figDir] = cs_setPaths();
 
 win = [0 1];
+endwin = [1 0];
 prewin=[-1 0];
 binsize = 0.05;
 % cs_odorSelectivity_v2(topDir, figDir, win,binsize)
 saveout=0;
+odorStartEnd='end';
 
 
 animals = {'CS31','CS33','CS34','CS35','CS39','CS41','CS42','CS44'};
 regions = {'CA1','PFC'};
 winsize = win(2) + win(1);
+regcolors=[rgbcolormap('LightCoral'); rgbcolormap('DarkAquamarine'); rgbcolormap('DarkOrange')];
+
 
 %load([figDir, 'cmap_selectivity.mat']);
 load('redToBlue');
@@ -55,7 +59,8 @@ for r = 1:length(regions)
             load([animDir,animal,'spikes',daystr,'.mat'])
             load([animDir,animal,'odorTriggers',daystr,'.mat'])
             %runeps = find(~cellfun(@isempty,odorTriggers{day}));
-            
+            load([animDir, animal,'nosepokeWindow',daystr,'.mat'])
+
             
             for c = 1:size(daycells,1)
                 
@@ -77,12 +82,22 @@ for r = 1:length(regions)
                         %triginds = sort([correct_left; correct_right]);
                         
                         trigs = odorTriggers{day}{epoch}.allTriggers;
+                        endtrigs=nosepokeWindow{day}{epoch}(:,2);
+
                         %% Find Spikes on each trial
                         for t = 1:length(trigs)
-                            trigwin = [trigs(t)-win(1), trigs(t)+win(2)];
-                            winspikes = epspikes(epspikes > trigwin(1) & epspikes <= trigwin(2));
-                            bins = (trigs(t)-win(1):binsize:trigs(t)+win(2));
-                            binspikecount = histcounts(winspikes,bins);
+                             switch odorStartEnd
+                                case 'start'
+                                    trigwin = [trigs(t)-win(1), trigs(t)+win(2)];
+                                    winspikes = epspikes(epspikes > trigwin(1) & epspikes <= trigwin(2));
+                                    bins = (trigs(t)-win(1):binsize:trigs(t)+win(2));
+                                    binspikecount = histcounts(winspikes,bins);
+                                case 'end'
+                                    trigwin = [endtrigs(t)-endwin(1), endtrigs(t)+endwin(2)];
+                                    winspikes = epspikes(epspikes > trigwin(1) & epspikes <= trigwin(2));
+                                    bins = (endtrigs(t)-endwin(1):binsize:endtrigs(t)+endwin(2));
+                                    binspikecount = histcounts(winspikes,bins);
+                            end
                             
                             %classify into trial type
                             if ismember(t, correct_left)
@@ -145,8 +160,17 @@ for r = 1:length(regions)
     end
     selectivityAllCells(isnan(selectivityAllCells))=0;
     
-    bins = -win(1):binsize:win(2);
-    trigbins = (bins >= 0.2 & bins < 1);
+     switch odorStartEnd
+        case 'start'
+            bins = -win(1):binsize:win(2);
+            newcenters=-(win(1))+binsize:binsize/5:win(2);
+            trigbins = (bins >= 0.2 & bins < 1);
+            
+        case 'end'
+            bins = -endwin(1):binsize:endwin(2);
+            newcenters=-(endwin(1))+binsize:binsize/5:endwin(2);
+            trigbins = (bins <= -0.2 & bins > -1);
+    end
     mn = mean(selectivityAllCells(:,trigbins), 2);
     [corr,sortmean] = sort(mn,'descend');
     cellinds = inds(sortmean,:);
@@ -154,15 +178,15 @@ for r = 1:length(regions)
     
     %validinds = 1+((numpoints-1)/2):size(selectivityAllCells,2)-((numpoints-1)/2);
     %smoothed = zeros(length(validinds));
-    newbins = bins(1)+binsize:binsize/5:bins(end);
+    %newbins = bins(1)+binsize:binsize/5:bins(end);
     %1:0.25:length(selectivityAllCells(c,:));
-    smoothed = zeros(size(selectivityAllCells,1),length(newbins));
+    smoothed = zeros(size(selectivityAllCells,1),length(newcenters));
     
     for c = 1:size(selectivityAllCells,1)
         
-        %rather than smoothing, use interpolation instead.
+        %rather than smoothing, use upsampling and interpolation instead.
         %smoothed(c,:) = smoothdata(selectivityAllCells(c,:),'gaussian',5);
-        smoothed(c,:) = smoothdata(interp1(bins(2:end),selectivityAllCells(c,:),newbins),'gaussian',15);
+        smoothed(c,:) = smoothdata(interp1(bins(2:end),selectivityAllCells(c,:),newcenters),'gaussian',15);
         
     end
     
@@ -170,14 +194,21 @@ for r = 1:length(regions)
     smoothed = smoothed(sortmean,:);
     figure,
     set(gcf,'Position',[300 100 300 500]);
-    imagesc(-(win(1))+binsize/5:binsize:win(2), length(selectivityAllCells):1,smoothed);
+    
+    imagesc(newcenters, 1:size(selectivityAllCells,1),smoothed);
     colorbar
     %     [cmap]=buildcmap('rkg');
     colormap(redToBlue) %will use the output colormap
     colorbar('YTick', [-1 0 1]);
-    caxis([-1 1])
+    caxis([-1 1]);
+    set(gca,'YTick',[1 size(smoothed,1)]);
     title([region, ' Correct Trials']);
-    xlabel('Time from odor onset (s)');
+    switch odorStartEnd
+        case 'start'
+            xlabel('Time from odor onset (s)');
+        case 'end'
+            xlabel('Time from odor offset (s)');
+    end
     ylabel('Cell Number');
     
     %save
@@ -199,20 +230,21 @@ for r = 1:length(regions)
     %     buffer = [repmat(i_SelectivityAllCells(:,1), [1, buffersize]), repmat(i_SelectivityAllCells(:,end), [1, buffersize])];
     %     i_SelectivityAllCells = [buffer(:,1:buffersize), i_SelectivityAllCells, buffer(:,buffersize+1:end)];
     %     i_smoothed = zeros(length(validinds));
-    i_smoothed = zeros(size(i_SelectivityAllCells,1),length(newbins));
+    i_smoothed = zeros(size(i_SelectivityAllCells,1),length(newcenters));
     
     
     for c = 1:size(i_SelectivityAllCells,1)
         %i_smoothed(c,:) = filter2(s,i_SelectivityAllCells(c,:),'valid');
         %i_smoothed(c,:) = smoothdata(i_SelectivityAllCells(c,:),'gaussian',5);
-        i_smoothed(c,:) = smoothdata(interp1(bins(2:end),i_SelectivityAllCells(c,:),newbins),'gaussian',15);
+        i_smoothed(c,:) = smoothdata(interp1(bins(2:end),i_SelectivityAllCells(c,:),newcenters),'gaussian',15);
     end
     i_smoothed = i_smoothed(sortmean,:);
     mn_i = mean(i_SelectivityAllCells(:,trigbins), 2);
     incorr = mn_i(sortmean);
     figure,
     set(gcf,'Position',[300 100 300 500]);
-    imagesc([-(win(1)):binsize:win(2)], [length(i_SelectivityAllCells):1],i_smoothed);
+    imagesc(newcenters, 1:size(i_SelectivityAllCells,1),i_smoothed);
+    set(gca,'YTick',[1 size(smoothed,1)]);
     colorbar
     colorbar('YTick', [-1 0 1]);
     caxis([-1 1])
@@ -220,7 +252,12 @@ for r = 1:length(regions)
     %colormap(cmap) %will use the output colormap
     colormap(redToBlue)
     title([region, ' Incorrect Trials']);
-    xlabel('Time from odor onset (s)');
+    switch odorStartEnd
+        case 'start'
+            xlabel('Time from odor onset (s)');
+        case 'end'
+            xlabel('Time from odor offset (s)');
+    end
     ylabel('Cell Number');
     
     %save
@@ -231,22 +268,38 @@ for r = 1:length(regions)
         print('-djpeg',figfile);
     end
     
-    %% Calculate correlation
+     %% Calculate correlation
     figure,
+    mdl=fitlm(corr,incorr);
+    plot(mdl);
+    kids=get(gca,'Children');
+    set(kids(4),'Marker','none'); hold on;
+    scatter(corr,incorr,16,regcolors(r,:),'filled');
+    kids=get(gca,'Children'); %legend(kids([1 3 4]))
+    %title(sprintf('Slope %.2f \n P %.2e',r2,mdl.Coefficients.pValue(2)));
+    for cl=2:4, set(kids(cl),'color','k'); end
+    
+    title(sprintf('Interneurons in %s', regions{r}));
+    
+    
+    
+    % this is old code
+    %{
     plot(corr,incorr,'k.','MarkerSize',20)
     hold on
     fit = polyfit(corr, incorr,1);
     plot([-1 1], polyval(fit,[-1, 1]))
+    %}
     xlabel('Correct Trial Selectiviy Index');
     ylabel('Incorrect Trial Selectivity Index');
-    axis([-1 1 -1 1]);
+    %axis([-1 1 -1 1]);
     
     
     [CC,p] = corrcoef(corr, incorr);
     R = CC(1,2);
     p = p(1,2);
     
-    txt = {['R = ',num2str(R)],['p = ' num2str(p)]};
+    txt = {['r = ',num2str(R)],['p = ' num2str(p)]};
     text(0.4,0.5,txt)
     if saveout==1
         figfile = [figDir,'Interneurons\OdorSelectivity_',region,'_SICorrelation'];
@@ -273,7 +326,7 @@ for r = 1:length(regions)
     selectivityData.SI_correct_mean = corr;
     selectivityData.SI_incorrect_mean = incorr;
     selectivityData.cellinds = cellinds;
-    selectivityData.win = newbins;
+    selectivityData.win = newcenters;
     save([topDir,'AnalysesAcrossAnimals\selectivityData_IN_',region],'selectivityData');
     clear selectivityData
 end

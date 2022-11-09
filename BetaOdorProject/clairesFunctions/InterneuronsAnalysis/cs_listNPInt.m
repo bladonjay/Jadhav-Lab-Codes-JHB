@@ -11,7 +11,7 @@ dataDir = [topDir,'AnalysesAcrossAnimals\'];
 for r = 1:length(regions)
     region = regions{r};
     
-    npInt =[];
+    npInt =[]; activeInt=[];
     for a = 1:length(animals)
         animal = animals{a};
         animDir = [topDir, animal, 'Expt\',animal,'_direct\'];
@@ -68,10 +68,10 @@ for r = 1:length(regions)
                             for t = 1:size(trigs,1);
                                 
                                 %gather spikes
-                                winspikes = epspikes(isExcluded(epspikes, trigs(t,:)));
+                                winspikes = epspikes(logical(isExcluded(epspikes, trigs(t,:))));
                                 npspikes = [npspikes; length(winspikes)];
                                 
-                                pre = epspikes(isExcluded(epspikes,pretrigs(t,:)));
+                                pre = epspikes(logical(isExcluded(epspikes,pretrigs(t,:))));
                                 prespikes = [prespikes;length(pre)];
                             end
                             
@@ -98,6 +98,8 @@ for r = 1:length(regions)
                     p2 = signrank(rspikes(:,1),rspikes(:,2));
                     
                     if sum(npspikes)/totaltrigs >=1 %at least 1 spike per trial during NP
+                       activeInt=[activeInt; a, cell];
+
                         if p1 < 0.05 || p2 <0.05
                             npInt = [npInt; a, cell];
                         end
@@ -109,6 +111,6 @@ for r = 1:length(regions)
         end
     end
     
-    save([dataDir,'npInt_',region,'.mat'], 'npInt')
+    save([dataDir,'npInt_',region,'.mat'], 'npInt','activeInt')
 end
 clear

@@ -38,14 +38,19 @@ for r = 1:length(regions)
     
     
     
-    % np pyrs and non np pyrs
+    % np pyrs and non np pyrs (% of all run pyrs/ins)
     %load([topDir,'AnalysesAcrossAnimals\npCells_',region,'_old']);
     load([topDir,'AnalysesAcrossAnimals\npCells_',region]);
     npPyrams= pyrCells(ismember(pyrCells,npCells,'rows'),:);
     cellpops.npPyrams = npPyrams;
     nonNPCells = pyrCells(~ismember(pyrCells,npPyrams,'rows'),:);
     cellpops.nonNPCells = nonNPCells;
-    clear npCells;
+    % and now active cells
+    odorPyrams= pyrCells(ismember(pyrCells,activeCells,'rows'),:);
+    cellpops.odorActivePyrams = odorPyrams;
+    nonOdorCells = pyrCells(~ismember(pyrCells,activeCells,'rows'),:);
+    cellpops.nonOdorActiveCells = nonOdorCells;
+    clear npCells activeCells;
     
     % np vs non-np INs
     %load([topDir,'AnalysesAcrossAnimals\npInt_',region,'_old']);
@@ -54,9 +59,13 @@ for r = 1:length(regions)
     cellpops.npInt = npInt;
     nonNPInt = pyrCells(~ismember(intCells,npInt,'rows'),:);
     cellpops.nonNPInt = nonNPInt;
+    odorInt= pyrCells(ismember(intCells,activeInt,'rows'),:);
+    cellpops.odorActiveInt = odorInt;
+    nonOdorInt = intCells(~ismember(intCells,activeInt,'rows'),:);
+    cellpops.nonOdorActiveInt = nonOdorInt;
     
     
-    %selective vs nonselective Pyrams 
+    %selective vs nonselective Pyrams (as % of nosepoke)
     load([topDir,'AnalysesAcrossAnimals\selectiveCells_',region, '_new']);
     selectivePyram= npPyrams(ismember(npPyrams,selectivecells,'rows'),:);
     cellpops.selectiveCells = selectivePyram; % NOT TRUE, these are pyrams and INTs

@@ -17,9 +17,9 @@ freqs = {'beta','resp'};
 trialtypes = {'correct','incorrect'};
 
 %% get NP cells
-load([topDir,'AnalysesAcrossAnimals\npCells_CA1_old']);
+load([topDir,'AnalysesAcrossAnimals\npCells_CA1']);
 cells_CA1 = npCells;
-load([topDir,'AnalysesAcrossAnimals\npCells_PFC_old']);
+load([topDir,'AnalysesAcrossAnimals\npCells_PFC']);
 cells_PFC = npCells; clear npCells
 
 rstream = RandStream('dsfmt19937','Seed',16);
@@ -112,7 +112,7 @@ for a = 1:length(animals)
                             phase = [phase;p];
                         end
                         
-                        %get cells (only task Responsive cells!!!!
+                        %get cells
                         eval(['cells = cells_',cellregion,'(ismember(cells_',cellregion,'(:,[1,2]),[a, day], ''rows''),[3 4]);']);
                         
                         %do each cell separately
@@ -177,7 +177,7 @@ for a = 1:length(animals)
                     %delete any files that exist in the directory with
                     %matching name
                     if ~exist('phaselock','var')
-                        oldfiles = dir([plDir, animal,'phaselock_',freq,trialstr,'_',cellregion,'-',eegregion,'.mat']);
+                        oldfiles = dir([plDir, animal,'phaselock_',freq,trialstr,'_',cellregion,'-',eegregion,'2.mat']);
                         if ~isempty(oldfiles)
                             delete (oldfiles.name)
                         end
@@ -185,7 +185,7 @@ for a = 1:length(animals)
                         %otherwise, save all days together
                         varfetch = cellfetch(phaselock,'Nspikes');
                         
-                        save([plDir,animal,'phaselock_',freq,trialstr,'_',cellregion,'-',eegregion,'.mat'],'phaselock');
+                        save([plDir,animal,'phaselock_',freq,trialstr,'_',cellregion,'-',eegregion,'2.mat'],'phaselock');
                         clear phaselock
                     end
                 end

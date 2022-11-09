@@ -29,7 +29,7 @@ region = regions{r};
         cells = [animvector, cells];
         selectiveint = [selectiveint; cells];
     end
-    
+    fprintf('there are %d selective INs in %s \n', size(selectiveint,1), regions{r});
     save([dataDir,'selectiveINs_',region,'.mat'], 'selectiveint');
 end
 

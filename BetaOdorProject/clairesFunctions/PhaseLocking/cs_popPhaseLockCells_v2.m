@@ -121,6 +121,6 @@ for br = 1:length(eegregions)
     end
     
 end
- save([topDir,'AnalysesAcrossAnimals\prefPhaseCells_',freq],'Prefphase');
+ %save([topDir,'AnalysesAcrossAnimals\prefPhaseCells_',freq],'Prefphase');
  
  

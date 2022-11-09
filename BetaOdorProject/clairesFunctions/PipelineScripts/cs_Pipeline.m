@@ -16,6 +16,12 @@
 %odor psths
 %phase locking tag
 clear
+
+% first get our path
+cs_setPaths
+
+
+%%
 animals = {'CS31','CS33','CS34','CS35','CS39','CS41','CS42','CS44'};
 
 edit preprocess_CS31
@@ -59,7 +65,8 @@ edit cs_listRunCells;
 
 % this is the current version we are using.  This will list np cells and
 % those that fire at least once per trial during odor period
-edit cs_listNPCells_v2; % gets task Responsive cells (this now includes odor responsive)
+edit cs_listNPCells_v2; % gets task Responsive cells (this now includes odor firing)
+edit cs_listNPInt; % gets task responsive and now odor firing
 %%
 %{
 ran npcells first
@@ -108,11 +115,14 @@ cs_PCA_3d(region, win, binsize, selectiveonly);
 
 %edit jhb_calcBetaRRallTets % this gets the beta and rr filtered LFPs, unnecessary to run though
 
-edit cs_phaseLocking % this version has no 'high beta' windows
-edit cs_phaseLocking_IN
+edit cs_phaseLocking % uses np cells old
+edit cs_phaseLocking_IN % uses np cells old
 
-edit cs_listPhaseLockedCells %
-edit cs_listPhaseLockedINs.m
+edit cs_listPhaseLockedCells % generates a list in acrossanimals analyiss
+edit cs_listPhaseLockedINs.m% same as above
+
+%edit cs_listPhaseLockedAllCells %
+
 
 %%
 % then all cells
@@ -121,16 +131,22 @@ edit cs_cellPopulations
 
 %cs_phaseLocking_v3
 
+% she went down the 'find high beta' rabbit hole, dont use
 edit cs_getHighBetaTimes % also unnecessary, we will not be using high beta as a filter
 edit cs_phaseLocking_highBeta
+
+
 
 % this generates population figures, gets dial plots for all pfc, all ca1,
 % then proportion of units that pass rtest for each region, then the dial
 % plots for within and cross coherence
-edit cs_popPhaseLock_v2
-edit cs_popPhaseLockCells_v2
+edit cs_popPhaseLock_v2 % this version works with dial plots
+edit cs_popPhaseLockInt_v2 % current version, dial plots (and current task responsive
 
-edit cs_phaseLocking_performance_v3
+
+% these two work now as well (there are other versions for all cells not
+% just coherent ones...
+edit cs_phaseLocking_performance_v4
 edit cs_phaseLocking_performance_INT
 
 %%

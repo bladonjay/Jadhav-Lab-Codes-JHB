@@ -20,9 +20,9 @@ cellregions = {'CA1','PFC'};
 cellcolors=[rgbcolormap('LightSalmon'); rgbcolormap('DarkTurquoise')];
 eegregions = {'CA1','PFC','OB'};
 
-band='resp';
-%bandcolors=[rgbcolormap('MidNightBlue'); rgbcolormap('Magenta')];
-bandcolor=rgbcolormap('Magenta');
+band='beta';
+bandcolor=rgbcolormap('MidNightBlue'); % this is for beta
+%bandcolor=rgbcolormap('Magenta'); % this is for rr
 for cr = 1:length(cellregions)
     
     cellregion = cellregions{cr};
@@ -59,7 +59,8 @@ for cr = 1:length(cellregions)
             
             %get phase locked cells. use cells that are phase locked on
             %correct trials.
-            cellfilt = '~isempty($sph) & $prayl <0.05';
+            %cellfilt = '~isempty($sph) & $prayl <0.05';
+            cellfilt = '~isempty($sph)';
             allcells = evaluatefilter(phaselock_c,cellfilt);
             if isempty(allcells)
                 continue

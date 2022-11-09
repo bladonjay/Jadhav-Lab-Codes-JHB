@@ -1,5 +1,5 @@
 
-%cs_phaseLocking
+%cs_phaseLocking_All_jhb
 %created 3/16/2020 to streamline phaselocking pipeline
 
 %phaselock files will contain simple "phaselock" variables. this file will
@@ -17,14 +17,14 @@ freqs = {'beta','resp'};
 trialtypes = {'correct','incorrect'};
 
 %% get NP cells
-load([topDir,'AnalysesAcrossAnimals\npCells_CA1_old']);
-cells_CA1 = npCells;
-load([topDir,'AnalysesAcrossAnimals\npCells_PFC_old']);
-cells_PFC = npCells; clear npCells
+load([topDir,'AnalysesAcrossAnimals\npInt_CA1']);
+cells_CA1 = npInt;
+load([topDir,'AnalysesAcrossAnimals\npInt_PFC']);
+cells_PFC = npInt; clear npInt
+
 
 rstream = RandStream('dsfmt19937','Seed',16);
 RandStream.setGlobalStream(rstream);
-
 
 for a = 1:length(animals)
     animal = animals{a};
@@ -33,7 +33,7 @@ for a = 1:length(animals)
     %% get animal data
     odorTriggers = loaddatastruct(animDir, animal,'odorTriggers');
     nosepokeWindow = loaddatastruct(animDir, animal, 'nosepokeWindow');
-    
+
     
     spikes = loaddatastruct(animDir, animal, 'spikes');
     days = cs_getRunEpochs(animDir, animal, 'odorplace');
@@ -72,6 +72,7 @@ for a = 1:length(animals)
                         for ep = 1:length(epochs)
                             epoch = epochs(ep);
                             epstr = getTwoDigitNumber(epoch);
+                            
 
                             [cl,cr,il,ir] = cs_getSpecificTrialTypeInds(odorTriggers{day}{epoch});
                             wins_incorr = nosepokeWindow{day}{epoch}(sort([il;ir]),:);
@@ -81,7 +82,7 @@ for a = 1:length(animals)
                                 list = nosepokeWindow{day}{epoch}(sort([il;ir]),:);
                             end
                             
-                            %list = [list-0.5, list+0.5];
+                           % list = [list-1, list];
                             timelist = [timelist;list];
                             
                             numincorrtrials = numincorrtrials + size(wins_incorr,1);
@@ -89,8 +90,9 @@ for a = 1:length(animals)
                             
                             tet = cs_getMostCellsTet(animal,day,epoch,eegregion);
                             tetstr = getTwoDigitNumber(tet);
-                            % here I insert a way to reconstitute the
-                            % filtered data
+                            
+                            % JHB inserted a way to create an eegfile if it
+                            % doesnt exist
                             eegfile=[animDir, 'EEG\', animal, freq,daystr,'-',epstr,'-',tetstr,'.mat'];
                             if ~exist(eegfile,'file')
                                 try
@@ -112,7 +114,7 @@ for a = 1:length(animals)
                             phase = [phase;p];
                         end
                         
-                        %get cells (only task Responsive cells!!!!
+                        %get cells
                         eval(['cells = cells_',cellregion,'(ismember(cells_',cellregion,'(:,[1,2]),[a, day], ''rows''),[3 4]);']);
                         
                         %do each cell separately
@@ -136,8 +138,13 @@ for a = 1:length(animals)
                             Nspikes = sum(goodspikes);
                             sph = double(sph_tmp(find(goodspikes))) / 10000;  % If no spikes, this will be empty
                             
+                            
+
+                            
                             %calc stats
                             out = cs_calcPhaseLocking(sph);
+                            
+
                             
                             %store data in first epoch
                             phaselock{day}{1}{cell(1)}{cell(2)} = out;
@@ -161,13 +168,13 @@ for a = 1:length(animals)
                     
                     
                     if strcmp(trialtype,'correct')
-                        plDir = [animDir,'PhaseLocking\'];
-                        if ~exist(plDir,'dir')
+                        plDir = [animDir,'PhaseLocking\Interneurons\'];
+                        if exist(plDir,'dir')~=7
                             mkdir(plDir);
                         end
                     elseif strcmp(trialtype,'incorrect')
-                        plDir = [animDir, 'PhaseLocking\Incorrect\'];
-                         if ~exist(plDir,'dir')
+                        plDir = [animDir, 'PhaseLocking\Interneurons\Incorrect\'];
+                         if exist(plDir,'dir')~=7
                             mkdir(plDir);
                         end
                     end
@@ -177,7 +184,7 @@ for a = 1:length(animals)
                     %delete any files that exist in the directory with
                     %matching name
                     if ~exist('phaselock','var')
-                        oldfiles = dir([plDir, animal,'phaselock_',freq,trialstr,'_',cellregion,'-',eegregion,'.mat']);
+                        oldfiles = dir([plDir, animal,'phaselock_',freq,trialstr,'_',cellregion,'-',eegregion,'2.mat']);
                         if ~isempty(oldfiles)
                             delete (oldfiles.name)
                         end
@@ -185,7 +192,7 @@ for a = 1:length(animals)
                         %otherwise, save all days together
                         varfetch = cellfetch(phaselock,'Nspikes');
                         
-                        save([plDir,animal,'phaselock_',freq,trialstr,'_',cellregion,'-',eegregion,'.mat'],'phaselock');
+                        save([plDir,animal,'phaselock_',freq,trialstr,'_',cellregion,'-',eegregion,'2.mat'],'phaselock');
                         clear phaselock
                     end
                 end
@@ -193,3 +200,4 @@ for a = 1:length(animals)
         end
     end
 end
+%cs_listPhaseLockedINs

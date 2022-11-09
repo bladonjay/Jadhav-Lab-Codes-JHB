@@ -20,9 +20,9 @@ cellregions = {'CA1','PFC'};
 cellcolors=[rgbcolormap('LightSalmon'); rgbcolormap('DarkTurquoise')];
 eegregions = {'CA1','PFC','OB'};
 
-band='resp';
-%bandcolors=[rgbcolormap('MidNightBlue'); rgbcolormap('Magenta')];
-bandcolor=rgbcolormap('Magenta');
+band='beta';
+bandcolor=rgbcolormap('MidNightBlue'); % this is for beta
+%bandcolor=rgbcolormap('Magenta'); % this is for rr
 for cr = 1:length(cellregions)
     
     cellregion = cellregions{cr};
@@ -39,11 +39,11 @@ for cr = 1:length(cellregions)
             
             % phaselocking correct data (pull all NP cells here for all
             % cells
-            plfiles_c = dir([animDir,'PhaseLocking\',animal,'phaselock_', band, '_', cellregion, '-', eegregion, '*']);
+            plfiles_c = dir([animDir,'PhaseLocking\',animal,'phaselock_', band, '_', cellregion, '-', eegregion, '2*']);
             names_c = {plfiles_c.name};
             % phaselocking incorrect data
             plfiles_i = dir([animDir,'PhaseLocking\Incorrect\',animal,'phaselock_', band, '_',...
-                'incorrect_', cellregion, '-', eegregion, '*']);
+                'incorrect_', cellregion, '-', eegregion, '2*']);
             names_i = {plfiles_i.name};
             if length(plfiles_c)~=1 || length(plfiles_i)~=1
                 continue
@@ -59,7 +59,8 @@ for cr = 1:length(cellregions)
             
             %get phase locked cells. use cells that are phase locked on
             %correct trials.
-            cellfilt = '~isempty($sph) & $prayl <0.05';
+            %cellfilt = '~isempty($sph) & $prayl <0.05';
+            cellfilt = '~isempty($sph)';
             allcells = evaluatefilter(phaselock_c,cellfilt);
             if isempty(allcells)
                 continue
