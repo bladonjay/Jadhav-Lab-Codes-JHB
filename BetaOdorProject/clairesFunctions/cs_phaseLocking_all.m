@@ -1,5 +1,5 @@
 
-%cs_phaseLocking
+%cs_phaseLocking_all
 %created 3/16/2020 to streamline phaselocking pipeline
 
 %phaselock files will contain simple "phaselock" variables. this file will
@@ -17,10 +17,10 @@ freqs = {'beta','resp'};
 trialtypes = {'correct','incorrect'};
 
 %% get NP cells
-load([topDir,'AnalysesAcrossAnimals\npCells_CA1_old']);
-cells_CA1 = npCells;
-load([topDir,'AnalysesAcrossAnimals\npCells_PFC_old']);
-cells_PFC = npCells; clear npCells
+load([topDir,'AnalysesAcrossAnimals\npCells_CA1']);
+cells_CA1 = activeCells;
+load([topDir,'AnalysesAcrossAnimals\npCells_PFC']);
+cells_PFC = activeCells; clear npCells
 
 rstream = RandStream('dsfmt19937','Seed',16);
 RandStream.setGlobalStream(rstream);
@@ -177,7 +177,7 @@ for a = 1:length(animals)
                     %delete any files that exist in the directory with
                     %matching name
                     if ~exist('phaselock','var')
-                        oldfiles = dir([plDir, animal,'phaselock_',freq,trialstr,'_',cellregion,'-',eegregion,'.mat']);
+                        oldfiles = dir([plDir, animal,'phaselock_',freq,trialstr,'_',cellregion,'-',eegregion,'_all.mat']);
                         if ~isempty(oldfiles)
                             delete (oldfiles.name)
                         end
@@ -185,7 +185,7 @@ for a = 1:length(animals)
                         %otherwise, save all days together
                         varfetch = cellfetch(phaselock,'Nspikes');
                         
-                        save([plDir,animal,'phaselock_',freq,trialstr,'_',cellregion,'-',eegregion,'.mat'],'phaselock');
+                        save([plDir,animal,'phaselock_',freq,trialstr,'_',cellregion,'-',eegregion,'_all.mat'],'phaselock');
                         clear phaselock
                     end
                 end
@@ -193,4 +193,3 @@ for a = 1:length(animals)
         end
     end
 end
-cs_listPhaseLockedCells

@@ -10,6 +10,7 @@ clear
 topDir = cs_setPaths();
 regions = {'CA1','PFC'};
 eegregions={'CA1','PFC','OB'};
+bands={'beta','resp'};
 
 for r = 1:length(regions)
     region = regions{r};
@@ -37,14 +38,19 @@ for r = 1:length(regions)
     
     
     
-    % np pyrs and non np pyrs
+    % np pyrs and non np pyrs (% of all run pyrs/ins)
     %load([topDir,'AnalysesAcrossAnimals\npCells_',region,'_old']);
     load([topDir,'AnalysesAcrossAnimals\npCells_',region]);
     npPyrams= pyrCells(ismember(pyrCells,npCells,'rows'),:);
     cellpops.npPyrams = npPyrams;
     nonNPCells = pyrCells(~ismember(pyrCells,npPyrams,'rows'),:);
     cellpops.nonNPCells = nonNPCells;
-    clear npCells;
+    % and now active cells
+    odorPyrams= pyrCells(ismember(pyrCells,activeCells,'rows'),:);
+    cellpops.odorActivePyrams = odorPyrams;
+    nonOdorCells = pyrCells(~ismember(pyrCells,activeCells,'rows'),:);
+    cellpops.nonOdorActiveCells = nonOdorCells;
+    clear npCells activeCells;
     
     % np vs non-np INs
     %load([topDir,'AnalysesAcrossAnimals\npInt_',region,'_old']);
@@ -53,9 +59,13 @@ for r = 1:length(regions)
     cellpops.npInt = npInt;
     nonNPInt = pyrCells(~ismember(intCells,npInt,'rows'),:);
     cellpops.nonNPInt = nonNPInt;
+    odorInt= pyrCells(ismember(intCells,activeInt,'rows'),:);
+    cellpops.odorActiveInt = odorInt;
+    nonOdorInt = intCells(~ismember(intCells,activeInt,'rows'),:);
+    cellpops.nonOdorActiveInt = nonOdorInt;
     
     
-    %selective vs nonselective Pyrams 
+    %selective vs nonselective Pyrams (as % of nosepoke)
     load([topDir,'AnalysesAcrossAnimals\selectiveCells_',region, '_new']);
     selectivePyram= npPyrams(ismember(npPyrams,selectivecells,'rows'),:);
     cellpops.selectiveCells = selectivePyram; % NOT TRUE, these are pyrams and INTs
@@ -64,39 +74,38 @@ for r = 1:length(regions)
     
      %selective vs nonselective Int 
     load([topDir,'AnalysesAcrossAnimals\selectiveINs_',region]);
-    selectiveINs= npInt(ismember(npInt,selectivecells,'rows'),:);
-    cellpops.selectiveCells = selectivePyram; % NOT TRUE, these are pyrams and INTs
-    nonselective = npPyrams(~ismember(npPyrams,selectivecells,'rows'),:);
-    cellpops.nonselectiveCells = nonselective;
+    selectiveINs= npInt(ismember(npInt,selectiveint,'rows'),:);
+    cellpops.selectiveInt = selectiveINs; % NOT TRUE, these are pyrams and INTs
+    nonselective = npInt(~ismember(npInt,selectiveint,'rows'),:);
+    cellpops.nonselectiveInt = nonselective;
     
-    
-    
-    
+
     % now beta phaselocked pyrams from npCells
     % use npPyrams and npInt
     % have to pull data from all three and then can union them
-    
-    plAll=[];
-    for er=1:length(eegregions)
-        load([topDir,'AnalysesAcrossAnimals\PhaseLocking\plCells_',...
-            'beta_',regions{r},'-',eegregions{er},'.mat'], 'plcells');
-        plAll=[plAll; plcells];
-        cellpops.(['betaPhaseLockedTo', eegregions{er}])=plcells;
+    for band=1:length(bands)
+        % first pyrams
+        plAll=[];
+        for er=1:length(eegregions)
+            load([topDir,'AnalysesAcrossAnimals\PhaseLocking\plCells_',...
+                bands{band},'_',regions{r},'-',eegregions{er},'.mat'], 'plcells');
+            plAll=[plAll; plcells];
+            cellpops.([bands{band} 'PhaseLockedTo', eegregions{er}])=plcells;
+        end
+        plAll=unique(plAll,'rows');
+        cellpops.([bands{band},'PhaseLockedAny'])=plAll;
+        clear plcells;
+        % now Ins
+        plIntAll=[];
+        for er=1:length(eegregions)
+            load([topDir,'AnalysesAcrossAnimals\PhaseLocking\plINs_',...
+                bands{band},'_',regions{r},'-',eegregions{er},'.mat'], 'plcells');
+            plIntAll=[plIntAll; plcells];
+            cellpops.([bands{band} 'IntPhaseLockedTo', eegregions{er}])=plcells;
+        end
+        plIntAll=unique(plIntAll,'rows');
+        cellpops.([bands{band} 'IntPhaseLockedAny'])=plIntAll;
     end
-       plAll=unique(plAll,'rows');
-       cellpops.betaPhaseLockedAny=plAll;
-
-    
-    plAll=[];
-    for er=1:length(eegregions)
-        load([topDir,'AnalysesAcrossAnimals\PhaseLocking\plCells_',...
-            'resp_',regions{r},'-',eegregions{er},'.mat'], 'plcells');
-        plAll=[plAll; plcells];
-        cellpops.(['respPhaseLockedTo', eegregions{er}])=plcells;
-    end
-       plAll=unique(plAll,'rows');
-       cellpops.respPhaseLockedAny=plAll;
-    
     
     save([topDir,'AnalysesAcrossAnimals\cellPopulations_',region],'cellpops');
     clear cellpops
@@ -108,6 +117,21 @@ regions = {'CA1','PFC'};
 
 for r=1:length(regions)
     load([topDir,'AnalysesAcrossAnimals\cellPopulations_',regions{r}],'cellpops');
-    eval(['cellpops_',regions{r}, '=cellpops; clear cellpops']);
+    eval(['cellpops_',regions{r}, '=cellpops; openvar(''cellpops_', regions{r}, '''); clear cellpops']);
 end
-openvar('cellpops_CA1')
+
+
+edit jhb_plotAllProportions
+%%
+%{
+ran npcells first
+cs_cellselectivitytag: 49 & 53
+run
+cs_listselectivity: 49 & 53
+
+when you run selectivitytag you get more cells
+but for listselectivecells, that list has overlap with npcells has 44 and
+52
+
+
+%}

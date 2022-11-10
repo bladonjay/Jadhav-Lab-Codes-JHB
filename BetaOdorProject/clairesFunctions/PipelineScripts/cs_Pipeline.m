@@ -152,5 +152,5 @@ edit cs_phaseLocking_performance_INT
 %%
 % plot the phase locking and the interaction between selectivity and
 % locking
-jhb_plotAllProportions
+edit jhb_plotAllProportions
 

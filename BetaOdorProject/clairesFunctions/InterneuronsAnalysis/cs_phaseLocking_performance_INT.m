@@ -16,9 +16,9 @@ cellcolors=[rgbcolormap('LightSalmon'); rgbcolormap('DarkTurquoise')];
 
 eegregions = {'CA1','PFC','OB'};
 
-band='resp';
-%bandcolors=[rgbcolormap('MidNightBlue'); rgbcolormap('Magenta')];
-bandcolor=rgbcolormap('Magenta');
+band='beta';
+bandcolor=rgbcolormap('MidNightBlue');
+%bandcolor=rgbcolormap('Magenta');
 
 
 for cr = 1:length(cellregions)
@@ -144,12 +144,18 @@ for cr = 1:length(cellregions)
         plot(repmat([1 2],length(meanVecL),1)',meanVecL','-','color',...
             bandcolor,'LineWidth',2);
         hold on;
-        if size(meanVecL,1)>1
+        if size(meanVecL,1)>=1
             
             %errorbar(z_mean,z_std,'k.')
             %axis([0 3 0 max(meanVecL(:))*1.1])
             xlim([0 3]); ylim([0 max(meanVecL(:))*1.1]);
-            xticks([1 2]); ylim([0 .75]);
+            xticks([1 2]);
+            switch band
+                case 'beta'
+                    ylim([0 .4]);
+                case 'resp'
+                     ylim([0 .75]);
+            end
             xticklabels({'Correct','Incorrect'})
             [~,p] = ttest(meanVecL(:,1),meanVecL(:,2));
             if p<.05

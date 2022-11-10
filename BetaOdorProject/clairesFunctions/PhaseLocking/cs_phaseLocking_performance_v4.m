@@ -20,9 +20,11 @@ cellregions = {'CA1','PFC'};
 cellcolors=[rgbcolormap('LightSalmon'); rgbcolormap('DarkTurquoise')];
 eegregions = {'CA1','PFC','OB'};
 
-band='resp';
-%bandcolors=[rgbcolormap('MidNightBlue'); rgbcolormap('Magenta')];
-bandcolor=rgbcolormap('Magenta');
+band='beta';
+bandcolor=rgbcolormap('MidNightBlue');
+
+%band='resp';
+%bandcolor=rgbcolormap('Magenta');
 for cr = 1:length(cellregions)
     
     cellregion = cellregions{cr};
@@ -39,11 +41,11 @@ for cr = 1:length(cellregions)
             
             % phaselocking correct data (pull all NP cells here for all
             % cells
-            plfiles_c = dir([animDir,'PhaseLocking\',animal,'phaselock_', band, '_', cellregion, '-', eegregion, '*']);
+            plfiles_c = dir([animDir,'PhaseLocking\',animal,'phaselock_', band, '_', cellregion, '-', eegregion, '.mat']);
             names_c = {plfiles_c.name};
             % phaselocking incorrect data
             plfiles_i = dir([animDir,'PhaseLocking\Incorrect\',animal,'phaselock_', band, '_',...
-                'incorrect_', cellregion, '-', eegregion, '*']);
+                'incorrect_', cellregion, '-', eegregion, '.mat']);
             names_i = {plfiles_i.name};
             if length(plfiles_c)~=1 || length(plfiles_i)~=1
                 continue
@@ -139,7 +141,13 @@ for cr = 1:length(cellregions)
         hold on;
         %errorbar(z_mean,z_std,'k.')
         %axis([0 3 0 (max(z_mean(:)) +2*(max(z_std(:))))])
-        xlim([0 3]); ylim([0 .75]);
+        switch band
+            case 'beta'
+                ylim([0 .4]);
+            case 'resp'
+                 ylim([0 .75]);
+        end
+        xlim([0 3]);
         xticks([1 2])
         xticklabels({'Correct','Incorrect'})
         [~,p] = ttest(meanVecL(:,1),meanVecL(:,2));

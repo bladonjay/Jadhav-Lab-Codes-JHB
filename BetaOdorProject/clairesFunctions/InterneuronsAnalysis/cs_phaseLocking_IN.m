@@ -17,9 +17,15 @@ freqs = {'beta','resp'};
 trialtypes = {'correct','incorrect'};
 
 %% get NP cells
-load([topDir,'AnalysesAcrossAnimals\npInt_CA1_old']);
+% old version, if using this, also change saveout filename
+% load([topDir,'AnalysesAcrossAnimals\npInt_CA1_old']);
+% cells_CA1 = npInt;
+% load([topDir,'AnalysesAcrossAnimals\npInt_PFC_old']);
+
+
+load([topDir,'AnalysesAcrossAnimals\npInt_CA1']);
 cells_CA1 = npInt;
-load([topDir,'AnalysesAcrossAnimals\npInt_PFC_old']);
+load([topDir,'AnalysesAcrossAnimals\npInt_PFC']);
 cells_PFC = npInt; clear npInt
 
 
