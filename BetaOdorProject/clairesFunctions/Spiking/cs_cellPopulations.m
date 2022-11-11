@@ -57,9 +57,9 @@ for r = 1:length(regions)
     load([topDir,'AnalysesAcrossAnimals\npInt_',region]);
     npInt= intCells(ismember(intCells,npInt,'rows'),:);
     cellpops.npInt = npInt;
-    nonNPInt = pyrCells(~ismember(intCells,npInt,'rows'),:);
+    nonNPInt = intCells(~ismember(intCells,npInt,'rows'),:);
     cellpops.nonNPInt = nonNPInt;
-    odorInt= pyrCells(ismember(intCells,activeInt,'rows'),:);
+    odorInt= intCells(ismember(intCells,activeInt,'rows'),:);
     cellpops.odorActiveInt = odorInt;
     nonOdorInt = intCells(~ismember(intCells,activeInt,'rows'),:);
     cellpops.nonOdorActiveInt = nonOdorInt;

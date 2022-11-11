@@ -3,7 +3,7 @@ clear
 
 [topDir, figDir] = cs_setPaths();
 dataDir = [topDir,'AnalysesAcrossAnimals\'];
-figDir = [figDir,'NicePPTFigures\'];
+%figDir = [figDir,'NicePPTFigures\'];
 freqbands = {'beta'};
 eegregions = {'CA1','PFC','OB'};
 
@@ -87,12 +87,12 @@ for f = 1:length(freqbands)
     
     text(1,70,{num2str(barsCA1(1));num2str(barsCA1(2));num2str(barsCA1(3));num2str(barsPFC(1));num2str(barsPFC(2));num2str(barsPFC(3))})
     
-    figfile = [figDir,'SelectivityPLOverlap_',freqband,'_NPChoice'];
+    %figfile = [figDir,'SelectivityPLOverlap_',freqband,'_NPChoice'];
     
     legend({'Selective Cells',[freqband, ' Phase Locked Cells'],'Overlap'});
     
-    print('-djpeg', figfile);
-    print('-dpdf', figfile);
-    saveas(gcf,figfile,'fig');
+    %print('-djpeg', figfile);
+    %print('-dpdf', figfile);
+    %saveas(gcf,figfile,'fig');
     %     end
 end

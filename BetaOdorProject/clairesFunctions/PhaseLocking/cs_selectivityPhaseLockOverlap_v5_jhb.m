@@ -1,7 +1,9 @@
-%Overlap
+%Only Looking at cells that phase lock just before the turn away from NP
+clear
+
 [topDir, figDir] = cs_setPaths();
 dataDir = [topDir,'AnalysesAcrossAnimals\'];
-figDir = [figDir,'PhaseLocking\'];
+%figDir = [figDir,'NicePPTFigures\'];
 freqbands = {'beta'};
 eegregions = {'CA1','PFC','OB'};
 
@@ -12,38 +14,45 @@ for f = 1:length(freqbands)
     
     load([dataDir, 'npCells_',region,'.mat']);
     load([dataDir, 'selectiveCells_',region,'.mat']);
-  
     %load([dataDir, 'plCells_',freqband,'_',region,'-',eegregion,'.mat']);
     
     %count cells as phase locked as long as they are phase locked to
     %beta from at least one region
+    % why doesnt she pull her aggregated data???????
+    
+    %{ 
     allplcells = [];
     for r = 1:length(eegregions)
         eegregion = eegregions{r};
-        load([dataDir, 'PhaseLocking\plCells_',freqband,'_',region,'-',eegregion,'.mat']);
+        load([dataDir,'PhaseLocking\NPChoice\',region,'-',eegregion,'.mat']);
+        plcells = unique(plcells(:,[1 2 4 5]),'rows');
         allplcells = [allplcells; plcells];
     end
     plcells = unique(allplcells,'rows');
-    
+    %}
+    allplcells=[];
+    for er = 1:length(eegregions)
+        load([topDir,'AnalysesAcrossAnimals\PhaseLocking\plCells_',...
+            freqband,'_',region,'-',eegregions{er},'.mat'], 'plcells');
+        allplcells=[allplcells; plcells];
+        
+    end
+    allplcells=unique(allplcells,'rows');
+    plcells=allplcells;
     bothCA1 = intersect(selectivecells,plcells,'rows');
     
     fractionselective = size(selectivecells,1) / size(npCells,1);
     fractionpl = size(plcells,1)/size(npCells,1);
     fractionboth = size(bothCA1,1)/size(npCells,1);
     
-    probbothCA1 = (fractionpl*fractionselective)*100;
-    %probbothCA1 = fractionselective*fractionpl*100;
-    pboth_CA1 = binopdf(size(bothCA1,1),size(npCells,1),(fractionpl*fractionselective));
+%     probsel = binofit(size(selectivecells,1),size(npCells,1),0.5);
+%     probpl = binofit(size(plcells,1),size(npCells,1),0.5);
+%     probbothCA1 = binofit(size(bothCA1,1),size(npCells,1),(probpl*probsel));
+    probbothCA1 = fractionselective*fractionpl*100;
     
     barsCA1 = [fractionselective,fractionpl,fractionboth];
     barsCA1 = barsCA1*100; %percentage
     
-    X = binoinv([0.05 0.95],size(npCells,1),(fractionpl*fractionselective));
-    CI_CA1 = X/size(npCells,1)*100;
-   
-    
-    
-    %% ---
     region = 'PFC';
     
     load([dataDir, 'npCells_',region,'.mat']);
@@ -55,7 +64,8 @@ for f = 1:length(freqbands)
     allplcells = [];
     for r = 1:length(eegregions)
         eegregion = eegregions{r};
-        load([dataDir, 'PhaseLocking\plCells_',freqband,'_',region,'-',eegregion,'.mat']);
+        load([dataDir,'PhaseLocking\NPChoice\',region,'-',eegregion,'.mat']);
+        plcells = unique(plcells(:,[1 2 4 5]),'rows');
         allplcells = [allplcells; plcells];
     end
     plcells = unique(allplcells,'rows');
@@ -72,16 +82,10 @@ for f = 1:length(freqbands)
 %     probsel = binofit(size(selectivecells,1),size(npCells,1),0.5);
 %     probpl = binofit(size(plcells,1),size(npCells,1),0.5);
 %     probbothPFC = binofit(size(bothPFC,1),size(npCells,1),(probpl*probsel));
-    probbothPFC = (fractionpl*fractionselective)*100;
-    %probbothCA1 = fractionselective*fractionpl*100;
-    pboth_PFC = binopdf(size(bothPFC,1),size(npCells,1),(fractionpl*fractionselective));
-    %probbothPFC = fractionselective*fractionpl*100;
-    X = binoinv([0.05 0.95],size(npCells,1),(fractionpl*fractionselective));
-    CI_PFC = X/size(npCells,1)*100;
-    
-    disp(['CA1 p =',num2str(pboth_CA1)]);
-    disp(['PFC p =',num2str(pboth_PFC)]);
 
+    probbothPFC = fractionselective*fractionpl*100;
+    
+    
     
     figure,
     bar([1,2],[barsCA1;barsPFC])
@@ -92,11 +96,10 @@ for f = 1:length(freqbands)
     hold on
     plot([1.1 1.35],[probbothCA1 probbothCA1], 'k--')
     plot([2.1 2.35],[probbothPFC probbothPFC], 'k--')
-    plot([1.25 1.25],CI_CA1, 'r--')
-    plot([2.25 2.25],CI_PFC, 'r--');
+    
     text(1,70,{num2str(barsCA1(1));num2str(barsCA1(2));num2str(barsCA1(3));num2str(barsPFC(1));num2str(barsPFC(2));num2str(barsPFC(3))})
     
-    %figfile = [figDir,'SelectivityPLOverlap_',freqband];
+    %figfile = [figDir,'SelectivityPLOverlap_',freqband,'_NPChoice'];
     
     legend({'Selective Cells',[freqband, ' Phase Locked Cells'],'Overlap'});
     

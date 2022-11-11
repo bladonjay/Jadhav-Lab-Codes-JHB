@@ -20,8 +20,12 @@ clear
 % first get our path
 cs_setPaths
 
+jhb_setBetaOderpaths
 
-%%
+
+%% this is generated pretty early and has a lot of hardcoded data
+
+%{
 animals = {'CS31','CS33','CS34','CS35','CS39','CS41','CS42','CS44'};
 
 edit preprocess_CS31
@@ -47,6 +51,8 @@ DFScs_eventTrigSpecgram
 % first is full day lfp
 % params: tapers=[1 1]; movingwin = [1000 20]/1000 fs=1500
 
+
+%}
 %% --- Coherograms --- %%
 DFScs_eventcoherence
 
@@ -55,21 +61,20 @@ edit cs_listAllCells; % i think it gets you all cells
 
 edit cs_cellTypeTag; % pyr or in
 
-edit cs_listRunCells;
+edit cs_listRunCells; % lists cells that fire during run epochs
 
 % old np and odor responsive fx, defunct
 % cs_listNPcells
 % cs_odorResponsiveCells
 
-
-
 % this is the current version we are using.  This will list np cells and
 % those that fire at least once per trial during odor period
 edit cs_listNPCells_v2; % gets task Responsive cells (this now includes odor firing)
 edit cs_listNPInt; % gets task responsive and now odor firing
-%%
+%% notes on discrepancies between versions:
 %{
-ran npcells first
+ran npcells first, she updated np cells after runing the rest of the code
+though, so we need to rerun here down after the correct npcells is run
 cs_cellselectivitytag: 49 & 53
 run
 cs_listselectivity: 49 & 53
@@ -101,7 +106,8 @@ edit cs_plotRasterPSTH_specifiedCells_v2
 
 
 %% --- PCA/ Population Analysis ---%
-cs_PDI(win,binsize);
+
+cs_PDI
 
 cs_individualTrialPDI
 cs_PDIBehaviorCorrelation
