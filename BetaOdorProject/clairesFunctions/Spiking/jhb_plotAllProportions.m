@@ -9,13 +9,13 @@
 %2. under analysisacrossanimals, phaselocking, plcells_beta and rr, all
 %regions
 %3. pyrs vs ins
-
+clear
 [topDir, figDir] = cs_setPaths();
 animals = {'CS31','CS33','CS34','CS35','CS39','CS41','CS42','CS44'};
 
 %% grab our underlying data
 if ~exist('cellpops_CA1','var')
-    clear
+    
     topDir = cs_setPaths();
     regions = {'CA1','PFC'};
 

@@ -13,7 +13,7 @@ cellregions = {'CA1','PFC'};
 eegregions = {'CA1','PFC','OB'};
 cellcolors=[rgbcolormap('LightSalmon'); rgbcolormap('DarkTurquoise')];
 
-plOnly = 1;
+plOnly = 0;
 numbins = 20;
 freq = 'beta';
 saveout=0; histbar=0;

@@ -164,7 +164,7 @@ for cr = 1:length(cellregions)
         %title(sprintf('ranksum p= %.2e',ranksum(meanVecL(:,1),meanVecL(:,2))));
         barh(centers,hc,1,'LineStyle','none','FaceColor',cellcolors(cr,:)); 
         hold on; plot([0 max(hc)],[0 0],'k-'); set(gca,'XLim',[0 max(hc)]);
-        title(sprintf('signrank p= %.2e',signrank(meanVecL(:,1)-meanVecL(:,2))));
+        title(sprintf('n=%d, signrank p= %.2e',size(meanVecL,1),signrank(meanVecL(:,1)-meanVecL(:,2))));
         xlabel('Cmvl-Imvl'); ylabel('rel Proportion');
         box off;
         if saveout==1

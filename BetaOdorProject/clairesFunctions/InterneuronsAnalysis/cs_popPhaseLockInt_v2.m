@@ -3,7 +3,7 @@
 %most updated version as of 10/6/2020
 %% Params
 clear
-close all
+%close all
 [topDir, figDir]= cs_setPaths();
 
 animals = {'CS31','CS33','CS34','CS35','CS39','CS41','CS42','CS44'};
@@ -14,8 +14,8 @@ cellcolors=[rgbcolormap('LightSalmon'); rgbcolormap('DarkTurquoise')];
 
 
 plOnly = 0;
-numbins = 20;
-freq = 'resp';
+numbins = 12;
+freq = 'beta';
 saveout=0; histbar=0;
 figure;
 %%
@@ -37,9 +37,9 @@ for er = 1:length(eegregions)
             animDir = [topDir,animal,'Expt\',animal,'_direct\'];
             
             try
-                files = dir([animDir,'PhaseLocking\',animal,'phaselock_',freq,'_',region,'-',eegregion,'2*']);
+                files = dir([animDir,'PhaseLocking\Interneurons\',animal,'phaselock_',freq,'_',region,'-',eegregion,'2*']);
                 % this loads the data with the CURRENT TASK RESPONSIVE SET
-                load([animDir,'PhaseLocking\',files(1).name])
+                load([animDir,'PhaseLocking\Interneurons\',files(1).name])
             catch
                 fprintf('Couldnt find file for %s \n', animal)
                 continue
