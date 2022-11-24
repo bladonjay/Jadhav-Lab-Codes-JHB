@@ -71,10 +71,12 @@ for barc=1:2
     set(hb(barc),'LineStyle','none','FaceColor',bandcolors(barc,:));
 end
 title('Locked to Any Region')
-proptable=array2table([npCts(:,1) barCts],'VariableNames',{'taskResponsive','BetaCoh','RespCoh'},...
+countTable=array2table([npCts(:,1) barCts],'VariableNames',{'taskResponsive','BetaCoh','RespCoh'},...
     'RowNames',{'CA1Pyr','CA1Int','PFCPyr','PFCInt'});
-openvar('proptable');
-
+propTable=array2table([npCts(:,1) barProps],'VariableNames',{'taskResponsive','BetaCoh','RespCoh'},...
+    'RowNames',{'CA1Pyr','CA1Int','PFCPyr','PFCInt'});
+openvar('propTable');
+openvar('countTable');
 
 %% Proportion of Task Responsive cells Locked to LOCAL rhythm
 % right now unused
@@ -121,10 +123,12 @@ for barc=1:2
     set(hb(barc),'LineStyle','none','FaceColor',bandcolors(barc,:));
 end
 title('Locked to Local LFP')
-
-proptable=array2table([npCts(:,1) barCts],'VariableNames',{'taskResponsive','BetaCoh','RespCoh'},...
+countTable=array2table([npCts(:,1) barCts],'VariableNames',{'taskResponsive','BetaCoh','RespCoh'},...
     'RowNames',{'CA1Pyr','CA1Int','PFCPyr','PFCInt'});
-openvar('proptable');
+propTable=array2table([npCts(:,1) barProps],'VariableNames',{'taskResponsive','BetaCoh','RespCoh'},...
+    'RowNames',{'CA1Pyr','CA1Int','PFCPyr','PFCInt'});
+openvar('propTable');
+openvar('countTable');
 
 %% Beta/resp  coherence pyr in both cell regions to all LFPregions
 % this code counts each cell only once, classifying it by which region it
@@ -222,9 +226,9 @@ end
 
 barProps=barCts./npCts;
 figure('Position',[1578, 853, 313, 316]);
-hb=bar(barProps,'stacked'); box off;
+hb=bar(barProps,.5,'stacked'); box off;
 ylabel(sprintf('Proportion of \n Task Responsive Cells'));
-set(gca,'XTick',1:4,'XTickLabel',{'Pyr','Int'},'YTick',0:.2:1);
+set(gca,'XTick',1:4,'XTickLabel',{'Pyr','Int'},'YTick',0:.1:1);
 hold on; plot([0.5 4.5],[.05 .05],'k--'); xlim([.5 4.5]);
 
 xlabel('CA1              PFC'); 
@@ -234,11 +238,13 @@ for barc=1:3
 end
 title(sprintf('%s Locking',freq))
 
-proptable=array2table([npCts(:,1) barCts],'VariableNames',{'taskResponsive',['CA1' freq],['PFC' freq],['OB' freq]},...
+countTable=array2table([npCts(:,1) barCts],'VariableNames',{'taskResponsive',['CA1' freq],['PFC' freq],['OB' freq]},...
     'RowNames',{'CA1Pyr','CA1Int','PFCPyr','PFCInt'});
-openvar('proptable');
+openvar('countTable');
 
-
+propTable=array2table([npCts(:,1) barProps],'VariableNames',{'taskResponsive',['CA1' freq],['PFC' freq],['OB' freq]},...
+    'RowNames',{'CA1Pyr','CA1Int','PFCPyr','PFCInt'});
+openvar('propTable');
 %% now overlap between beta and rr locking (any) for pyramidal cells
        
 bandcolors=[rgbcolormap('MidNightBlue'); rgbcolormap('Magenta')];

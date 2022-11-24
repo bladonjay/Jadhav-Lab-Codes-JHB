@@ -16,11 +16,11 @@
 %odor psths
 %phase locking tag
 clear
+jhb_setBetaOderpaths
 
 % first get our path
 cs_setPaths
 
-jhb_setBetaOderpaths
 
 
 %% this is generated pretty early and has a lot of hardcoded data

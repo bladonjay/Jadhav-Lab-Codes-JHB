@@ -53,9 +53,14 @@ for cl=1:length(ratfolders)
     filenames={filebits(3:end).name}';
     cellmat(2:(length(filenames)+1),cl)=filenames;
 end
-    % okay this is now a nested struct with all the filenames we'll need
+% okay this is now a nested struct with all the filenames we'll need
 
 %%
+
+allCA1=load(['E:\Brandeis datasets\Claire Data\AnalysesAcrossAnimals/allCells_CA1.mat']);
+allCA1=allCA1.allcells; allCA1(:,5)=1; % this is for region (#1)
+allPFC=load(['E:\Brandeis datasets\Claire Data\AnalysesAcrossAnimals/allCells_PFC.mat']);
+allPFC=allPFC.allcells; allPFC(:,5)=2; % this if for region #2
 
 sessnum=1;
 
@@ -63,10 +68,11 @@ for rt=1:length(ratfolders)
     % grab the directory and fill out the name
     thisdir=fullfile(ratfolders(rt).folder, ratfolders(rt).name);
     ratName=ratfolders(rt).name(1:4);
-    infofile=[thisdir '\' ratName 'cellinfo.mat'];
+    datadir=sprintf('\\%s_direct\\',ratName);
+    infofile=[thisdir datadir ratName 'cellinfo.mat'];
     load(infofile); % adds variable 'cellinfo'
     
-    % for each session this rat did
+    % for each day this rat did
     for i=1:length(cellinfo)
         SuperRat(sessnum).name=ratName;
         SuperRat(sessnum).daynum=i;
@@ -74,66 +80,42 @@ for rt=1:length(ratfolders)
         SuperRat(sessnum).files.info=infofile;
         fprintf('Now starting rat %s session %d \n',ratName,i);
         
-        
-        spikefile=[thisdir '\' ratName 'spikes' sprintf('%02d',i) '.mat'];
+        spikefile=[thisdir datadir ratName 'spikes' sprintf('%02d',i) '.mat'];
+        dayPFC=allPFC(allPFC(:,1)==rt & allPFC(:,2)==i,:);
+        dayCA1=allCA1(allCA1(:,1)==rt & allCA1(:,2)==i,:);
         if exist(spikefile,'file')==2
             SuperRat(sessnum).files.spikefile=spikefile;
             load(spikefile);
             SuperRat(sessnum).oldspikes=spikes{i};
-            % now go in and grab the unit data (across small epochs)...
-
-                % the problem with this analysis is that if the cell doesnt
-                % exist in the first epoch, it doesnt exist at all
-
-
-                for tet=1:32  % for eahc tetrode
-                    % or is spikes what i want to pull in?
-                    % skip through to tetrode
-                    tetcells=max(cellfun(@(a) length(a{tet}), cellinfo{i}));
-                    % now for that tet generate an n cell struct
-                  
-                    for cl=1:tetcells % for each cluster
-                        % now go each epoch see if there are data
-                        spikes=[]; clear tempstruct catstruct;
-                        for ep=1:length(cellinfo{i}) % for each epoch (may or may not be empty)
-                            try % try adding our data to the struct
-                                tempstruct=MergeStructs(SuperRat(sessnum).oldspikes{ep}{tet}{cl},...
-                                    SuperRat(sessnum).cellinfo{ep}{tet}{cl},'update');
-                                tempstruct.numspikes=length(spikes);
-                                tempstruct.tet=tet;
-                                % give it room to go up from there...
-                                tempstruct.cluster=char(cl+64);
-                                if exist('catstruct','var')
-                                    catstruct=MergeStructs(catstruct,tempstruct,'addall');
-                                else
-                                    catstruct=tempstruct;
-                                end
-                            end
-                        end
-                        % if there are spikes to record, this is a cell...
-                        if exist('catstruct','var')
-                            % take a new struct
-                            clear tempstruct
-                           
-                            testing=struct2cell(catstruct);
-                            temp = squeeze(cellfun(@(a) ~isempty(a), testing));
-                            [~,fullrow]=max(sum(temp));
-                            tempstruct=catstruct(fullrow);
-                             tempstruct.ts=cell2mat({catstruct.data}');
-                            if isfield(tempstruct,'descript')
-                                %keyboard
-                                if ~exist('unitdata','var')
-                                    unitdata=tempstruct;
-                                else
-                                    unitdata=MergeStructs(unitdata,tempstruct,'addall');
-                                end
-                            end
-                        end
+            dayCells=sortrows([dayPFC; dayCA1],[1 2 3 4]);
+            
+            for cl=1:size(dayCells,1)
+                tempStruct=struct('tet',dayCells(cl,3),'spikes',[],'meanRate',[],'timeRange',[],'spikeWidth',[]);
+                tempStruct.cluster=char(dayCells(cl,4)+64);
+                
+                for ep=1:length(cellinfo{i}) % for each epoch (may or may not be empty)
+                    try % try adding our data to the struct
+                        addTo=spikes{i}{ep}{dayCells(cl,3)}{dayCells(cl,4)};
+                        tempStruct.spikes=[tempStruct.spikes; addTo.data];
+                        tempStruct.meanRate=[tempStruct.meanRate; addTo.meanrate];
+                        tempStruct.fields=addTo.fields;
+                        tempStruct.spikeWidth=[tempStruct.spikeWidth; addTo.spikewidth];
+                        tempStruct.timeRange=[tempStruct.timeRange; addTo.timerange];
                     end
                 end
-                % amd clean up
-                SuperRat(sessnum).unitdata=unitdata;
-                clear unitdata;
+                try
+                    unitdata(cl)=tempStruct;
+                catch
+                    keyboard
+                end
+            end
+        end
+        SuperRat(sessnum).unitdata=unitdata; clear unitdata;
+        sessnum=sessnum+1;
+    end
+end
+
+%%
 %{
             try
                 cumct=1;
@@ -172,7 +154,7 @@ for rt=1:length(ratfolders)
                 fprintf('couldnt extract Units from %s \n',spikefile);
             end
         end
-%}
+
         % now go for position data
         posfile=[thisdir '\' ratName 'pos' sprintf('%02d',i) '.mat'];
         if exist(posfile,'file')==2
@@ -266,6 +248,7 @@ for rt=1:length(ratfolders)
         fprintf('finished Rat %s %d \n \n',ratName,i);
     end
 end
+%}
 % now go in and grab the unit data (across small epochs)...
 
     
@@ -369,7 +352,7 @@ end
 %}
 %% this reloads the unit data for each session
 
-tempstruct=struct('tet',[],'unitnum',[],'ts',[],'meanrate',[],'tag',[],...
+tempStruct=struct('tet',[],'unitnum',[],'ts',[],'meanrate',[],'tag',[],...
     'area',[]);
 
 
@@ -388,7 +371,7 @@ for ses=1:length(SuperRat)
                 for cl=1:length(spikes{i}{tet}) % often empty
                     if ~isempty(spikes{i}{tet}{cl})
                         %fprintf('index: epoch %d, tetrode %d, unit %d  had mean rate %.2f \n',i, j, k, rawunits.spikes{i}{j}{k}.meanrate);
-                        unitdata(cumct)=tempstruct; % load the blank struct
+                        unitdata(cumct)=tempStruct; % load the blank struct
                         unitdata(cumct).ts=spikes{i}{tet}{cl}.data; % add data
                         unitdata(cumct).tet=tet; unitdata(cumct).unitnum=cl; % tet and unit
                         

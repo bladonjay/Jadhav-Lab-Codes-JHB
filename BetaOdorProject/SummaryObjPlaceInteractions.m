@@ -107,12 +107,11 @@ for r=1:2
     % what %% of cells overall have a pf
     
     % 1 if left preferring, -1 if right preferring, 0 if no pref
-    objSel=cellfun(@(a) a(3)==1,{cellPool.OdorSelective}).*...
-        ((cellfun(@(a) a(1)>0, {cellPool.OdorSelective})-.5)*2);
+    objSel=cellfun(@(a) a{1,3}==1,{cellPool.OdorSelective}).*...
+        ((cellfun(@(a) a{1,1}>0, {cellPool.OdorSelective})-.5)*2);
     % -1 if downreg, 0 if no reg, 1 if upreg (This ough tto work as only one
     % cell is going to have opposite firing on the runs)
-    objRes=cellfun(@(a) any(a(:,4)<.05),{cellPool.OdorResponsive}).*...
-        ((cellfun(@(a) any(a((a(:,4)==min(a(:,4))),2)>0),{cellPool.OdorResponsive})-.5)*2);
+    objRes=cellfun(@(a) any(a(3)<.05),{cellPool.taskResponsive});
     
     
     % ok %% of cells with 1 and %% of cells with more than 1 pf that arent obj

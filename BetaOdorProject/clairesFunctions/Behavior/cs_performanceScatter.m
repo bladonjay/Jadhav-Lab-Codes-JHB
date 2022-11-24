@@ -1,6 +1,6 @@
-%animals = {'CS31','CS33','CS34','CS35','CS39','CS41','CS42','CS44'};
-function cs_performanceScatter(animals)
+%cs_performanceScatter(animals)
 [topDir, figDir]= cs_setPaths();
+animals = {'CS31','CS33','CS34','CS35','CS39','CS41','CS42','CS44'};
 
 %colors = {'r','g','b','k','m'};
 %c = linspace(0,length(animals)+1,length(animals)+1);
@@ -53,9 +53,8 @@ plot([0 length(animals)+1], [.5 .5], 'k--','LineWidth',2)
 
 
 figfile = [figDir,'Behavior\BehaviorScatterplot'];
-print('-dpdf', figfile);
-print('-djpeg', figfile);
+%print('-dpdf', figfile);
+%print('-djpeg', figfile);
 %print('-dpng', figfile);
 %saveas(gcf,figfile,'fig');
 
-end

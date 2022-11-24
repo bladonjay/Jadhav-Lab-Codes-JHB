@@ -18,7 +18,7 @@ region = regions{r};
         
         load([animDir,animal,'cellinfo.mat'])
         
-        cellfilter = ['isequal($area,''',region,''') & ($numspikes > 100)']; 
+        cellfilter = ['isequal($area,''',region,''')']; 
         %cellfilter = ['isequal($area,''',region,''') & ($numspikes > 100)']; 
         animcells = evaluatefilter(cellinfo,cellfilter);
         

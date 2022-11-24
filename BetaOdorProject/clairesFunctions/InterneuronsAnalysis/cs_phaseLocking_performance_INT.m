@@ -16,9 +16,9 @@ cellcolors=[rgbcolormap('LightSalmon'); rgbcolormap('DarkTurquoise')];
 
 eegregions = {'CA1','PFC','OB'};
 
-band='beta';
-bandcolor=rgbcolormap('MidNightBlue');
-%bandcolor=rgbcolormap('Magenta');
+band='resp';
+%bandcolor=rgbcolormap('MidNightBlue');
+bandcolor=rgbcolormap('Magenta');
 
 
 for cr = 1:length(cellregions)
@@ -157,11 +157,11 @@ for cr = 1:length(cellregions)
                      ylim([0 .75]);
             end
             xticklabels({'Correct','Incorrect'})
-            [~,p] = ttest(meanVecL(:,1),meanVecL(:,2));
+            [p] = signrank(meanVecL(:,1)-meanVecL(:,2));
             if p<.05
-                text(2.1, 3*(max(z_std(:))),{'ttest', ['p = ',num2str(p)]},'Color','red');
+                text(2.1, 3*(max(z_std(:))),{'signrank', ['p = ',num2str(p)]},'Color','red');
             else
-                text(2.1, 3*(max(z_std(:))),{'ttest', ['p = ',num2str(p)]});
+                text(2.1, 3*(max(z_std(:))),{'signrank', ['p = ',num2str(p)]});
             end
             title(figtitle); box off;
             subplot(2,1,2);
