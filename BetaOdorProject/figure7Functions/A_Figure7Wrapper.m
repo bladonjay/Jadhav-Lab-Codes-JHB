@@ -48,19 +48,10 @@ end
 % some helpful fx for that:
 % - one is getcoord_Tmaze, this lets you draw the trajectories, or at
 % least is a skeleton for opening a gui and drawing some mean trajectories
-%%  if you've already made linearized position data
-
-%*** DONT RUN THIS BLOCK***
-
-% load('E:\Claire Data\ClaireDataFull-LinPos-LongTrack.mat');
-% removes short arm sessions
-% SuperRat(~logical([SuperRat.longTrack]))=[];
-
-
 %% make single cell examples here:
 
 % to plot some place fields out use this:
-edit ClaireQuickPlacePlot % i dont htink this went into the paper
+edit ClaireQuick2dPlacePlot % i dont think this went into the paper
 
 % plot linearized place fields
 edit PlotLinTrajectories
@@ -74,30 +65,6 @@ edit CalcLinTrajectories %
 edit Object_selectivity
     
 
-%%  This is the beta coherence datast
-
-% to calculate beta we use raw lfp files (theyre large)
-betaDir='E:\ClaireData';
-edit addTetInfo % get the info from tets (especially for ob tets)
-
-%edit gatherEEGdata % pull the eeg data and parse into bands (and verify, old version)
-edit gatherEEG % this is the current stable copy of that function
-
-% these figure panels are nolonger in the ms
-edit ClaireLFPspatialPlots
-
-% spike-lfp interactions
-edit ClaireBetaAnalysis % get spike-band coherence
-
-% lfp only interactions
-edit ClaireCrossCoherence % run cross coherence across bands
-
-% also nolonger in dataset
-edit ClairePhaseOffset % followup for reviewers
-
-% cell pair analysis, currently only cross-coherence between pfc-ca1 cells,
-% and we run it based off of an old paper
-edit ClaireCellCellInteractions
 
 %% this is all figure 7 stuff
 % get spatial info for object cells
@@ -250,13 +217,33 @@ rundata=SuperRat(ses).LinCoords;
 
 % Correct: l is L, 0 is R
 %
-figure; 
+figure;
 for i=1:5
-subplot(5,1,i);
-trial=i;
-runstart=find(rundata(:,1)>odorinfo(trial,1),1,'first');
-runstop=runstart+find(rundata(runstart:end,8)>55,1,'first');
-plot(rundata(runstart:runstop,2),rundata(runstart:runstop,3));
-title(sprintf('odorID=%d, corrincorr=%d',odorinfo(trial,2),odorinfo(trial,3)));
+    subplot(5,1,i);
+    trial=i;
+    runstart=find(rundata(:,1)>odorinfo(trial,1),1,'first');
+    runstop=runstart+find(rundata(runstart:end,8)>55,1,'first');
+    plot(rundata(runstart:runstop,2),rundata(runstart:runstop,3));
+    title(sprintf('odorID=%d, corrincorr=%d',odorinfo(trial,2),odorinfo(trial,3)));
 end
-%}
+
+%%  This is the beta coherence datast
+
+% to calculate beta we use raw lfp files (theyre large)
+betaDir='E:\ClaireData';
+edit addTetInfo % get the info from tets (especially for ob tets)
+
+%edit gatherEEGdata % pull the eeg data and parse into bands (and verify, old version)
+edit gatherEEG % this is the current stable copy of that function
+
+% these figure panels are nolonger in the ms
+edit ClaireLFPspatialPlots
+% spike-lfp interactions
+edit ClaireBetaAnalysis % get spike-band coherence
+% lfp only interactions
+edit ClaireCrossCoherence % run cross coherence across bands
+% also nolonger in dataset
+edit ClairePhaseOffset % followup for reviewers
+% cell pair analysis, currently only cross-coherence between pfc-ca1 cells,
+% and we run it based off of an old paper
+edit ClaireCellCellInteractions
