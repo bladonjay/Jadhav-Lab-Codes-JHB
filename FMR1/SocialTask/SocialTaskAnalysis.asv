@@ -324,7 +324,7 @@ for i=1:length(cohortNums)
 end
 %%
 
-% what percentage of arm transitions are
+% how many arm transitions do the rats make each session... are they
 % motivated to move?
 cohortNums=unique([ratinfo.cohortnum]);
 for i=1:length(cohortNums)
@@ -395,39 +395,32 @@ end
 % we can plot this out for a few rats here
 % lets just scatter some stats for a given rat by session
 
-%genotypetable=table([1 4; 1 2; 3 4],[2 3; 3 4; 1 2], 'VariableNames',{'controls','fx'});
+genotypetable=table([1 4; 1 2; 3 4],[2 3; 3 4; 1 2], 'VariableNames',{'controls','fx'});
 figure;
-cohort=6;
-allstats={};
-for rat=1:4
-    subplot(2,2,rat);
-    
-    thisrat=ratinfo(cellfun(@(a) a==cohort, {ratinfo.cohortnum}) & cellfun(@(a) any(a==rat), {ratinfo.ratnums}));
-    
-    ratstats=table('Size',[1,5], 'VariableTypes', repmat({'double'},1,5), 'VariableNames',...
-        {'tot','firsts','cans','wins','session'});
-    [~,~,sessid]=unique(cell2mat({thisrat.datenum}));
-    for i=1:length(thisrat)
-        mypos=find(thisrat(i).ratnums==rat);
-        ratstats.tot(i)=thisrat(i).transitions(mypos);
-        ratstats.firsts(i)=thisrat(i).firsttoleave(mypos);
-        ratstats.cans(i)=thisrat(i).candidates(mypos);
-        ratstats.wins(i)=thisrat(i).matches(mypos);
-        ratstats.session(i)=sessid(i);
-        ratstats.runnum(i)=thisrat(i).runnum;
-        
-        if ratstats.runnum(i)>6
-            ratstats.session(i)=ratstats.session(i)+.5;
-        end
+cohort=3; rat=2;
+
+thisrat=ratinfo(cellfun(@(a) a==cohort, {ratinfo.cohortnum}) & cellfun(@(a) any(a==rat), {ratinfo.ratnums}));
+
+ratstats=table('Size',[1,5], 'VariableTypes', repmat({'double'},1,5), 'VariableNames',...
+    {'tot','firsts','cans','wins','session'});
+[~,~,sessid]=unique(cell2mat({thisrat.datenum}));
+for i=1:length(thisrat)
+    mypos=find(thisrat(i).ratnums==rat);
+    ratstats.tot(i)=thisrat(i).transitions(mypos);
+    ratstats.firsts(i)=thisrat(i).firsttoleave(mypos);
+    ratstats.cans(i)=thisrat(i).candidates(mypos);
+    ratstats.wins(i)=thisrat(i).matches(mypos);
+    ratstats.session(i)=sessid(i);
+    ratstats.runnum(i)=thisrat(i).runnum;
+
+    if ratstats.runnum(i)>6
+        ratstats.session(i)=ratstats.session(i)+.5;
     end
-    
-    scatter(ratstats.tot,ratstats.wins./ratstats.cans)
-    % USE ztestprop for the test of proportions
-    title(sprintf('cohort %d, rat %d p=%.2e', cohort,rat, ztestprop(ratstats.wins,1,ratstats.cans,2));
-    xlabel('tot transitions'); ylabel('% of arm trans to peer');
-    ylim([.4 1])
-    allstats{rat}=ratstats;
 end
+    
+scatter(ratstats.tot,ratstats.wins./ratstats.cans)
+
+
 %% howabout the efficiency of each session?
 % this is calculated over all samples
 
