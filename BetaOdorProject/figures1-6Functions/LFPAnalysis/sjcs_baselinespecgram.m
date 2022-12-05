@@ -79,7 +79,10 @@ directoryname = [topDir, prefix, 'Expt\', prefix, '_direct\'];
 % Get EEGs and spectrogram it
 % ------------------------------
 cd([directoryname,'\EEG\']);
-savedir = [directoryname,'\EEGSpec\'];
+savedir = [directoryname,'EEGSpec\'];
+if ~exist(savedir,'dir')
+    mkdir(savedir);
+end
 
 for d=1:length(days)
     

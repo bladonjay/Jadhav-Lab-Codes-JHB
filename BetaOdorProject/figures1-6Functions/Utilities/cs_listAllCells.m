@@ -1,6 +1,6 @@
 
 win = [0 1];
-animals = {'CS31','CS33','CS34','CS35'};
+animals = {'CS31','CS33','CS34','CS35','CS39','CS41','CS42','CS44'};
 regions = {'CA1','PFC'};
 
 [topDir] = cs_setPaths();

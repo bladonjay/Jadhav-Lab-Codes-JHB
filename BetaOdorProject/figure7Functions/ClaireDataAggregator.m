@@ -57,9 +57,9 @@ end
 
 %%
 
-allCA1=load(['E:\Brandeis datasets\Claire Data\AnalysesAcrossAnimals/allCells_CA1.mat']);
+allCA1=load(['E:\Brandeis datasets\OdorPlaceAssociation\AnalysesAcrossAnimals\allCells_CA1.mat']);
 allCA1=allCA1.allcells; allCA1(:,5)=1; % this is for region (#1)
-allPFC=load(['E:\Brandeis datasets\Claire Data\AnalysesAcrossAnimals/allCells_PFC.mat']);
+allPFC=load(['E:\Brandeis datasets\OdorPlaceAssociation\AnalysesAcrossAnimals\allCells_PFC.mat']);
 allPFC=allPFC.allcells; allPFC(:,5)=2; % this if for region #2
 
 sessnum=1;

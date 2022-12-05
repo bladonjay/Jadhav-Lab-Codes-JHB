@@ -125,9 +125,6 @@ cs_PDI
 cs_individualTrialPDI
 cs_PDIBehaviorCorrelation
 
-win = [.2 1];
-binsize = 0.1;
-
 cs_PCA(region, win, binsize, selectiveonly);
 cs_PCA_3d(region, win, binsize, selectiveonly);
 

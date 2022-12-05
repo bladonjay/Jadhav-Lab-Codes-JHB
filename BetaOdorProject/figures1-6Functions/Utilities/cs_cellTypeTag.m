@@ -4,9 +4,11 @@
 %or 'int' accordingly (cutoff is 8.5 Hz). For edge cases, 8 < FR < 9, uses
 %spikewidth, where cutoff is 0.35ms
 
-animals = {'CS31','CS33','CS34','CS35'};
+animals = {'CS31','CS33','CS34','CS35','CS39','CS41','CS42','CS44'};
 %topDir = 'D:\OdorPlaceAssociation\';
-topDir = 'F:\Data\OdorPlaceAssociation\';
+%topDir = 'F:\Data\OdorPlaceAssociation\';
+[topDir] = cs_setPaths();
+
 regions = {'CA1','PFC'};
 
 

@@ -2,7 +2,7 @@
 
 % first build your dataset;
 
-usesaved=1;
+usesaved=0;
 if usesaved==1
     try % home computer filepath
         load('E:\Brandeis datasets\Claire Data\ClaireData-2022-08-02.mat');

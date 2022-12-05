@@ -5,7 +5,7 @@
 %direction animal ended up going)
 
 [topDir,figDir] = cs_setPaths();
-animals = {'CS31','CS33','CS34','CS35','CS39','CS44'};
+animals = {'CS31','CS33','CS34','CS35','CS39','CS41','CS42','CS44'};
 timebins = 40;
 binomial_all = [];
 ci = 1; %Do correct/incorrect separately

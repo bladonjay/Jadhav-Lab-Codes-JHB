@@ -1,6 +1,6 @@
-function cs_plotRasterPSTH_v3(win, binsize)
-%win = [0.4 1.0];
-%binsize = 0.05;
+%cs_plotRasterPSTH_v3
+win = [0.4 1.0];
+binsize = 0.05;
 
 [topDir, figDir] = cs_setPaths;
 animals = {'CS31','CS33','CS34','CS35','CS39','CS41','CS42','CS44'};
@@ -8,6 +8,11 @@ bins = (-win(1):binsize:win(2));
 
 stdev = 3;
 g = gaussian(stdev,(3*stdev));
+
+% could run this as a loop, for now its a single rat and a single unit
+
+
+% rat 8, day 2, cell 59
 
 for a = 8%1:length(animals)
     animal = animals{a};
