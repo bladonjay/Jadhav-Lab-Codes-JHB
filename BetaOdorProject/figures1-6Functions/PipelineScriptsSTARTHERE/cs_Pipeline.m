@@ -20,9 +20,12 @@ phase locking tag
 %}
 %% must be in the directory that this script is in
 clear
+
+% first add the repositories above this directory EXCEPT FOR 'OLD'
+% will need to add 'general repo' as well...
 jhb_setBetaOderpaths
 
-% first get our path
+% now set our data path
 cs_setPaths
 
 
@@ -45,9 +48,12 @@ preprocess_CS44
 %
 %}
 %% --- Behavior --- %%
+animals = {'CS31','CS33','CS34','CS35','CS39','CS44'};
+
 cs_getNosepokeWindow(animals)
 
 cs_performanceScatter(animals);
+%% and get a turn direction
 
 cs_turnFromNPDirection
 %% --- Spectrograms --- %%

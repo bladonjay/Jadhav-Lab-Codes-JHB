@@ -11,6 +11,10 @@ for i=1:26 %nletters in alphabet
         topDir = sprintf('%s:\\Data\\OdorPlaceAssociation\\',char(driveLetter));
         figDir = sprintf('%s:\\Figures\\',char(driveLetter));
         return
+    elseif exist(sprintf('%s:\\Brandeis datasets\\OdorPlaceAssociation\\',char(driveLetter))) == 7
+        topDir = sprintf('%s:\\Brandeis datasets\\OdorPlaceAssociation\\',char(driveLetter));
+        figDir = sprintf('%s:\\Brandeis datasets\\OdorPlaceAssociation\\Figures\\',char(driveLetter));
+        return
     else
         driveLetter=driveLetter+1;
     end

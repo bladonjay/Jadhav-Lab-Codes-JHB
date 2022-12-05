@@ -11,7 +11,7 @@ regions = {'OB','CA1','PFC'};
 dataDir = [dataDir,'AnalysesAcrossAnimals\SpecgramData\'];
 
 
-savefile = 1;
+savefile = 0;
 
 %Triggers = 'odorTriggers';
 Triggers = 'odorOffset';

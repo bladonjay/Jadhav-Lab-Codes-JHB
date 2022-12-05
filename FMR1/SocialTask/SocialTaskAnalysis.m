@@ -1,4 +1,5 @@
- %% generating latin cubes for random animal pairings
+
+%% generating latin cubes for random animal pairings
 
 % this bit still needs work, I need to make a sequential algorithm that
 % checks the followings:
@@ -122,25 +123,25 @@ catch
                     fileList(i).ratnames={namestr(namestart+4), namestr(namestart+9)};
                     fileList(i).ratnums=[str2num(namestr(namestart+4)) str2num(namestr(namestart+9))];
                 elseif strcmpi(namestr(namestart+1:namestart+3),'XFZ')
-                    %6 and 8?
-                    fileList(i).cohortnum=4;
+                    %
+                    fileList(i).cohortnum=3;
                     fileList(i).cohortname='XFZ';
                     fileList(i).ratnames={namestr(namestart+6), namestr(namestart+8)};
                     fileList(i).ratnums=[str2num(namestr(namestart+6)) str2num(namestr(namestart+8))];
                 elseif strcmpi(namestr(namestart+1:namestart+3),'XFE')
-                    %6 and 8?
-                    fileList(i).cohortnum=5;
+                    %
+                    fileList(i).cohortnum=4;
                     fileList(i).cohortname='XFE';
                     fileList(i).ratnames={namestr(namestart+4), namestr(namestart+9)};
                     fileList(i).ratnums=[str2num(namestr(namestart+4)) str2num(namestr(namestart+9))];
                 elseif strcmpi(namestr(namestart+1:namestart+3),'XFG')
-                    %6 and 8?
-                    fileList(i).cohortnum=3;
+                    %
+                    fileList(i).cohortnum=5;
                     fileList(i).cohortname='XFG';
                     fileList(i).ratnames={namestr(namestart+4), namestr(namestart+9)};
                     fileList(i).ratnums=[str2num(namestr(namestart+4)) str2num(namestr(namestart+9))];
                 elseif strcmpi(namestr(namestart+1:namestart+3),'XFK')
-                    %6 and 8?
+                    %
                     fileList(i).cohortnum=6;
                     fileList(i).cohortname='XFK';
                     fileList(i).ratnames={namestr(namestart+4), namestr(namestart+9)};
@@ -193,7 +194,7 @@ if ~isfield(ratinfo,'ratsamples')
     ratinfo=ratinfo(cellfun(@(a) ~contains(lower(a),'z'),{ratinfo.name}));
     ratinfo=ratinfo(cellfun(@(a) a>0, {ratinfo.bytes}));
     %
-    for i=680:length(ratinfo)
+    for i=1:length(ratinfo)
         fprintf(' \n \n');
         fprintf('Running cohort %d sess %d  with %s%d and %s%d \n',ratinfo(i).cohortnum,i,...
             ratinfo(i).cohortname, ratinfo(i).ratnums(1), ratinfo(i).cohortname, ratinfo(i).ratnums(2));
@@ -289,6 +290,24 @@ end
 % ANALYSIS
 %
 %
+
+%%
+% for each session and rat... build up some info
+for i=1:length(ratinfo)
+    % what we want is to first distil this into transitions
+    % should we only try cadidates which the former rat was actually
+    % recently at a well?
+    for j=1:2
+        transitions=ratinfo(i).ratsamples{j}(ratinfo(i).ratsamples{j}.thiswell~=ratinfo(i).ratsamples{j}.lastwell,:);
+        transitions.match=transitions.thiswell==transitions.hiswell;
+        ratinfo(i).transitions(j)=height(transitions);
+        ratinfo(i).firsttoleave(j)=sum(transitions.lastwell==transitions.hiswell);
+        ratinfo(i).candidates(j)=sum(transitions.lastwell~=transitions.hiswell & transitions.hiswelltime>-5);
+        ratinfo(i).matches(j)=sum(transitions.thiswell==transitions.hiswell & transitions.hiswelltime>-5);
+    end
+    ratinfo(i).runnum=str2double(ratinfo(i).runnum);
+end
+
 %%
 % how many arm transitions do the rats make each session... are they
 % motivated to move?
@@ -313,7 +332,7 @@ for i=1:length(cohortNums)
         % divide each ntrans by the sess duration
     for j=1:length(uniqueDays)
         transmat(j,:)=accumarray(linearize(dayTable{dayTable.date==uniqueDays(j),[2 3]}),...
-            linearize(dayTable{dayTable.date==uniqueDays(i),[4 5]}./(dayTable.duration(dayTable.date==uniqueDays(j))/60)),[4 1],@mean);
+            linearize(dayTable{dayTable.date==uniqueDays(j),[4 5]}./(dayTable.duration(dayTable.date==uniqueDays(j))/60)),[4 1],@mean);
     end
     end
     % plot over time, maybe by getting the datenums and subtracting the
@@ -322,40 +341,8 @@ for i=1:length(cohortNums)
     xlabel('days from start'); ylabel('transitions per minute');
     title(sprintf('Cohort %d, tot days %d', cohortNums(i), length(uniqueDays)));
 end
-%%
 
-% what percentage of arm transitions are
-% motivated to move?
-cohortNums=unique([ratinfo.cohortnum]);
-for i=1:length(cohortNums)
-    % gather all the sessions for that cohort
-    cohortSess=ratinfo([ratinfo.cohortnum]==cohortNums(i));
-    
-    uniqueDays=unique([cohortSess.datenum]);
-    %  sort by date and run
-    dayTable=array2table([[cohortSess.datenum]',cell2mat({cohortSess.ratnums}'),...
-        cell2mat({cohortSess.transitions}'),[cohortSess.duration]'],...
-        'VariableNames',{'date','rat1','rat2','transitions1','transitions2','duration'});
-    
-    % for each date get all rats and transition rates
-    [uniqueDays,~,nruns]=unique(dayTable.date);
-    uniqueDays=uniqueDays(accumarray(nruns,1,[])>4);
-    transmat=nan(length(uniqueDays),4);
-    % accumarray for each rat the mean trans rates into a n day by m rat
-    % matrix
-    try
-        % divide each ntrans by the sess duration
-    for j=1:length(uniqueDays)
-        transmat(j,:)=accumarray(linearize(dayTable{dayTable.date==uniqueDays(j),[2 3]}),...
-            linearize(dayTable{dayTable.date==uniqueDays(i),[4 5]}./(dayTable.duration(dayTable.date==uniqueDays(j))/60)),[4 1],@mean);
-    end
-    end
-    % plot over time, maybe by getting the datenums and subtracting the
-    % first day
-    figure; plot(uniqueDays-uniqueDays(1),transmat,'.-');
-    xlabel('days from start'); ylabel('transitions per minute');
-    title(sprintf('Cohort %d, tot days %d', cohortNums(i), length(uniqueDays)));
-end
+
 %% okay lets really analyze some of these questions
 %{
 first, i want to see whether the animals actually tend to go to an
@@ -375,22 +362,7 @@ goes in the first column, and its buddy in the peer column
 then for each of his transitions, we can fin
 %}
 
-%%
-% for each session and rat... build up some info
-for i=1:length(ratinfo)
-    % what we want is to first distil this into transitions
-    % should we only try cadidates which the former rat was actually
-    % recently at a well?
-    for j=1:2
-        transitions=ratinfo(i).ratsamples{j}(ratinfo(i).ratsamples{j}.thiswell~=ratinfo(i).ratsamples{j}.lastwell,:);
-        transitions.match=transitions.thiswell==transitions.hiswell;
-        ratinfo(i).transitions(j)=height(transitions);
-        ratinfo(i).firsttoleave(j)=sum(transitions.lastwell==transitions.hiswell);
-        ratinfo(i).candidates(j)=sum(transitions.lastwell~=transitions.hiswell & transitions.hiswelltime>-5);
-        ratinfo(i).matches(j)=sum(transitions.thiswell==transitions.hiswell & transitions.hiswelltime>-5);
-    end
-    ratinfo(i).runnum=str2double(ratinfo(i).runnum);
-end
+
 %% this uses the above table
 % we can plot this out for a few rats here
 % lets just scatter some stats for a given rat by session
@@ -423,12 +395,42 @@ for rat=1:4
     
     scatter(ratstats.tot,ratstats.wins./ratstats.cans)
     % USE ztestprop for the test of proportions
-    title(sprintf('cohort %d, rat %d p=%.2e', cohort,rat, ztestprop(ratstats.wins,1,ratstats.cans,2));
+    %title(sprintf('cohort %d, rat %d p=%.2e', cohort, rat, ztestprop(ratstats.wins,1,ratstats.cans,2)));
     xlabel('tot transitions'); ylabel('% of arm trans to peer');
     ylim([.4 1])
     allstats{rat}=ratstats;
 end
-%% howabout the efficiency of each session?
+%% howabout efficiency of each session for each of the six pairs...
+
+
+cohortNums=unique([ratinfo.cohortnum]);
+allpairs=nchoosek(1:4,2); 
+
+for i=1:length(cohortNums)
+    cohortSess=ratinfo([ratinfo.cohortnum]==cohortNums(i));
+    uniqueDays=unique([cohortSess.datenum]);
+
+    pairtries=cell(1,6); pairwins=cell(1,6);
+    
+    for j=1:length(cohortSess)
+        pairInd= [find(sum(cohortSess(j).ratnums==allpairs,2)==2); ...
+            find(sum(cohortSess(j).ratnums==fliplr(allpairs),2)==2)];
+        pairtries{pairInd}=[pairtries{pairInd}; mean(cohortSess(j).candidates)];
+        pairwins{pairInd}=[pairwins{pairInd}; sum(cohortSess(j).matches)/sum(cohortSess(j).candidates)];
+    end
+    figure;
+    for k=1:6
+        subplot(2,1,1);
+        plot(pairtries{k}); hold on;
+        xlabel('day'); ylabel('number of attempts');
+        subplot(2,1,2);
+        plot(pairwins{k}), hold on;
+        xlabel('day'); ylabel('number of wins');
+    end
+    linkaxes(get(gcf,'Children'),'x');
+end
+
+%% howabout the efficiency of each session after knowing the genotypes
 % this is calculated over all samples
 
 
