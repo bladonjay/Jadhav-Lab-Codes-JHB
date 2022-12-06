@@ -1,25 +1,23 @@
-%% CHECK ALL PARAMS EACH TIME SCRIPT IS RUN. 
+%% CHECK ALL PARAMS EACH TIME SCRIPT IS RUN.
 %% ----- Params -----%
 animals = {'CS31','CS33','CS34','CS35','CS39','CS41','CS42','CS44'};  %CHANGE _direct PATH IN 'animaldef.m' FOR DIFFERENT COMPUTERS
-%animals = {'CS41','CS42'};
-%animals = {'CS39','CS41','CS42'};
+
 
 regions = {'OB','CA1','PFC'};
-%regions = {'CA1'};
-%regions = {'riptet'};
-[dataDir, figDir] = cs_setPaths(); 
+
+[dataDir, figDir] = cs_setPaths();
 dataDir = [dataDir,'AnalysesAcrossAnimals\SpecgramData\'];
 
 
-savefile = 0;
+savefile = 1;
 
 %Triggers = 'odorTriggers';
 Triggers = 'odorOffset';
-%Triggers = 'laserTriggers';
+
 %Triggers = 'stemTimes';
 %Triggers = 'rewardTimes';
 %Triggers = 'nperrors';
- 
+
 switch Triggers
     case 'odorTriggers'
         trigstr = '';
@@ -54,7 +52,7 @@ end
 trigtypes = {'allTriggers'};
 
 tapers = [1 1];
-reforgnd = 'gnd'; 
+reforgnd = 'gnd';
 if strcmp(reforgnd,'gnd')
     do_wrtgnd = 1;
     refstr = 'ref_';
@@ -69,9 +67,9 @@ freqband = 'low'; fpass = [0 40]; movingwin = [1000 20]/1000;  %low = 0-40 Hz
 %freqband = 'floor'; fpass = [0 15]; movingwin = [2000 25]/1000; tapers = [1 1];%floor = 0-15 Hz
 win = [1.5 0.5];
 
-createbaselinespecs = 1; 
+createbaselinespecs = 1;
 if createbaselinespecs == 1
-    cs_createBaselineSpecs(animals, regions, do_wrtgnd, fpass, movingwin, tapers, envfilt) 
+    cs_createBaselineSpecs(animals, regions, do_wrtgnd, fpass, movingwin, tapers, envfilt)
 end
 
 eegspecfile = ['eeg',reforgnd,'spec',freqband]; %(eg eegrefspeclow, eeggndspecmid, etc)
@@ -90,51 +88,51 @@ varargstr = {'trigtypes',trigtypes, 'gnd', 1, 'win', win, 'tapers',tapers, 'movi
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 for r = 1:length(regions)
     region = regions{r};
-disp(['Doing ',region])
-%----- Select Data -----%
-
-%runepochfilter = 'isequal($environment, ''laseroff'')';
-
-switch region
-    case 'PFC'
-        tetfilter = '(isequal($area, ''PFC''))';
-    case 'CA1'
-        tetfilter = '(isequal($area, ''CA1''))';
-    case 'OB'
-        tetfilter = '(isequal($area, ''OB''))';
-    case 'V1'
-        tetfilter = '(isequal($area, ''V1''))';
-    case 'TC'
-        tetfilter = '(isequal($area, ''TC''))';
-    case 'riptet'
-        tetfilter = '(strcmp($descrip, ''riptet''))';
-        
-end
-
-%----- Iterator -----%
-   
-iterator = 'cs_eeganal'; 
+    disp(['Doing ',region])
+    %----- Select Data -----%
     
-%----- Filter creation -----%
+    %runepochfilter = 'isequal($environment, ''laseroff'')';
     
-psf = createfilter('animal',animals,'epochs',runepochfilter,'eegtetrodes', tetfilter, 'iterator', iterator);
-
-% psf.epochs{1, 1}= [3,2; 3,5];  
+    switch region
+        case 'PFC'
+            tetfilter = '(isequal($area, ''PFC''))';
+        case 'CA1'
+            tetfilter = '(isequal($area, ''CA1''))';
+        case 'OB'
+            tetfilter = '(isequal($area, ''OB''))';
+        case 'V1'
+            tetfilter = '(isequal($area, ''V1''))';
+        case 'TC'
+            tetfilter = '(isequal($area, ''TC''))';
+        case 'riptet'
+            tetfilter = '(strcmp($descrip, ''riptet''))';
+            
+    end
     
-%----- Set analysis function -----%
+    %----- Iterator -----%
     
-out = setfilterfunction(psf, 'DFAcs_eventTrigSpecgram',{'eeg', eegspecfile, Triggers},varargstr);
+    iterator = 'cs_eeganal';
     
-%----- Run analysis -----%
-out_all = runfilter(out);
-
+    %----- Filter creation -----%
     
-
-disp(['Done with ',region]);
-
-
-
-for t = 1:length(trigtypes)
+    psf = createfilter('animal',animals,'epochs',runepochfilter,'eegtetrodes', tetfilter, 'iterator', iterator);
+    
+    % psf.epochs{1, 1}= [3,2; 3,5];
+    
+    %----- Set analysis function -----%
+    
+    out = setfilterfunction(psf, 'DFAcs_eventTrigSpecgram',{'eeg', eegspecfile, Triggers},varargstr);
+    
+    %----- Run analysis -----%
+    out_all = runfilter(out);
+    
+    
+    
+    disp(['Done with ',region]);
+    
+    
+    
+    for t = 1:length(trigtypes)
         trigtype = trigtypes{t};
         
         newdata = [];
@@ -149,34 +147,34 @@ for t = 1:length(trigtypes)
         
         MeanSpec = mean(newdata,3);
         eventTrigSpecgramData.(trigtype)= MeanSpec;
-end
-
-eventTrigSpecgramData.ReforGnd = reforgnd;
-eventTrigSpecgramData.freqband = freqband;
-eventTrigSpecgramData.trigtypes = trigtypes;
-eventTrigSpecgramData.region = region;
-eventTrigSpecgramData.win = win;
-eventTrigSpecgramData.tapers = tapers;
-eventTrigSpecgramData.movingwin = movingwin;
-
-if savefile == 1
-filename = [filenametitle, region, filenameparams];
+    end
     
-save([dataDir,filename],'eventTrigSpecgramData');
-end
-
-[maxval, minval] = cs_plotSpecgram([dataDir,filename],'freqband',freqband);
-maxvals(r) = maxval;
-minvals(r) = minval;
-
+    eventTrigSpecgramData.ReforGnd = reforgnd;
+    eventTrigSpecgramData.freqband = freqband;
+    eventTrigSpecgramData.trigtypes = trigtypes;
+    eventTrigSpecgramData.region = region;
+    eventTrigSpecgramData.win = win;
+    eventTrigSpecgramData.tapers = tapers;
+    eventTrigSpecgramData.movingwin = movingwin;
+    
+    if savefile == 1
+        filename = [filenametitle, region, filenameparams];
+        
+        save([dataDir,filename],'eventTrigSpecgramData');
+    end
+    
+    [maxval, minval] = cs_plotSpecgram([dataDir,filename],'freqband',freqband);
+    maxvals(r) = maxval;
+    minvals(r) = minval;
+    
 end
 
 % limits(1) = min(minvals);
 % limits(2) = max(maxvals);
-% 
-% 
+%
+%
 % for r = 1:length(regions)
 %     figure(r)
-%     caxis(limits) 
+%     caxis(limits)
 % end
 

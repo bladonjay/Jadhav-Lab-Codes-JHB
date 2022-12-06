@@ -47,6 +47,16 @@ preprocess_CS44
 
 %
 %}
+
+% the above requires the following files:
+% A directory with the 'topdir' then animalExpt, then animal_direct
+% example:
+% E:\BetaOdorProject\CS31Expt\CS31_direct
+% with files:
+% 
+
+% the above generates the following files:
+
 %% --- Behavior --- %%
 animals = {'CS31','CS33','CS34','CS35','CS39','CS41','CS42','CS44'};
 
@@ -57,6 +67,10 @@ edit cs_performanceScatter;
 
 edit cs_turnFromNPDirection
 %% --- Spectrograms --- %%
+
+% this function is not working, some source code is outdated specifically
+% wrt filterframework files, I ended at animaldef in the src folder, which
+% has shantanus old code in it, not claires new animal defs'
 edit DFScs_eventTrigSpecgram
 % notes on this function:
 % core function is mtspecgramc with inputs:
