@@ -47,7 +47,12 @@ end
 
 
 
+%% moving files from one folder to another for hosting on figshare
 
+
+% move each rat folder from hugedata to bigdata and omit lfp data
+
+sourceDir='E:\Brandeis datasets\OdorPlaceAssociation';
 
 
 

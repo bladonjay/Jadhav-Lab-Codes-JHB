@@ -24,7 +24,7 @@ refDataTemplate = [0 1 1 1 0 0 10 10 10 0 10 10 10 10 10 10 1 1 1 1 10 10 10 0 1
  % experiment metadata
  cd(topRawDir);
  rawDir=dir();
-    rawDir= {rawDir(3:end).name};
+ rawDir= {rawDir(3:end).name};
  numDays= length(rawDir);
  % The above code assumes raw directory contains one folder for each day of experiment ONLY
 
@@ -36,7 +36,7 @@ refDataTemplate = [0 1 1 1 0 0 10 10 10 0 10 10 10 10 10 10 1 1 1 1 10 10 10 0 1
      mcz_createNQPosFiles_new([topRawDir rawDir{sessionNum}], dataDir, animID, sessionNum, [])
 % 
 %      mcz_createNQLFPFiles(    [topRawDir rawDir{sessionNum}], dataDir, animID, sessionNum)
-%      mcz_createNQSpikesFiles([topRawDir rawDir{sessionNum}], dataDir, animID, sessionNum)
+      mcz_createNQSpikesFiles([topRawDir rawDir{sessionNum}], dataDir, animID, sessionNum)
 %      mcz_createNQDIOFilesFromStateScriptLogs([topRawDir rawDir{sessionNum}], dataDir, animID, sessionNum)
      
  end
