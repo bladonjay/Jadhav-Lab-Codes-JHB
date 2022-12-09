@@ -11,6 +11,7 @@ binsize = 0.05;
 animals = {'CS31','CS33','CS34','CS35','CS39','CS41','CS42','CS44'};
 regions = {'CA1','PFC'};
 winsize = win(2) + win(1);
+regcolors=[rgbcolormap('LightCoral'); rgbcolormap('DarkAquamarine'); rgbcolormap('DarkOrange')];
 
 %load([figDir, 'cmap_selectivity.mat']);
 
@@ -215,7 +216,7 @@ region = regions{r};
     colorbar
     colorbar('YTick', [-1 0 1]);
     caxis([-1 1])
-    %[cmap]=buildcmap('rkg'); 
+    %[cmap]=buildcmap('rwb'); 
     %colormap(cmap) %will use the output colormap
     colormap(cmap)
     title([region, ' Incorrect Trials']);
@@ -229,15 +230,32 @@ region = regions{r};
       % print('-djpeg',figfile);
 
        
-    %% Calculate correlation 
-    figure, 
+    %% Calculate correlation
+    figure,
+    %scatter(corr,incorr,16,regcolors(r,:),'filled');hold on;
+    mdl=fitlm(corr,incorr);
+    plot(mdl);
+    kids=get(gca,'Children');
+    set(kids(4),'Marker','.','MarkerSize',16,'Color',regcolors(r,:)); 
+    kids=get(gca,'Children'); %legend(kids([1 3 4]))
+    %title(sprintf('Slope %.2f \n P %.2e',r2,mdl.Coefficients.pValue(2)));
+    for cl=1:3, set(kids(cl),'color','k'); end
+    
+    title(sprintf('pyrams in %s', regions{r}));
+    
+    
+    
+    % this is old code
+    %{
     plot(corr,incorr,'k.','MarkerSize',20)
     hold on
     fit = polyfit(corr, incorr,1);
     plot([-1 1], polyval(fit,[-1, 1]))
+    %}
     xlabel('Correct Trial Selectiviy Index');
     ylabel('Incorrect Trial Selectivity Index');
     axis([-1 1 -1 1]);
+
     
 
     [CC,p] = corrcoef(corr, incorr);

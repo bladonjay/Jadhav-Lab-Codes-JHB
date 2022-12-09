@@ -21,24 +21,26 @@ end
 %% the other option is an anova with continuous variables
 
 % the crucial questions are as follows:
-% 1. do they all do better than chance?
+% 1. what are the important durations and are they consistent?
+%   study time, delay time, sample time, choice likelihood (first choice)
+% 2. do they all do better than chance?
     % binomial test
-% 2. does anyone do worse or better than peers?
+% 3. does anyone do worse or better than peers?
     % friedman test one way
-% 3. do any durations differ across animals
+% 4. do any durations differ across animals
     % could cat all trials and run by animal, but probably session means
     % could help- this will show that one rat had single camera and
     % durations are different
-% 4. do they affect correctness?
+% 5. do they affect correctness?
     % probably where the GLM would be helpful, by doing a leave one out-
     % this is because durations will be correlated
-% 5. what biases do the rats have
-% 5a. side biases
+% 6. what biases do the rats have
+% 6a. side biases
     % what %% of sessions does the rat prefer one side? basically all
-% 5b. first sample bias
+% 6b. first sample bias
     % what %% of first samples are 'digs'
     % what %% of errors are first sample digs?
-% 5c. streakyness
+% 6c. streakyness
     % error % after error? and error %% after two errors
     % could get clever and run by errors in last 5 trials, 1 to 5 and plot
     % aggregate performance (it will drop)
@@ -50,7 +52,7 @@ end
 % comparison errors and are not forgetting...
 
 
-%% 1. do they all do better than chance?
+%% 2. do they all do better than chance?
 % &2. does anybody do worse than their peers? yes
 
 % how did all the rats do?
@@ -97,6 +99,7 @@ for i=1:length(SuperRat)
             rawMat(:,4)-rawMat(:,3), rawMat(:,[5 6])];  
         % tab this for all sessions
         % and run anova for rat
+end
 %% 3b/c
 
 % i think because these are covariates, lets run it for each rat and run it
@@ -106,7 +109,7 @@ for i=1:length(SuperRat)
 
 % we'll test three durations: study duration, overall delay, and test
 % duration, then we'll also add in categorical dig on first
-%% 3b do the durations affect vehavior by rat
+%% 3b do the durations affect behavior by rat
 eachrat=cellfun(@(a) a.ratNumber, {SuperRat.Sessinfo}); % get tab of all rats
 for i=1:max(eachrat)
     % build a supermatrix of a given rat

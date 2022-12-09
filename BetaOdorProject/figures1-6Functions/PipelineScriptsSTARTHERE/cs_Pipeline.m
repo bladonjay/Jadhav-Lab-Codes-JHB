@@ -120,7 +120,7 @@ but for listselectivecells, that list has overlap with npcells has 44 and
 %}
 
 %% --- Odor Selectivity --- %% 
-% this gathers all the selective cells
+% this calculates all the selective cells
 edit cs_cellSelectivityTag; % tags selective cells, contains listSelectiveCells
 edit cs_intSelectivityTag; % tags selective ints, contains listSelectiveInt
 % this plots all of them
@@ -162,21 +162,20 @@ end
 % this gets the beta and rr filtered LFPs, unnecessary to run though
 % edit jhb_calcBetaRRallTets 
 
+% calculates phase locking for each cell
 edit cs_phaseLocking % uses current np cells
 edit cs_phaseLocking_IN % uses np cells old
 
+% used for later, builds reference lists
 edit cs_listPhaseLockedCells % generates a list in acrossanimals analyiss
 edit cs_listPhaseLockedINs.m% same as above
 
-%edit cs_listPhaseLockedAllCells %
-
 
 %%
-% then all cells
+% then all cells, this generates a struct containing lists of cells for selectivity,
+% responsiveness and coherence 
 edit cs_cellPopulations
 %%
-
-%cs_phaseLocking_v3
 
 % she went down the 'find high beta' rabbit hole, dont use
 %edit cs_getHighBetaTimes % also unnecessary, we will not be using high beta as a filter

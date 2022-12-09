@@ -17,13 +17,13 @@ for r = 1:length(regions)
     
     %start with all cells, at least 100 spikes
     load([topDir,'AnalysesAcrossAnimals\allCells_',region]);
-    cellpops.allCells = allcells;
+    cellpops.allCells = cells;
     
     % run vs sleep: at least 1 spike in run
     load([topDir,'AnalysesAcrossAnimals\runCells_',region]);
     cellpops.runCells = runcells;
     
-    sleepCells = allcells(~ismember(allcells,runcells,'rows'),:);
+    sleepCells = cells(~ismember(cells,runcells,'rows'),:);
     cellpops.sleepCells = sleepCells;
     
     %test = npCells(~ismember(npCells,test,'rows'),:);

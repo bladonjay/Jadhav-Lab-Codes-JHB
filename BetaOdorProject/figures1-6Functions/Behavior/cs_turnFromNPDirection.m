@@ -36,12 +36,9 @@ for a = 1:length(animals)
 %         load([animDir, animal, 'pos',daystr,'.mat']);
 %         load([animDir, animal, 'odorTriggers',daystr,'.mat'])
 %         load([animDir, animal, 'task',daystr,'.mat']);
-        if strcmpi(animal,'CS41') && day<3
-            epochs = 1; % claire collapsed epochs for this animal only
-            %dio{1,day}{1}=dio{1,day}; % have to add back in a cell for epoch
-        else
-            epochs = dayeps(dayeps(:,1) == day,2);
-        end
+
+        epochs = dayeps(dayeps(:,1) == day,2);
+
 
         for epoch = epochs'
            

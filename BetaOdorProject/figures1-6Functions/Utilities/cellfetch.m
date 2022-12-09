@@ -16,7 +16,7 @@ indexcount = 0;
 if (nargin < 3)
     branchindex = [];
 end
-
+% this will just iterate through and find all the cells
 if iscell(cellinput)
     for i = 1:length(cellinput)
         if isstruct(cellinput{i})

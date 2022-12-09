@@ -43,13 +43,15 @@ for a = 1:length(animals)
             daystring = num2str(day);
         end
         
-        
-        load([animal,'DIO', daystring, '.mat']);
-        if strcmpi(animal,'CS41') && day<3       
-            dio{1,day}{2}=dio{1,day}{1}; % have to add back in a cell for epoch
-        end
         runEps = epochs(epochs(:,1) == day, 2);
         numEpochs = length(runEps);
+        
+        load([animal,'DIO', daystring, '.mat']);
+        % if the dio was accidentally saved as a 1 epoch matrix
+        if length(dio{day})==1 && numEpochs==1 && runEps(1)>1     
+            dio{1,day}{runEps(1)}=dio{1,day}{1}; % have to put the data in the correct epoch
+        end
+        
         
         for e = 1:length(runEps)
             ep = runEps(e); % right now there is only one epoch

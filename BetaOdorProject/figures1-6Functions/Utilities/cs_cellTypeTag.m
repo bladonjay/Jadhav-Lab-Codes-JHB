@@ -73,20 +73,20 @@ for r = 1:length(regions)
                             % in a consistent place, there are three ways
                             % to get it:
                             spikewidth=nan;
-                            try
+                            if isfield(spikes{daycells(c,1)}{epoch}{daycells(c,2)}{daycells(c,3)},'spikewidth')
+                               spikewidth = spikes{daycells(c,1)}{epoch}{daycells(c,2)}{daycells(c,3)}.spikewidth;
+                            end
+                            if isnan(spikewidth) && isfield(cellinfo{daycells(c,1)}{epoch}{daycells(c,2)}{daycells(c,3)},'spikewidth')
+                               spikewidth = cellinfo{daycells(c,1)}{epoch}{daycells(c,2)}{daycells(c,3)}.spikewidth;
+                            end
+                            if isnan(spikewidth)
+                                try
                                 % this requires raw data...
                                 spikewidth = lhcs_getSpikeWidth(topDir, animal, day, daycells(c,2), daycells(c,3));
-                            catch
-                                % this should be in
-                                try
-                                    spikewidth = cellinfo{daycells(c,1)}{epoch}{daycells(c,2)}{daycells(c,3)}.spikewidth;
-                                    if isnan(spikewidth)
-                                        spikewidth = spikes{daycells(c,1)}{epoch}{daycells(c,2)}{daycells(c,3)}.spikewidth;
-                                    end
                                 end
                             end
 
-                            if spikewidth > 0.35
+                            if spikewidth > 0.35 % if its a wide width its a pyram, if not or unknown, int
                                 cellinfo{daycells(c,1)}{epoch}{daycells(c,2)}{daycells(c,3)}.type = 'pyr';
                             else
                                 cellinfo{daycells(c,1)}{epoch}{daycells(c,2)}{daycells(c,3)}.type = 'int'; 

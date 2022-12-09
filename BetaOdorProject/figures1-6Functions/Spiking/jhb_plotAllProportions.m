@@ -18,7 +18,7 @@ if ~exist('cellpops_CA1','var')
     
     topDir = cs_setPaths();
     regions = {'CA1','PFC'};
-
+    
     
     for r=1:length(regions)
         load([topDir,'AnalysesAcrossAnimals\cellPopulations_',regions{r}],'cellpops');
@@ -180,7 +180,7 @@ for cr=1:length(cellregions)
         
         % now ints
         eval(['npInt=cellpops_' cellregions{cr} '.npInt;']);
-       for a = 1:length(animals)
+        for a = 1:length(animals)
             animal = animals{a};
             animDir = [topDir, animal, 'Expt\',animal,'_direct\'];
             
@@ -231,7 +231,7 @@ ylabel(sprintf('Proportion of \n Task Responsive Cells'));
 set(gca,'XTick',1:4,'XTickLabel',{'Pyr','Int'},'YTick',0:.1:1);
 hold on; plot([0.5 4.5],[.05 .05],'k--'); xlim([.5 4.5]);
 
-xlabel('CA1              PFC'); 
+xlabel('CA1              PFC');
 legend(hb,eegregions); legend('boxoff')
 for barc=1:3
     set(hb(barc),'FaceColor',cellcolors(barc,:));
@@ -246,7 +246,7 @@ propTable=array2table([npCts(:,1) barProps],'VariableNames',{'taskResponsive',['
     'RowNames',{'CA1Pyr','CA1Int','PFCPyr','PFCInt'});
 openvar('propTable');
 %% now overlap between beta and rr locking (any) for pyramidal cells
-       
+
 bandcolors=[rgbcolormap('MidNightBlue'); rgbcolormap('Magenta')];
 bandcolors=[43 51 123; 205 42 105; 110 111 114]/256;
 bands={'beta','resp'};
@@ -283,8 +283,8 @@ for k=1:8
     hb(k)=bar(barX(k), barProps(k),.18,'FaceColor','flat','LineStyle','none');
     hold on;
 end
-hb(1).CData=bandcolors(1,:); hb(5).CData=bandcolors(1,:); 
-hb(2).CData=bandcolors(2,:); hb(6).CData=bandcolors(2,:); 
+hb(1).CData=bandcolors(1,:); hb(5).CData=bandcolors(1,:);
+hb(2).CData=bandcolors(2,:); hb(6).CData=bandcolors(2,:);
 hb(4).CData=bandcolors(3,:); hb(8).CData=bandcolors(3,:);
 
 hold on;
@@ -303,7 +303,7 @@ openvar('pyrTable');
 % and resp, statistics:
 prob=binocdf(20,185,7/185,'upper');
 fprintf('\n PFC Pyr overlap =%d//%d %.2f%%, null= %.2f%% Binomtest, p(%d)=%.2e\n', pyrTable{2,4},...
-    pyrTable{2,1},barProps(7), barProps(8), pyrTable{2,1}, prob); 
+    pyrTable{2,1},barProps(7), barProps(8), pyrTable{2,1}, prob);
 
 
 %
@@ -339,8 +339,8 @@ for k=1:8
     hb(k)=bar(barX(k), barProps(k),.18,'FaceColor','flat','LineStyle','none');
     hold on;
 end
-hb(1).CData=bandcolors(1,:); hb(5).CData=bandcolors(1,:); 
-hb(2).CData=bandcolors(2,:); hb(6).CData=bandcolors(2,:); 
+hb(1).CData=bandcolors(1,:); hb(5).CData=bandcolors(1,:);
+hb(2).CData=bandcolors(2,:); hb(6).CData=bandcolors(2,:);
 hb(4).CData=bandcolors(3,:); hb(8).CData=bandcolors(3,:);
 
 hold on;
@@ -362,101 +362,101 @@ bands={'beta','resp'};
 band=1; % do this separately because variables are overwritten for now
 %for band=1:length(bands)
 
-    figure; subplot(1,2,1);    
-    % pyrams first
-    barProps=nan(8,1); % rows are ca1pyr ca1 in pfc pyr.... cols are ca1 pfc ob
-    barCts=nan(8,1);
-    npCts=nan(2,1);
-    CI=[];
-    % so the bar is ca1: 1sel 2coh 3both 4chance
-    for cr=1:length(cellregions)
-        eval(['npCells=cellpops_' cellregions{cr} '.npPyrams;']);
-        npCts(cr)=size(npCells,1);
-        cohBoth={};
-        
-        eval(['selCells=npCells(ismember(npCells,cellpops_' cellregions{cr} '.selectiveCells,''rows''),:);']);
-        barCts(1+(cr-1)*4)=size(selCells,1);
-        
-        eval(['cohCells=npCells(ismember(npCells,cellpops_' cellregions{cr} '.' bands{band},...
-            'PhaseLockedAny,''rows''),:);']);
-        barCts(2+(cr-1)*4)=size(cohCells,1);
-        cohBoth={selCells,cohCells};
-        
-        dualCoh=intersect(cohBoth{1},cohBoth{2},'rows');
-        barCts((cr-1)*4+3)=size(dualCoh,1);
-        
-        % rounded product of %beta and %resp ratios times total N
-        nullProb=round(prod(barCts([1:2]+(cr-1)*4)/npCts(cr))*npCts(cr));
-        barCts(cr*4)=nullProb;
-        [~,CI(cr,:)]=binofit(nullProb,npCts(cr),.05);
-    end
-    barProps=barCts(1:4)/npCts(1); barProps(5:8)=barCts(5:8)/npCts(2);
-    barX=[.9 1.1 1.4 1.6 2.4 2.6 2.9 3.1];
-    for k=1:8
-        hb(k)=bar(barX(k), barProps(k),.18,'FaceColor','flat','LineStyle','none');
-        hold on;
-    end
-    hb(1).CData=cellcolors(1,:); hb(2).CData=cellcolors(1,:);
-    hb(5).CData=cellcolors(2,:); hb(6).CData=cellcolors(2,:);
-    hb(4).CData=cellcolors(3,:); hb(8).CData=cellcolors(3,:);
+figure; subplot(1,2,1);
+% pyrams first
+barProps=nan(8,1); % rows are ca1pyr ca1 in pfc pyr.... cols are ca1 pfc ob
+barCts=nan(8,1);
+npCts=nan(2,1);
+CI=[];
+% so the bar is ca1: 1sel 2coh 3both 4chance
+for cr=1:length(cellregions)
+    eval(['npCells=cellpops_' cellregions{cr} '.npPyrams;']);
+    npCts(cr)=size(npCells,1);
+    cohBoth={};
     
+    eval(['selCells=npCells(ismember(npCells,cellpops_' cellregions{cr} '.selectiveCells,''rows''),:);']);
+    barCts(1+(cr-1)*4)=size(selCells,1);
+    
+    eval(['cohCells=npCells(ismember(npCells,cellpops_' cellregions{cr} '.' bands{band},...
+        'PhaseLockedAny,''rows''),:);']);
+    barCts(2+(cr-1)*4)=size(cohCells,1);
+    cohBoth={selCells,cohCells};
+    
+    dualCoh=intersect(cohBoth{1},cohBoth{2},'rows');
+    barCts((cr-1)*4+3)=size(dualCoh,1);
+    
+    % rounded product of %beta and %resp ratios times total N
+    nullProb=round(prod(barCts([1:2]+(cr-1)*4)/npCts(cr))*npCts(cr));
+    barCts(cr*4)=nullProb;
+    [~,CI(cr,:)]=binofit(nullProb,npCts(cr),.05);
+end
+barProps=barCts(1:4)/npCts(1); barProps(5:8)=barCts(5:8)/npCts(2);
+barX=[.9 1.1 1.4 1.6 2.4 2.6 2.9 3.1];
+for k=1:8
+    hb(k)=bar(barX(k), barProps(k),.18,'FaceColor','flat','LineStyle','none');
     hold on;
-    set(gca,'XTick',[]), xlabel('CA1                     PFC');
-    % CI is just the absolute uppers and lowers so i have to convert here
-    CI=abs(CI-barProps([4 8]));
-    errorbar([1.6 3.1], barProps([4 8]), CI(:,1),CI(:,2),'k.','CapSize',0,'LineWidth',2);
-    title(sprintf('%s and odorSelective overlap Pyr',bands{band})); axis([.6 3.4 0 .95]);
-    ylabel(sprintf('Proportion of Task-\nResponsive Pyramidal Cells'));
-    pyrTable=array2table([npCts [barCts(1:4)'; barCts(5:8)']],'VariableNames',...
-        {'NPcells','odorSel',[bands{band} 'Coh'],'Both','Null'},'RowNames',{'CA1','PFC'});
-    openvar('pyrTable');
-    %
-    % now interneurons
-    %
-    subplot(1,2,2);
-    barProps=nan(8,1); % rows are ca1pyr ca1 in pfc pyr.... cols are ca1 pfc ob
-    barCts=nan(8,1);
-    npCts=nan(2,1);
-    CI=[];
-    % so the bar is ca1: beta rr both chance
-    for cr=1:length(cellregions)
-        eval(['npInt=cellpops_' cellregions{cr} '.npInt;']);
-        npCts(cr)=size(npInt,1);
-        cohBoth={};
-        
-        eval(['selInt=npInt(ismember(npInt,cellpops_' cellregions{cr} '.selectiveInt,''rows''),:);']);
-        barCts(1+(cr-1)*4)=size(selInt,1);
-        
-        eval(['cohInt=npInt(ismember(npInt,cellpops_' cellregions{cr} '.' bands{band},...
-            'IntPhaseLockedAny,''rows''),:);']);
-        barCts(2+(cr-1)*4)=size(cohInt,1);
-        cohBoth={selInt,cohInt};
-        
-        dualCoh=intersect(cohBoth{1},cohBoth{2},'rows');
-        barCts((cr-1)*4+3)=size(dualCoh,1);
-        
-        % rounded product of %beta and %resp ratios times total N
-        nullProb=round(prod(barCts([1:2]+(cr-1)*4)/npCts(cr))*npCts(cr));
-        barCts(cr*4)=nullProb;
-        [~,CI(cr,:)]=binofit(nullProb,npCts(cr),.05);
-    end
-    barProps=barCts(1:4)/npCts(1); barProps(5:8)=barCts(5:8)/npCts(2);
-    barX=[.9 1.1 1.4 1.6 2.4 2.6 2.9 3.1];
-    for k=1:8
-        hb(k)=bar(barX(k), barProps(k),.18,'FaceColor','flat','LineStyle','none');
-        hold on;
-    end
-    hb(1).CData=cellcolors(1,:); hb(2).CData=cellcolors(1,:);
-    hb(5).CData=cellcolors(2,:); hb(6).CData=cellcolors(2,:);
-    hb(4).CData=cellcolors(3,:); hb(8).CData=cellcolors(3,:);
-     hold on;
-    set(gca,'XTick',[]), xlabel('CA1                     PFC');
-    % CI is just the absolute uppers and lowers so i have to convert here
-    CI=abs(CI-barProps([4 8]));
-    errorbar([1.6 3.1], barProps([4 8]), CI(:,1),CI(:,2),'k.','CapSize',0,'LineWidth',2);
-    title(sprintf('%s and odorSelective overlap Int',bands{band})); axis([.6 3.4 0 .95]);
-    ylabel(sprintf('Proportion of Task-\nResponsive Interneurons'));
-    intTable=array2table([npCts [barCts(1:4)'; barCts(5:8)']],'VariableNames',...
-        {'NPcells','odorSel',[bands{band} 'Coh'],'Both','Null'},'RowNames',{'CA1','PFC'});
-    openvar('intTable');
+end
+hb(1).CData=cellcolors(1,:); hb(2).CData=cellcolors(1,:);
+hb(5).CData=cellcolors(2,:); hb(6).CData=cellcolors(2,:);
+hb(4).CData=cellcolors(3,:); hb(8).CData=cellcolors(3,:);
+
+hold on;
+set(gca,'XTick',[]), xlabel('CA1                     PFC');
+% CI is just the absolute uppers and lowers so i have to convert here
+CI=abs(CI-barProps([4 8]));
+errorbar([1.6 3.1], barProps([4 8]), CI(:,1),CI(:,2),'k.','CapSize',0,'LineWidth',2);
+title(sprintf('%s and odorSelective overlap Pyr',bands{band})); axis([.6 3.4 0 .95]);
+ylabel(sprintf('Proportion of Task-\nResponsive Pyramidal Cells'));
+pyrTable=array2table([npCts [barCts(1:4)'; barCts(5:8)']],'VariableNames',...
+    {'NPcells','odorSel',[bands{band} 'Coh'],'Both','Null'},'RowNames',{'CA1','PFC'});
+openvar('pyrTable');
+%
+% now interneurons
+%
+subplot(1,2,2);
+barProps=nan(8,1); % rows are ca1pyr ca1 in pfc pyr.... cols are ca1 pfc ob
+barCts=nan(8,1);
+npCts=nan(2,1);
+CI=[];
+% so the bar is ca1: beta rr both chance
+for cr=1:length(cellregions)
+    eval(['npInt=cellpops_' cellregions{cr} '.npInt;']);
+    npCts(cr)=size(npInt,1);
+    cohBoth={};
+    
+    eval(['selInt=npInt(ismember(npInt,cellpops_' cellregions{cr} '.selectiveInt,''rows''),:);']);
+    barCts(1+(cr-1)*4)=size(selInt,1);
+    
+    eval(['cohInt=npInt(ismember(npInt,cellpops_' cellregions{cr} '.' bands{band},...
+        'IntPhaseLockedAny,''rows''),:);']);
+    barCts(2+(cr-1)*4)=size(cohInt,1);
+    cohBoth={selInt,cohInt};
+    
+    dualCoh=intersect(cohBoth{1},cohBoth{2},'rows');
+    barCts((cr-1)*4+3)=size(dualCoh,1);
+    
+    % rounded product of %beta and %resp ratios times total N
+    nullProb=round(prod(barCts([1:2]+(cr-1)*4)/npCts(cr))*npCts(cr));
+    barCts(cr*4)=nullProb;
+    [~,CI(cr,:)]=binofit(nullProb,npCts(cr),.05);
+end
+barProps=barCts(1:4)/npCts(1); barProps(5:8)=barCts(5:8)/npCts(2);
+barX=[.9 1.1 1.4 1.6 2.4 2.6 2.9 3.1];
+for k=1:8
+    hb(k)=bar(barX(k), barProps(k),.18,'FaceColor','flat','LineStyle','none');
+    hold on;
+end
+hb(1).CData=cellcolors(1,:); hb(2).CData=cellcolors(1,:);
+hb(5).CData=cellcolors(2,:); hb(6).CData=cellcolors(2,:);
+hb(4).CData=cellcolors(3,:); hb(8).CData=cellcolors(3,:);
+hold on;
+set(gca,'XTick',[]), xlabel('CA1                     PFC');
+% CI is just the absolute uppers and lowers so i have to convert here
+CI=abs(CI-barProps([4 8]));
+errorbar([1.6 3.1], barProps([4 8]), CI(:,1),CI(:,2),'k.','CapSize',0,'LineWidth',2);
+title(sprintf('%s and odorSelective overlap Int',bands{band})); axis([.6 3.4 0 .95]);
+ylabel(sprintf('Proportion of Task-\nResponsive Interneurons'));
+intTable=array2table([npCts [barCts(1:4)'; barCts(5:8)']],'VariableNames',...
+    {'NPcells','odorSel',[bands{band} 'Coh'],'Both','Null'},'RowNames',{'CA1','PFC'});
+openvar('intTable');
 %end

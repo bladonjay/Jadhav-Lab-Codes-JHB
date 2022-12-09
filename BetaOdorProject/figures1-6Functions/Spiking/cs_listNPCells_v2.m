@@ -28,15 +28,24 @@ for r = 1:length(regions)
         load([animDir,animal,'cellinfo.mat'])
         
         % this is for pyramidal cells in the area with more than 100 spikes
+        % in ANY epoch
         cellfilter = ['isequal($area,''',region,''') && isequal($type, ''pyr'') && $numspikes > 100'];
         cells = evaluatefilter(cellinfo,cellfilter);
+        
+        % now find the RUN epochs
+        runEps = cs_getRunEpochs(animDir,animal,'odorplace');
+        days = unique(runEps(:,1));
+        
+        
+        % you can just take cells in the runepochs
+        %cells=allcells(ismember(allcells(:,[1 2]), runEps,'rows'),:);
+
         
         % remove epochs
         noeps = cells(:,[1 3 4]);
         cells = unique(noeps,'rows');
         
-        runEps = cs_getRunEpochs(animDir,animal,'odorplace');
-        days = unique(runEps(:,1));
+
         
         spikes = loaddatastruct(animDir, animal, 'spikes',days);
         nosepokeWindow = loaddatastruct(animDir, animal, 'nosepokeWindow',days);
@@ -99,7 +108,6 @@ for r = 1:length(regions)
                     
                 end
                 cellct=cellct+1;
-                
                 if ~isempty(npspikes) || ~isempty(prespikes)
                     correctleft = find(triallabels(:,1) == 1 & triallabels(:,2) == 1);
                     correctright = find(triallabels(:,1) == 1 & triallabels(:,2) == 0);

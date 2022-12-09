@@ -1,6 +1,6 @@
 clear
 topDir = cs_setPaths;
-animals = {'CS44'};
+animals = {'CS31','CS33','CS34','CS35','CS39','CS41','CS42','CS44'};
 method = 2;
 for a = 1:length(animals)
     animal = animals{a};

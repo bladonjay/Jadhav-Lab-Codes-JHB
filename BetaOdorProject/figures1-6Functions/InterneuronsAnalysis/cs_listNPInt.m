@@ -18,17 +18,22 @@ for r = 1:length(regions)
         
         load([animDir,animal,'cellinfo.mat'])
         
+        % and we arent using the 100 spikes filter because these are
+        % interneurons
         cellfilter = ['isequal($area,''',region,''') && isequal($type, ''int'')'];
         %         cellfilter = ['isequal($type, ''pyr'')']
         %         cellfilter = ['isequal($area,''',region,''')']
+        
         cells = evaluatefilter(cellinfo,cellfilter);
-        
-        noeps = cells(:,[1 3 4]);
-        cells = unique(noeps,'rows');
-        
+
+        % useful filter if you're taking epoch specific data
+        %cells=allcells(ismember(allcells(:,[1 2]), runEps,'rows'),:);
+
         runEps = cs_getRunEpochs(animDir,animal,'odorplace');
-        days = unique(runEps(:,1));
         
+        days = unique(runEps(:,1));
+         noeps = cells(:,[1 3 4]);
+        cells = unique(noeps,'rows');
         spikes = loaddatastruct(animDir, animal, 'spikes',days);
         nosepokeWindow = loaddatastruct(animDir, animal, 'nosepokeWindow',days);
         odorTriggers = loaddatastruct(animDir, animal, 'odorTriggers',days);
