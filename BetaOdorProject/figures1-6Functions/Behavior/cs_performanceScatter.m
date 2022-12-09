@@ -23,8 +23,13 @@ for a = 1:length(animals)
         daystring = getTwoDigitNumber(day);
         
         load([animDir,'BinaryPerf\',animal,'BinaryPerf',daystring,'.mat']);
+         if strcmpi(animal,'CS41') && day<3
+           epochs = 1; % claire collapsed epochs for this animal only
+            %dio{1,day}{1}=dio{1,day}; % have to add back in a cell for epoch
+        else
+            epochs = runmat(runmat(:,1) == day, 2);
+        end
         
-        epochs = runmat(runmat(:,1) == day, 2);
         for ep = 1:length(epochs)
             epoch = epochs(ep);
             bp = BinaryPerf{day}{epoch};

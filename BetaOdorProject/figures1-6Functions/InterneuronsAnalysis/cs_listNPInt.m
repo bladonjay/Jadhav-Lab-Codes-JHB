@@ -93,14 +93,15 @@ for r = 1:length(regions)
                     
                     lspikes = [npspikes(correctleft), prespikes(correctleft)];
                     rspikes = [npspikes(correctright), prespikes(correctright)];
-                    
+                    allspikes = [lspikes; rspikes];
                     p1 = signrank(lspikes(:,1),lspikes(:,2));
                     p2 = signrank(rspikes(:,1),rspikes(:,2));
+                    p3 = signrank(allspkes(:,1),allspikes(:,2));
                     
                     if sum(npspikes)/totaltrigs >=1 %at least 1 spike per trial during NP
                        activeInt=[activeInt; a, cell];
 
-                        if p1 < 0.05 || p2 <0.05
+                        if p1 < 0.05 || p2 <0.05 || p3 <0.05
                             npInt = [npInt; a, cell];
                         end
                     end

@@ -11,6 +11,7 @@ binomial_all = [];
 ci = 1; %Do correct/incorrect separately
 binomial_c = [];
 binomial_i = [];
+savefig=0;
 
 prcnt_all = [];
 for a = 1:length(animals)
@@ -35,9 +36,13 @@ for a = 1:length(animals)
 %         load([animDir, animal, 'pos',daystr,'.mat']);
 %         load([animDir, animal, 'odorTriggers',daystr,'.mat'])
 %         load([animDir, animal, 'task',daystr,'.mat']);
-        
-        epochs = dayeps(dayeps(:,1) == day,2);
-        
+        if strcmpi(animal,'CS41') && day<3
+            epochs = 1; % claire collapsed epochs for this animal only
+            %dio{1,day}{1}=dio{1,day}; % have to add back in a cell for epoch
+        else
+            epochs = dayeps(dayeps(:,1) == day,2);
+        end
+
         for epoch = epochs'
            
             [c_left, c_right, i_left, i_right] = cs_getSpecificTrialTypeInds(odorTriggers{day}{epoch});
@@ -259,9 +264,10 @@ pie([prob_i, 1-prob_i]);
 title('Incorrect Trials')
 
 figfile = [figDir, 'Behavior\turnDirectionFromNP'];
-            
+           if savefig==1 
     print('-djpeg', figfile);
     print('-dpdf', figfile);
+           end
 y = binopdf(sum(binomial_i),length(binomial_i),0.5)
 
 % [p,z] = ztestprop(sum(binomial_c), length(binomial_c)-sum(binomial_c), length(binomial_c), length(binomial_c))

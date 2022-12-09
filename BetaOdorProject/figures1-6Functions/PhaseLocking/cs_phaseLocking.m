@@ -17,9 +17,9 @@ freqs = {'beta','resp'};
 trialtypes = {'correct','incorrect'};
 
 %% get NP cells
-load([topDir,'AnalysesAcrossAnimals\npCells_CA1_old']);
+load([topDir,'AnalysesAcrossAnimals\npCells_CA1']);
 cells_CA1 = npCells;
-load([topDir,'AnalysesAcrossAnimals\npCells_PFC_old']);
+load([topDir,'AnalysesAcrossAnimals\npCells_PFC']);
 cells_PFC = npCells; clear npCells
 
 rstream = RandStream('dsfmt19937','Seed',16);

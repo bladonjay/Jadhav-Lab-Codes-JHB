@@ -14,11 +14,13 @@ animals = {'CS31','CS33','CS34','CS35','CS39','CS41','CS42','CS44'};
 [dataDir, figDir] = cs_setPaths();
 figdir = [figDir,'PCA\']; 
 
-digits(16);
+digits(16); % lower precision??? why??? -jhb
 
 win1 = 0 - win(1); %make negative
 
 winstr = [(num2str(win1*1000)),'-',num2str(win(2)*1000),'ms'];
+
+saveout=0;
 
 if selectiveonly == 1
     selstr = '_selectivecells';
@@ -188,10 +190,12 @@ zlabel('PC2');
 figtitle1 = ['PCA3dSignificance_',region,'_',winstr,selstr];
 
 figfile = [figdir,figtitle1];
+if saveout==1
+    saveas(gcf,figfile,'fig');
+    print('-djpeg', figfile);
+    print('-dpdf', figfile);
+end
 
-saveas(gcf,figfile,'fig');
-print('-djpeg', figfile);
-print('-dpdf', figfile);
 
-
+end
 

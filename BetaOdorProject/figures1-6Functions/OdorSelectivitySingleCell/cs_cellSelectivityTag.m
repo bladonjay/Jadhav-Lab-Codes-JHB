@@ -12,6 +12,8 @@ topDir = cs_setPaths;
 animals = {'CS31','CS33','CS34','CS35','CS39','CS41','CS42','CS44'};
 regions = {'CA1','PFC'};
 iterations = 1000;
+
+
 % set the random seed here!!!!!
 rstream = RandStream('dsfmt19937','Seed',16);
 RandStream.setGlobalStream(rstream);

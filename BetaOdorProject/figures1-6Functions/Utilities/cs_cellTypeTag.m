@@ -39,7 +39,7 @@ for r = 1:length(regions)
             noeps = daycells(:,[1,3,4]);
             daycells = unique(noeps, 'rows'); 
             
-            for c = 1:length(daycells)
+            for c = 1:size(daycells,1)
                 %find average over all epochs
                 epochFR = [];
                 for ep = 1:length(epochs)
@@ -69,7 +69,23 @@ for r = 1:length(regions)
                         
                         %use spike width if too close to cutoff
                         if FR < 9 && FR > 8
-                            spikewidth = lhcs_getSpikeWidth(topDir, animal, day, daycells(c,2), daycells(c,3));
+                            % JHB catch claire did not add the spikewidth
+                            % in a consistent place, there are three ways
+                            % to get it:
+                            spikewidth=nan;
+                            try
+                                % this requires raw data...
+                                spikewidth = lhcs_getSpikeWidth(topDir, animal, day, daycells(c,2), daycells(c,3));
+                            catch
+                                % this should be in
+                                try
+                                    spikewidth = cellinfo{daycells(c,1)}{epoch}{daycells(c,2)}{daycells(c,3)}.spikewidth;
+                                    if isnan(spikewidth)
+                                        spikewidth = spikes{daycells(c,1)}{epoch}{daycells(c,2)}{daycells(c,3)}.spikewidth;
+                                    end
+                                end
+                            end
+
                             if spikewidth > 0.35
                                 cellinfo{daycells(c,1)}{epoch}{daycells(c,2)}{daycells(c,3)}.type = 'pyr';
                             else

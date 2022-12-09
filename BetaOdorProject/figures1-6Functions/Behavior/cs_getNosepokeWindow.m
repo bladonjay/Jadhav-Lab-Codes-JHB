@@ -34,7 +34,7 @@ for a = 1:length(animals)
     
     days = unique(epochs(:,1));
     
-    for d = 2%1:length(days)
+    for d = 1:length(days)
         day = days(d);
         
         if (day<10)
@@ -43,13 +43,16 @@ for a = 1:length(animals)
             daystring = num2str(day);
         end
         
-        runEps = epochs(epochs(:,1) == day, 2);
         
         load([animal,'DIO', daystring, '.mat']);
+        if strcmpi(animal,'CS41') && day<3       
+            dio{1,day}{2}=dio{1,day}{1}; % have to add back in a cell for epoch
+        end
+        runEps = epochs(epochs(:,1) == day, 2);
         numEpochs = length(runEps);
         
         for e = 1:length(runEps)
-            ep = runEps(e);
+            ep = runEps(e); % right now there is only one epoch
             
             if (ep <10)
                 epstring = ['0',num2str(ep)];
@@ -58,7 +61,13 @@ for a = 1:length(animals)
             end
             
             %%  Get DIO times and states for reward wells, odor solenoids, nosepoke, and buzzer
-            
+            % this is old, the dios were collapsed across epochs...
+            %
+            % code hangs here for CS41 because dio is not split by epochs
+            % she collapsed epochs for this animal so there is a single
+            % cell in that array e.g. size DIO is {1day} {1epochonly}
+            % {32dios} instead of {1firstday}{3epochs}{32dios}
+            %
             Din1times = dio{1,day}{1,ep}{1,1}.time(logical(dio{1,day}{1,ep}{1,1}.state));
             Din1hits = ones([length(Din1times),1]);
             leftwellnans = nan([length(Din1hits),3]);

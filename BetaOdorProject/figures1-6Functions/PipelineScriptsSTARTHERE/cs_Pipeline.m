@@ -58,6 +58,7 @@ preprocess_CS44
 % the above generates the following files:
 
 %% --- Behavior --- %%
+% all 8 animals
 animals = {'CS31','CS33','CS34','CS35','CS39','CS41','CS42','CS44'};
 
 edit cs_getNosepokeWindow
@@ -67,6 +68,9 @@ edit cs_performanceScatter;
 
 edit cs_turnFromNPDirection
 %% --- Spectrograms --- %%
+
+% THIS FUNCTION DOES NOT CURRENTLY RUN, I AM WORKIGN ON ADDING SOURCECODE
+% AND LFP DATASET
 
 % this function is not working, some source code is outdated specifically
 % wrt filterframework files, I ended at animaldef in the src folder, which
@@ -80,10 +84,13 @@ edit DFScs_eventTrigSpecgram
 
 
 %% --- Coherograms --- %%
+% THIS ALSO DOESNT RUN, DO NOT TRY....
 edit DFScs_eventcoherence
 
 %% --- Cell Data --- %%
 edit cs_listAllCells; % i think it gets you all cells
+
+edit cs_getSpikeWidth;
 
 edit cs_cellTypeTag; % pyr or in
 
@@ -114,8 +121,8 @@ but for listselectivecells, that list has overlap with npcells has 44 and
 
 %% --- Odor Selectivity --- %% 
 % this gathers all the selective cells
-edit cs_cellSelectivityTag;
-edit cs_intSelectivityTag;
+edit cs_cellSelectivityTag; % tags selective cells, contains listSelectiveCells
+edit cs_intSelectivityTag; % tags selective ints, contains listSelectiveInt
 % this plots all of them
 
 % these plot the red to blue plots and the xcorrs correct incorrect
@@ -141,17 +148,21 @@ cs_PDIBehaviorCorrelation
 
 win = [.2 1];
 binsize = 0.1;
+selectiveonly=0;
+regions={'CA1','PFC'};
+for i=1:2
+    region=regions{i};
 
-cs_PCA(region, win, binsize, selectiveonly);
-cs_PCA_3d(region, win, binsize, selectiveonly);
-
+    cs_PCA(region, win, binsize, selectiveonly);
+    cs_PCA_3d(region, win, binsize, selectiveonly);
+end
 %% --- Phase locking --- %%
 
-% here is where Jay has updated most of these functions
 
-%edit jhb_calcBetaRRallTets % this gets the beta and rr filtered LFPs, unnecessary to run though
+% this gets the beta and rr filtered LFPs, unnecessary to run though
+% edit jhb_calcBetaRRallTets 
 
-edit cs_phaseLocking % uses np cells old
+edit cs_phaseLocking % uses current np cells
 edit cs_phaseLocking_IN % uses np cells old
 
 edit cs_listPhaseLockedCells % generates a list in acrossanimals analyiss
