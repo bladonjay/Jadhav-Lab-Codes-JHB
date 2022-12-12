@@ -18,8 +18,8 @@
   2. FMR1 project: This code is not fully developed, but it has scripting for deeplabcut, SpikeGadgets data preprocessing and
       analysis of two behavioral paradigms: the social W and the W-maze home switch paradigm. Not for public use yet
       
-  3. DG-GABAa5 KO animals: this is an abbreviated version of the radial arm maze, wherein there are 4 outbound arms and a single
-      home arm.  The single out arm maze is shifted each time.
+  3. DG-GABAa5 KO animals: This codebase is a partial workup of some data collected by Elif Engin at Harvard. This is an abbreviated version of the radial
+     arm maze, wherein there are 4 outbound arms and a single home arm.  The single out arm maze is shifted each time.
       
  
- These code bases often have dependencies and query hardcoded filepaths.  They are not intended for general use by any means.
+ Be forewarned these code bases often have dependencies and query hardcoded filepaths.  The second two items (FMR1 and DG-GABAa5) are not for public use.
