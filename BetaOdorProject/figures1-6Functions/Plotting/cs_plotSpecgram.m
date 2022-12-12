@@ -2,7 +2,7 @@ function [maxval, minval] = cs_plotSpecgram(eventTrigSpecgram_file, varargin)
 
 %cd('E:\AnalysesAcrossAnimals\'); %home computer
 %cd('D:\OdorPlaceAssociation\AnalysesAcrossAnimals\'); %lab computer
-
+saveout=0;
 load(eventTrigSpecgram_file);
 
 %----- Params ----- %
@@ -76,7 +76,7 @@ for g = 1:length(trigtypes) %for each trigtype
 %     freqs = freqs(tapers(2):newwidth);
     
     figure, hold on
-    colormap(jet);
+    colormap(hot);
     imagesc(times, freqs,smoothedspecdata)
     set(gca,'YDir','normal')
     plot([0 0],[1 freqs(end)],'k--', 'LineWidth', 1.5);
@@ -98,11 +98,11 @@ for g = 1:length(trigtypes) %for each trigtype
     figdir = [figdir,'Specgrams\'];
     
     figfile = [figdir,figtitle1];
-    
-    %saveas(gcf,figfile,'fig');
-    print('-djpeg', figfile);
-    print('-dpdf', figfile);
-    
+    if saveout==1
+        %saveas(gcf,figfile,'fig');
+        print('-djpeg', figfile);
+        print('-dpdf', figfile);
+    end
     maxval = max(smoothedspecdata(:));
     minval = min(smoothedspecdata(:));
     

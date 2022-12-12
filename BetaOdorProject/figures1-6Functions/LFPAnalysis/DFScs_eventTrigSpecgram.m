@@ -52,6 +52,7 @@ end
 trigtypes = {'allTriggers'};
 
 tapers = [1 1];
+%tapers = [3 5];
 reforgnd = 'gnd';
 if strcmp(reforgnd,'gnd')
     do_wrtgnd = 1;
@@ -68,6 +69,8 @@ freqband = 'low'; fpass = [0 40]; movingwin = [1000 20]/1000;  %low = 0-40 Hz
 win = [1.5 0.5];
 
 createbaselinespecs = 1;
+% this will get a mean spectrum of the full run epochs (so a mean value and
+% a std value for you to use when z-scoring)
 if createbaselinespecs == 1
     cs_createBaselineSpecs(animals, regions, do_wrtgnd, fpass, movingwin, tapers, envfilt)
 end
@@ -163,6 +166,7 @@ for r = 1:length(regions)
         save([dataDir,filename],'eventTrigSpecgramData');
     end
     
+    % this function loads the savefile created above, not the workspace data
     [maxval, minval] = cs_plotSpecgram([dataDir,filename],'freqband',freqband);
     maxvals(r) = maxval;
     minvals(r) = minval;

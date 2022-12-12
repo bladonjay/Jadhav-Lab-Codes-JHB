@@ -47,4 +47,14 @@ cd ('E:\GithubCodeRepositories\Jadhav-Lab-Codes\LEC-CA1Project');
 %% a little about how the data were generated:
 % 
 
-edit run_behavior_stats
+edit run_behavior_stats% this will be figure 1, just need to throw it in a
+
+
+% next, raster study object cells and test object cells, show a igarashi
+% plot for each of them, and maybe try to tile the times too using
+% abs(selectivity)
+% next plot is bayes poisson study to study, then study during delay, then
+% delay vs delay, then study timelocked to test, say at 100 msec timebins
+% or at full time
+% the next is go from 200msec to 100 to 50 and see if you can get any
+% single trial really obvious bins of reactivation... go from there...

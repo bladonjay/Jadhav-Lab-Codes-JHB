@@ -50,7 +50,7 @@ cohgram = mean(cohgram,3);
 
 
     
-std = 4;
+std = 4; % huge smoothing kernel, this is 4 pixels...
     s = gaussian2(std,(2*std));
     cohgram = filter2(s,cohgram,'valid'); %'Valid' tag excludes edges that would be messed up by filter
     

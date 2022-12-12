@@ -1,10 +1,9 @@
 
 %----- Params -----%
-animals = {'CS41','CS42'};  %CHANGE _direct PATH IN 'animaldef.m' FOR DIFFERENT COMPUTERS
-%animals = {'CS34'};  %CHANGE _direct PATH IN 'animaldef.m' FOR DIFFERENT COMPUTERS
+animals = {'CS41','CS42'}; 
 
-regions = {'OB-TC','CA1-TC', 'PFC-TC'};
-%regions = {'PFC-OB','CA1-OB'};
+%regions = {'OB-TC','CA1-TC', 'PFC-TC'};
+regions = {'CA1-PFC','CA1-OB','PFC-OB'};
 
 topDir = cs_setPaths();
 dataDir = [topDir,'AnalysesAcrossAnimals\'];
