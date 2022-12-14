@@ -1,12 +1,26 @@
-oldDir=uigetdir;
-fnames=dir(oldDir);
-fnames=fnames(3:end);
+% trying to change 
+% data names need to change in :F:\SocialData\Neural\XFB3\XFB3_01-05
+% folders
+changeDir=uigetdir;
+fnames=dir(changeDir);
+fnames=fnames(3:end); % remove the parent folders
+
 for i=1:length(fnames)
     % parse old file info
     % JHB_ANIMAL_DATE-Date_DATE_run.badpostfix.postfix
-    %patn='(<person>[A-Z]+)_(<rat>[A-Z]+[1-9]+)_(<date>[^_.]+)_(<epoch>[^_.]+).(<postfix>)';
-    patn='log(<date>[^(]+) ';
+    patn='(?<rat>[A-Z]{2,3}[0-9]+)_(?<runnum>\d{2}+)_(?<date>\d{8}+)_(?<run>[a-zA-Z0-9]+)';
+    %patn='log(<date>[^(]+) ';
     parsed=regexp(fnames(i).name,patn,'names');
+     if ~isempty(parsed)
+         infiles=dir(fullfile(fnames(i).folder,fnames(i).name));
+         for j=1:length(infiles)
+             patn='(?<person>[A-Z]{3})_(?<rat>[A-Z]{2,3}[0-9]+)_(?<date>[^.]{1,15).(?<extension>\w+)';
+             fileparsed=regexp(infiles(j).name,patn,'names');
+
+             if ~isempty(fileparsed) & (isfield(fileparsed,'person'))
+                newname=[fnames(i).name, '.', fileparsed.extension];
+                movefile(fullfile(fileparsed(i).folder,fnames(i).name),fullfile(fnames(i).folder,newname));
+     end
 end
 
 

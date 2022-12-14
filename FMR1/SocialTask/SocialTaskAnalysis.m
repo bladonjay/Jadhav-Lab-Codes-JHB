@@ -68,12 +68,12 @@ end
 %% aggregating all the pairings...
 % first get your excel doc
 %load('G:\SocialData\Behavior only\SocialCohorts1-3.mat')
-
-try
+useold=0;
+if useold==1
     %load SocialCohorts1-3.m
     load('G:\SocialData\Behavior only\SocialCohorts1-3.mat')
 
-catch
+else
     
     mydir=uigetdir;
     
@@ -81,8 +81,8 @@ catch
     %%%%% go through and add metadata %%%%%%
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % 201-202,  XFZ 1-2, XFB1-XFB2
-    GroupPrefix={'20','XFB','XFZ','XFE','XFG','XFK'};
-
+    GroupPrefix={'20','XFB','XFZ','XFE','XFG','XFJ','XFK'};
+    % need to parse this out.... using regexp
     
     
     fileList = dir(fullfile(mydir, '**\*.*'));  %get list of files and folders in any subfolder
@@ -117,35 +117,44 @@ catch
                     fileList(i).cohortname='20';
                     fileList(i).ratnames={namestr(namestart+3),namestr(namestart+7)};
                     fileList(i).ratnums=[str2num(namestr(namestart+3)) str2num(namestr(namestart+7))];
+                    
                 elseif strcmpi(namestr(namestart+1:namestart+3),'XFB')
                     fileList(i).cohortnum=2;
                     fileList(i).cohortname='XFB';
                     fileList(i).ratnames={namestr(namestart+4), namestr(namestart+9)};
                     fileList(i).ratnums=[str2num(namestr(namestart+4)) str2num(namestr(namestart+9))];
+                    
                 elseif strcmpi(namestr(namestart+1:namestart+3),'XFZ')
-                    %
                     fileList(i).cohortnum=3;
                     fileList(i).cohortname='XFZ';
                     fileList(i).ratnames={namestr(namestart+6), namestr(namestart+8)};
                     fileList(i).ratnums=[str2num(namestr(namestart+6)) str2num(namestr(namestart+8))];
+                    
                 elseif strcmpi(namestr(namestart+1:namestart+3),'XFE')
-                    %
                     fileList(i).cohortnum=4;
                     fileList(i).cohortname='XFE';
                     fileList(i).ratnames={namestr(namestart+4), namestr(namestart+9)};
                     fileList(i).ratnums=[str2num(namestr(namestart+4)) str2num(namestr(namestart+9))];
+                    
                 elseif strcmpi(namestr(namestart+1:namestart+3),'XFG')
-                    %
                     fileList(i).cohortnum=5;
                     fileList(i).cohortname='XFG';
                     fileList(i).ratnames={namestr(namestart+4), namestr(namestart+9)};
                     fileList(i).ratnums=[str2num(namestr(namestart+4)) str2num(namestr(namestart+9))];
+                    
+               elseif strcmpi(namestr(namestart+1:namestart+3),'XFJ')
+                    fileList(i).cohortnum=6;
+                    fileList(i).cohortname='XFJ';
+                    fileList(i).ratnames={namestr(namestart+4), namestr(namestart+9)};
+                    fileList(i).ratnums=[str2num(namestr(namestart+4)) str2num(namestr(namestart+9))];
+                    
                 elseif strcmpi(namestr(namestart+1:namestart+3),'XFK')
                     %
-                    fileList(i).cohortnum=6;
+                    fileList(i).cohortnum=7;
                     fileList(i).cohortname='XFK';
                     fileList(i).ratnames={namestr(namestart+4), namestr(namestart+9)};
                     fileList(i).ratnums=[str2num(namestr(namestart+4)) str2num(namestr(namestart+9))];
+                    
                 else
                     fprintf('Cant parse this, the filename is... \n     %s \n',...
                         fileList(i).name);
@@ -429,6 +438,10 @@ for i=1:length(cohortNums)
     end
     linkaxes(get(gcf,'Children'),'x');
 end
+
+%%
+
+
 
 %% howabout the efficiency of each session after knowing the genotypes
 % this is calculated over all samples
