@@ -21,9 +21,12 @@ animal, and interp the appropriate spikes so you get nspikes per bin
 
 
 %% 1. get your trajectories
+% choose your session
+i=6;
 
-i=16;
-lincoords=SuperRat(i).LinCoords;
+
+
+lincoords=table2array(SuperRat(i).LinCoords);
 coords2=SuperRat(i).tracking.data;
 % lets start with the left trajectory
 keepinds=lincoords(:,4)==3 & lincoords(:,5)==1;
@@ -112,7 +115,7 @@ for i=1:length(SuperRat)
         for tr=1:4
             % first gather the four trajectories by nanning out all the other data
             % this is smoothed and % normalized for each run
-            temptraj=SuperRat(i).LinCoords;
+            temptraj=table2array(SuperRat(i).LinCoords);
             
             % take account of the correct trajectories at the correct speed
             keepinds=temptraj(:,4)==trajinds(tr,1) & temptraj(:,5)==trajinds(tr,2);
@@ -129,10 +132,11 @@ for i=1:length(SuperRat)
         title([SuperRat(i).name ' Day # ' num2str(SuperRat(i).daynum)]);
         % and nan out the slow times (dx for linear pos)
         allposplot=sortrows(allposplot,1); % order chronologically
-        allposplot(tooslow,:)=[];
+        %allposplot(tooslow,:)=[];
         
         % get dwell time
         [occupancy,bins]=histcounts(allposplot(:,8),1:max(allposplot(:,8)));
+        occupancy=accumarray(allposplot(:,8),1,[max(allposplot(:,8)),1]);
         
         % find the breaks between each run to epoch our spikes
         breaks=find(diff(allposplot(:,1))>1);
@@ -156,11 +160,13 @@ for i=1:length(SuperRat)
             % nowe we have linearize position plots to concatenate
             % now epoch the spikes based on when the runs are
             Espikes=EpochCoords(spikes(:,1),epochs);
+            % snap each spike to its nearest position
             spikepos=interp1(allposplot(:,1),allposplot(:,8),Espikes,'nearest');
             % get number of spikes per position
-            [nspikes,bins]=histcounts(spikepos,bins);
+            [nspikes]=accumarray(spikepos,1,[max(allposplot(:,8)),1]);
+            %[nspikes,bins]=histcounts(spikepos,bins);
             % now save the grand total tuning curve
-            fullcurves(j,:)=SmoothMat2(nspikes./(occupancy/30),[5 0],2);
+            fullcurves(j,:)=SmoothMat2(nspikes./(occupancy/30),[0 20],5);
             cellsort(j,1)=contains(unitdata(j).area,'PFC')+1;
             [curvepeaks(j),cellsort(j,2)]=max(fullcurves(j,:));
         end

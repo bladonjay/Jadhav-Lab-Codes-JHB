@@ -9,5 +9,10 @@ the biases I want to capture:
 - arm transition bias (should also capture arm bias)
 - dwell times at each arm
 %}
+%%
+load('G:\BrandeisDatasets\SocialData\ratinfoSocial20221214.mat');
+
+%%
+
 
 

@@ -396,7 +396,7 @@ winsize=1; % second of odor sampling
 % run
 deadspace=0.5; % seconds following odor sampling start to never consider
 verbose=0;
-nDolds = 5;
+nFolds = 5;
 nBoots=200;
 odorNames=[1 0];
 veltimesmooth=8;
@@ -446,7 +446,7 @@ for ses=1:length(SuperRat)
     for ile=1:length(runpos)
         % only use times when the linear trajectory is between...
         okpos=runpos(ile,:);% segment out the arm
-        oktrackpos=fulltraj(:,8)>okpos(1) & fulltraj(:,8)<okpos(2);
+        oktrackpos=fulltraj(:,9)>okpos(1) & fulltraj(:,8)<okpos(2);
         temptraj=fulltraj(oktrackpos,:);
         
         killslow=0; % kill slow moving times
@@ -665,7 +665,7 @@ winsize=1; % second of odor sampling
 % run
 deadspace=0.5; % seconds following odor sampling start to never consider
 verbose=0;
-nDolds = 5;
+nFolds = 5;
 nBoots=200;
 odorNames=[1 0];
 veltimesmooth=8;
@@ -871,7 +871,7 @@ winsize=1; % second of odor sampling
 daytimer=tic;
 deadspace=0.5; % seconds following odor sampling start to never consider
 verbose=0;
-nDolds = 5; % n folds for decoder
+nFolds = 5; % n folds for decoder
 nBoots=200; % n boots for the null distr
 odorNames=[1 0];
 veltimesmooth=8; % seconds for the velocity smoothing kernel
@@ -1010,7 +1010,7 @@ for ses=1:length(SuperRat)
                 
                 % run the within group decoder
                 [p_correct,fract_correct_real,fract_correct_null]...
-                    = nFoldBayesPoisson2(tempMat,tempMat2,trueOdors,nDolds,nBoots);
+                    = nFoldBayesPoisson2(tempMat,tempMat2,trueOdors,nFolds,nBoots);
                 
                 thisdecode{i+1,2,1}(ile,ile2,:)=[fract_correct_real nanmean(fract_correct_null)];
                 thisdecode{i+1,2,2}(ile,ile2)=p_correct;
@@ -1162,7 +1162,7 @@ winsize=1; % second of odor sampling
 % run
 deadspace=0.5; % seconds following odor sampling start to never consider
 verbose=0;
-nDolds = 5;
+nFolds = 5;
 nBoots=200;
 odorNames=[1 0];
 veltimesmooth=8;
@@ -1294,7 +1294,7 @@ for ses=1:length(SuperRat)
                 SuperRat(ses).name,SuperRat(ses).daynum,region{i});
         end
     end
-    end
+
     SuperRat(ses).BayesDecodePvals=thisdecode;
     % this method of taking the mean run probably doesnt make much sense
     % i think i'd rather do something like a matched timewindow analysis

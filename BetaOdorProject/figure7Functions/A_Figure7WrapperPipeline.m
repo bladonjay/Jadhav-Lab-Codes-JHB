@@ -1,16 +1,16 @@
-%% ClaireWrapper
+%% ClaireWrapper/pipeline
 
 % first build your dataset;
 
 usesaved=0;
 if usesaved==1
     try % home computer filepath
-        load('E:\Brandeis datasets\Claire Data\ClaireData-2022-08-02.mat');
+        load('G:\BrandeisDatasets\SymanskiData\SuperRat-SymanskiElife-2022-08-02.mat');
         % remake this so its the folder with this projects codebase
         cd('E:\GithubCodeRepositories\Jadhav-Lab-Codes\BetaOdorProject');
     catch % work computer filepath
         try
-            load('G:\Brandeis datasets\Claire Data\ClaireData-2022-08-02.mat');
+            load('E:\BrandeisDatasets\SymanskiData\SuperRat-SymanskiElife-2022-08-02.mat');
             cd('C:\Users\Jadhavlab\Documents\gitRepos\Jadhav-Lab-Codes\BetaOdorProject');
         catch
             [loadfile,filedir]=uigetfile();

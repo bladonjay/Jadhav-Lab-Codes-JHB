@@ -18,8 +18,8 @@ function [rat1events, rat2events]=parseSocialEvents(dataRaw,debounce)
 % sample has happened.  Sometimes the IRbeams are finicky and will trip
 % multiple times in a very short window.  This prevents that decently well
 
-cellData = table2cell(dataRaw);
-numIdx = cellfun(@(x) ~isempty(x{1}), cellData(:,1));
+cellData = table2cell(dataRaw); % convert to cell array
+numIdx = cellfun(@(x) ~isempty(x{1}), cellData(:,1)); % now look down first column
 rawEvents = cellData(numIdx,1);
 
 % convert to char and split out
