@@ -628,7 +628,7 @@ end
 %
 %
 % 
-
+odorPcrit=1-normcdf(1.5); % noted in paper!!!!
 
 
 
@@ -778,7 +778,7 @@ openvar('SIcorr');
 for t=1:2
     for i=1:2
         regcoders=allCells(strcmpi({allCells.area},regions{i}) &...
-            cellfun(@(a) a{1,2}>odorPcrit,{allCells.OdorSelective}) &...
+            cellfun(@(a) a{1,3}==1,{allCells.OdorSelective}) &...
             cellfun(@(a) a(3)<.05,{allCells.taskResponsive}) & ...
             strcmpi({allCells.type},type{t}));
         corrCurves=cell2mat(cellfun(@(a) a{1}, {regcoders.startcurves},'UniformOutput',false)');

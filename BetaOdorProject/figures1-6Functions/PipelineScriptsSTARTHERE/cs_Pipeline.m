@@ -62,6 +62,7 @@ preprocess_CS44
 animals = {'CS31','CS33','CS34','CS35','CS39','CS41','CS42','CS44'};
 
 edit cs_getNosepokeWindow
+%cs_getNosepokeWindow(animals)
 
 edit cs_performanceScatter;
 %% and get a turn direction

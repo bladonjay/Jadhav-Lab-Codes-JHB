@@ -6,7 +6,7 @@ try
     allfolders=allfolders(~contains({allfolders.name},'OLD'));
 
     addpath('C:\\Users\\Jadhavlab\\Documents\\gitRepos\\Jadhav-Lab-Codes\\BetaOdorProject\\figures1-6Functions');
-
+    rmpath(genpath('C:\\Users\\Jadhavlab\\Documents\\gitRepos\general-repo'));
     for i=1:length(allfolders)
         addpath(genpath(fullfile(allfolders(i).folder,allfolders(i).name)));
     end
@@ -20,6 +20,7 @@ catch
     allfolders=allfolders(~contains({allfolders.name},'OLD'));
 
     addpath('E:\GithubCodeRepositories\Jadhav-Lab-Codes\BetaOdorProject\figures1-6Functions');
+    rmpath(genpath('E:\\Users\\Jadhavlab\\Documents\\gitRepos\general-repo'));
 
     for i=1:length(allfolders)
         addpath(genpath(fullfile(allfolders(i).folder,allfolders(i).name)));

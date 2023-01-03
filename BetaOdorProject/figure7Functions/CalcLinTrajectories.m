@@ -25,7 +25,7 @@ calctheta=false; % do you want to calculate theta pref and precession slope?
 
 trajinds=[3 1; 3 2; 1 3; 2 3];
 
-speedthreshold=3;
+speedthreshold=3; % cm/sec
 veltimesmooth=8; % bins
 % gonna add a few fields to the units struct
 FieldPropsNan=struct('PFmax',nan(1,4),'PFmaxpos',nan(1,4),...

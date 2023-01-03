@@ -1,7 +1,10 @@
 %% ClaireWrapper/pipeline
 
-% first build your dataset;
+% first get your code repository
+cd('C:\Users\Jadhavlab\Documents\gitRepos\Jadhav-Lab-Codes\BetaOdorProject\figure7Functions');
+addpath(genpath('C:\Users\Jadhavlab\Documents\gitRepos\Jadhav-Lab-Codes\BetaOdorProject\figure7Functions'));
 
+% now build your dataset;
 usesaved=0;
 if usesaved==1
     try % home computer filepath
