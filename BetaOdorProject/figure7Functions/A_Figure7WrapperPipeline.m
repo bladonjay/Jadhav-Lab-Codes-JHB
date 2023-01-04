@@ -27,9 +27,8 @@ else  % or to rebuild the dataset from scratch
     edit ClaireDataAggregator
 
     % this builds the trajectories (old version)
-    %  edit LinearizePositionTmaze (old, replaced by code below)
 
-    % This is the new version with all four trajectories (2 in, 2 outbound)
+    % This is the linearization algorithm with four trajectories (2 in, 2 outbound)
     % algorithm:
     % 1. draw a typical trajectory for each of the 4 run types
     %    will ask you to redraw cs39 over again
@@ -176,6 +175,8 @@ glm code
 event row.  my window will be 800 msec.  So the goal here will be to use
 exactly her decoder and then apply it to multiple spatial bin sizes.
 
+
+% snippit pulled from claires codebase..
 K = 5;
 cv = cvpartition(numtrials, 'kfold',K);
 %        
@@ -237,7 +238,8 @@ for i=1:5
     title(sprintf('odorID=%d, corrincorr=%d',odorinfo(trial,2),odorinfo(trial,3)));
 end
 
-%%  This is the beta coherence datast
+%%  This is the beta coherence dataset, this mirrors figure 1 results initially
+% coded by CVS
 
 % to calculate beta we use raw lfp files (theyre large)
 betaDir='E:\ClaireData';
