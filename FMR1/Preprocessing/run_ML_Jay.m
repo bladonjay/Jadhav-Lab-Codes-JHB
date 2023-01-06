@@ -1,4 +1,6 @@
 % first generate MDA files using spikegadgets builtin functions
+% this can run on any machine anywhere.  This is where you decide which
+% files to cut...
 
 daydir=uigetdir();
 olddir=cd;
@@ -32,7 +34,7 @@ eval(['! /home/jadhav/SpikeGadgets/exportLFP' recstring outstring]);
 
 eval(['! exportLFP' recstring outstring]);
 
-%%
+%% this will only run on a linux machine iwth mountainlab installed
 
 
 % justins code to run a whole animal.

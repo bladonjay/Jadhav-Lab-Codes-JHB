@@ -24,8 +24,12 @@
 % 3: CA1
 % 4: PFC
 % Will have NaNs (Total 24 non-NaN sessions)
-
-load('G:\Claire Data\PCA_AvgDiscrT_allsess.mat');
+try
+    load('E:\Brandeis datasets\OdorPlaceAssociation\AnalysesAcrossAnimals\PCA_AvgDiscrT_allsess.mat');
+catch
+    [myfile,mydir]=uigetfile('find the you created when you ran ''Run_PCA_SJ_copy''');
+    load(fullfile(mydir,myfile));
+end
 CA1_discr = PCA_AvgDiscrT_allsess(~isnan(PCA_AvgDiscrT_allsess(:,3)),3); % 24 sessions/ ori26
 PFC_discr = PCA_AvgDiscrT_allsess(~isnan(PCA_AvgDiscrT_allsess(:,4)),4); % 24 sessions/ ori25
 

@@ -76,7 +76,7 @@ C. Camera Data
 %           log06-04-2021(1-XFB1-XFB2).mp4
 %% A. Behavioral data Processing
 
-edit SocialTaskBehaviorAnalysis
+edit SocialTaskAnalysis
 
 
 %% B. Neural Data processing

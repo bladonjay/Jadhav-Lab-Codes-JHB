@@ -141,6 +141,12 @@ edit cs_plotRasterPSTH_specifiedCells_v2
 
 
 %% --- PCA/ Population Analysis ---%
+
+% for current paper, run this function and not what's below it:
+
+edit Run_PCA_SJ_copy.m
+
+
 % havent vetted this yet
 cs_PDI
 

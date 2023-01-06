@@ -391,10 +391,11 @@ runtots=0;
 % so i guess the question is this, per arm visit, are the control pairs
 % best?
 % cohort 1 (20x) 1 and 4 are controls
-% cohort 2 (XFB) 1 and 2 are controls
+% cohort 2 (XFB) 1 and 3 are controls
 % cohort 3 (XFG) 1 and 2 are controls
+%** CHECK THE ABOVE
 
-genotypetable=table([1 4; 1 2; 3 4],[2 3; 3 4; 1 2], 'VariableNames',{'controls','fx'});
+genotypetable=table([1 4; 1 3; 3 4],[2 3; 2 4; 1 2], 'VariableNames',{'controls','fx'});
 figure;
 allcohorts=[]; rundates=[];
 iterator=1;
